@@ -11,9 +11,149 @@ const START_MAP: String = "WorldGame.tscn"
 const SCREEN_WIDTH: int = 1280
 const SCREEN_HEIGHT: int = 720
 const TILE_SIZE: int = 80
+const GAME_FPS: int = 1 # we really don't need to much higher FPS, this is mostly for game logic, not graphic stuff
+
+var current_turn: int = 0
+
+onready var troopTypes: TroopTypesObject = TroopTypesObject.new()
+onready var buildingTypes: BuildingTypesObject = BuildingTypesObject.new()
+onready var tileTypes: TilesTypesObject = TilesTypesObject.new()
+var playersData: Array 
+var currentPlayerTurn: int = 0
+
+enum STATUS {
+	PRE_GAME, #Select capital and territories for each players
+	GAME_STARTED #game is going on
+}
+
+#var InvalidTile: Dictionary = {
+#	name = "invalid",
+#	next_stage = "none", #leave it blank if this tile cannot be improved
+#	improve_prize = 0,
+#	turns_to_improve = 0,
+#	gold_to_produce = 0, #ammount of gold to produce per turn
+#	strength_boost = 0, #ammount of extra damage in % that the owner of this tile gets in their troops
+#	sell_prize = 0, #ammount of gold to receive in case of this sold
+#	conquer_gain = 0 #ammount of gold to receive in case of conquering this land
+#}
+
+func _ready():
+	init_players()
+	init_tiles_types()
+	init_troops_types()
+	init_buildings_types()
+
+func init_players():
+	playersData.clear()
+	for i in range (MAX_PLAYERS):
+		playersData.append({
+			name = 'Player ' + str(i+1),
+			civilizationName = 'Asiria',
+			alive = false,
+			isBot = false,
+			selectLeft = 0
+		})
+
+func init_tiles_types():
+	tileTypes.clearList()
+	#Adding tiles START
+	tileTypes.add({
+		name = "rural",
+		next_stage = "ciudad",
+		improve_prize = 30,
+		turns_to_improve = 5,
+		gold_to_produce = 1,
+		strength_boost = 0,
+		sell_prize = 5,
+		conquer_gain = 5 #edit later
+	})
+	tileTypes.add({
+		name = "ciudad",
+		next_stage = "metropolis",
+		improve_prize = 100,
+		turns_to_improve = 10,
+		gold_to_produce = 2,
+		strength_boost = 0.1,
+		sell_prize = 10,
+		conquer_gain = 15 #edit later
+	})
+	tileTypes.add({
+		name = "metropolis",
+		next_stage = "", #leave empty if there is no more improvements left
+		improve_prize = 0,
+		turns_to_improve = 0,
+		gold_to_produce = 3,
+		strength_boost = 0.2,
+		sell_prize = 30,
+		conquer_gain = 50 #edit later
+	})
+	tileTypes.add({
+		name = "capital",
+		next_stage = "", #leave empty if there is no more improvements left
+		improve_prize = 0,
+		turns_to_improve = 0,
+		gold_to_produce = 4,
+		strength_boost = 0.25,
+		sell_prize = 0,
+		conquer_gain = 100 #edit later
+	})
+	#Adding tiles END
+
+func init_buildings_types():
+	buildingTypes.clearList()
+	#Adding buildings START
+	buildingTypes.add({
+		name = "Campo Militar",
+		buy_prize = 50,
+		sell_prize = 15,
+		deploy_prize = 5,
+		turns_to_build = 10,
+		id_troop_generate = troopTypes.getIDByName("recluta"),
+		turns_to_deploy_troops = 1000 #edit later
+	})
+	#Adding builinds END
+
+func init_troops_types():
+	troopTypes.clearList()
+	
+	#Adding troops start
+	troopTypes.add({
+		name = "civil",
+		no_building = true,
+		can_be_bought = false,
+		is_warrior = false,
+		cost_to_make = 0,
+		damage = Vector2(0.2, 0.5),
+		idle_cost_per_turn = 0,
+		moving_cost_per_turn = 1,
+		battle_cost_per_turn = 1,
+		health = 1
+	})
+	
+	#Tropa recluta default
+	troopTypes.add({
+		name = "recluta",
+		no_building = false,
+		can_be_bought = true,
+		is_warrior = true,
+		cost_to_make = 5,
+		damage = Vector2(1, 3),
+		idle_cost_per_turn = 1,
+		moving_cost_per_turn = 1.5,
+		battle_cost_per_turn = 2,
+		health = 3
+	})
+	#Adding troops ends
 
 func start_new_game():
 	change_to_map(START_MAP);
+	currentPlayerTurn = 0
+	playersData[0].alive = true
+	playersData[0].isBot = false
+	playersData[0].selectLeft = 10
+	playersData[1].alive = true
+	playersData[1].isBot = false
+	playersData[1].selectLeft = 10
 
 remote func change_to_map(map_name: String):
 	var full_map_path: String = self.MAPS_FOLDER + map_name;
