@@ -1,0 +1,8 @@
+.import/
+.export/
+dev/
+*.zip
+*.rar
+*.exe
+*.pck
+*.kra~
