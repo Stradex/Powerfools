@@ -73,7 +73,9 @@ func init_tiles_types():
 		strength_boost = 0,
 		sell_prize = 2,
 		conquer_gain = 2, #edit later
-		tile_img = 'tile_empty'
+		tile_img = 'tile_empty',
+		min_civil_to_produce_gold = 0, #minimum amount of civilians to produce gold
+		max_civil_to_produce_gold = 0  #maximum amount of civilians to produce gold
 	})
 	tileTypes.add({
 		name = "rural",
@@ -84,7 +86,9 @@ func init_tiles_types():
 		strength_boost = 0,
 		sell_prize = 5,
 		conquer_gain = 5, #edit later
-		tile_img = 'tile_rural'
+		tile_img = 'tile_rural',
+		min_civil_to_produce_gold = 500, #minimum amount of civilians to produce gold
+		max_civil_to_produce_gold = 2000  #maximum amount of civilians to produce gold
 	})
 	tileTypes.add({
 		name = "ciudad",
@@ -95,7 +99,9 @@ func init_tiles_types():
 		strength_boost = 0.1,
 		sell_prize = 10,
 		conquer_gain = 15, #edit later
-		tile_img = 'tile_city'
+		tile_img = 'tile_city',
+		min_civil_to_produce_gold = 1000, #minimum amount of civilians to produce gold
+		max_civil_to_produce_gold = 5000  #maximum amount of civilians to produce gold
 	})
 	tileTypes.add({
 		name = "metropolis",
@@ -106,7 +112,9 @@ func init_tiles_types():
 		strength_boost = 0.2,
 		sell_prize = 30,
 		conquer_gain = 50, #edit later
-		tile_img = 'tile_metropolis'
+		tile_img = 'tile_metropolis',
+		min_civil_to_produce_gold = 2500, #minimum amount of civilians to produce gold
+		max_civil_to_produce_gold = 10000  #maximum amount of civilians to produce gold
 	})
 	tileTypes.add({
 		name = "capital",
@@ -117,7 +125,9 @@ func init_tiles_types():
 		strength_boost = 0.25,
 		sell_prize = -1,
 		conquer_gain = 100, #edit later
-		tile_img = 'tile_capital'
+		tile_img = 'tile_capital',
+		min_civil_to_produce_gold = 5000, #minimum amount of civilians to produce gold
+		max_civil_to_produce_gold = 20000  #maximum amount of civilians to produce gold
 	})
 	#Adding tiles END
 

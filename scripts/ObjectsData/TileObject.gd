@@ -12,7 +12,9 @@ var InvalidTile: Dictionary = {
 	strength_boost = 0, #ammount of extra damage in % that the owner of this tile gets in their troops
 	sell_prize = 0, #ammount of gold to receive in case of this sold
 	conquer_gain = 0, #ammount of gold to receive in case of conquering this land
-	tile_img = 'tile_empty' #image name of the tile (look at tileResources)
+	tile_img = 'tile_empty', #image name of the tile (look at tileResources)
+	min_civil_to_produce_gold = 0, #minimum amount of civilians to produce gold
+	max_civil_to_produce_gold = 0 #maximum amount of civilians to produce gold
 }
 
 func _init():
