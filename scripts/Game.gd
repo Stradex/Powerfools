@@ -11,7 +11,7 @@ const START_MAP: String = "WorldGame.tscn"
 const SCREEN_WIDTH: int = 1280
 const SCREEN_HEIGHT: int = 720
 const TILE_SIZE: int = 80
-const GAME_FPS: int = 1 # we really don't need to much higher FPS, this is mostly for game logic, not graphic stuff
+const GAME_FPS: int = 4 # we really don't need to much higher FPS, this is mostly for game logic, not graphic stuff
 
 var current_turn: int = 0
 
@@ -25,6 +25,13 @@ enum STATUS {
 	PRE_GAME, #Select capital and territories for each players
 	GAME_STARTED #game is going on
 }
+
+var defaultCivilizationNames: Array = [
+	"Asiria",
+	"Egipto",
+	"Persia",
+	"Sparta"
+]
 
 #var InvalidTile: Dictionary = {
 #	name = "invalid",
@@ -48,7 +55,7 @@ func init_players():
 	for i in range (MAX_PLAYERS):
 		playersData.append({
 			name = 'Player ' + str(i+1),
-			civilizationName = 'Asiria',
+			civilizationName = defaultCivilizationNames[i],
 			alive = false,
 			isBot = false,
 			selectLeft = 0
@@ -58,6 +65,17 @@ func init_tiles_types():
 	tileTypes.clearList()
 	#Adding tiles START
 	tileTypes.add({
+		name = "vacio",
+		next_stage = "rural",
+		improve_prize = 15,
+		turns_to_improve = 3,
+		gold_to_produce = 0,
+		strength_boost = 0,
+		sell_prize = 2,
+		conquer_gain = 2, #edit later
+		tile_img = 'tile_empty'
+	})
+	tileTypes.add({
 		name = "rural",
 		next_stage = "ciudad",
 		improve_prize = 30,
@@ -65,7 +83,8 @@ func init_tiles_types():
 		gold_to_produce = 1,
 		strength_boost = 0,
 		sell_prize = 5,
-		conquer_gain = 5 #edit later
+		conquer_gain = 5, #edit later
+		tile_img = 'tile_rural'
 	})
 	tileTypes.add({
 		name = "ciudad",
@@ -75,7 +94,8 @@ func init_tiles_types():
 		gold_to_produce = 2,
 		strength_boost = 0.1,
 		sell_prize = 10,
-		conquer_gain = 15 #edit later
+		conquer_gain = 15, #edit later
+		tile_img = 'tile_city'
 	})
 	tileTypes.add({
 		name = "metropolis",
@@ -85,7 +105,8 @@ func init_tiles_types():
 		gold_to_produce = 3,
 		strength_boost = 0.2,
 		sell_prize = 30,
-		conquer_gain = 50 #edit later
+		conquer_gain = 50, #edit later
+		tile_img = 'tile_metropolis'
 	})
 	tileTypes.add({
 		name = "capital",
@@ -94,8 +115,9 @@ func init_tiles_types():
 		turns_to_improve = 0,
 		gold_to_produce = 4,
 		strength_boost = 0.25,
-		sell_prize = 0,
-		conquer_gain = 100 #edit later
+		sell_prize = -1,
+		conquer_gain = 100, #edit later
+		tile_img = 'tile_capital'
 	})
 	#Adding tiles END
 

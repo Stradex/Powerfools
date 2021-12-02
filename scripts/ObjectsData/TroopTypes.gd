@@ -39,6 +39,14 @@ func getIDByName(troopName: String) -> int:
 		i+=1
 	return -1
 
+func getName(troopID: int) -> String:
+	var i: int = 0
+	for troopDict in TroopsTypes:
+		if i == troopID:
+			return troopDict.name
+		i+=1
+	return "error"
+
 func getByID(troopID: int) -> Dictionary:
 	var i: int = 0
 	for troopDict in TroopsTypes:

@@ -1,7 +1,16 @@
-[gd_scene load_steps=3 format=2]
+[gd_scene load_steps=9 format=2]
 
 [ext_resource path="res://scripts/WorldGame.gd" type="Script" id=1]
 [ext_resource path="res://tilesResources/SelectionTiles.tres" type="TileSet" id=2]
+[ext_resource path="res://tilesResources/BuildingTiles.tres" type="TileSet" id=3]
+[ext_resource path="res://assets/fonts/PixelOperator-Bold.ttf" type="DynamicFontData" id=4]
+[ext_resource path="res://assets/mainmenu/button_out.png" type="Texture" id=5]
+[ext_resource path="res://assets/mainmenu/button_pressed.png" type="Texture" id=6]
+[ext_resource path="res://assets/mainmenu/button_on.png" type="Texture" id=7]
+
+[sub_resource type="DynamicFont" id=1]
+size = 30
+font_data = ExtResource( 4 )
 
 [node name="World" type="Node2D"]
 script = ExtResource( 1 )
@@ -16,7 +25,623 @@ __meta__ = {
 }
 
 [node name="SelectionTiles" type="TileMap" parent="."]
+modulate = Color( 1, 1, 1, 0.533333 )
+light_mask = -2147483647
+z_index = 1
 tile_set = ExtResource( 2 )
 cell_size = Vector2( 80, 80 )
 format = 1
 tile_data = PoolIntArray( 0, 0, 0, 1, 0, 0, 2, 0, 0, 3, 0, 0, 4, 0, 0, 5, 0, 0, 6, 0, 0, 7, 0, 0, 8, 0, 0, 9, 0, 0, 10, 0, 0, 11, 0, 0, 12, 0, 0, 13, 0, 0, 14, 0, 0, 15, 0, 0, 65536, 0, 0, 65537, 0, 0, 65538, 0, 0, 65539, 0, 0, 65540, 0, 0, 65541, 0, 0, 65542, 0, 0, 65543, 0, 0, 65544, 0, 0, 65545, 0, 0, 65546, 0, 0, 65547, 0, 0, 65548, 0, 0, 65549, 0, 0, 65550, 0, 0, 65551, 0, 0, 131072, 0, 0, 131073, 0, 0, 131074, 0, 0, 131075, 0, 0, 131076, 0, 0, 131077, 0, 0, 131078, 0, 0, 131079, 0, 0, 131080, 0, 0, 131081, 0, 0, 131082, 0, 0, 131083, 0, 0, 131084, 0, 0, 131085, 0, 0, 131086, 0, 0, 131087, 0, 0, 196608, 0, 0, 196609, 0, 0, 196610, 0, 0, 196611, 0, 0, 196612, 0, 0, 196613, 0, 0, 196614, 0, 0, 196615, 0, 0, 196616, 0, 0, 196617, 0, 0, 196618, 0, 0, 196619, 0, 0, 196620, 0, 0, 196621, 0, 0, 196622, 0, 0, 196623, 0, 0, 262144, 0, 0, 262145, 0, 0, 262146, 0, 0, 262147, 0, 0, 262148, 0, 0, 262149, 0, 0, 262150, 0, 0, 262151, 0, 0, 262152, 0, 0, 262153, 0, 0, 262154, 0, 0, 262155, 0, 0, 262156, 0, 0, 262157, 0, 0, 262158, 0, 0, 262159, 0, 0, 327680, 0, 0, 327681, 0, 0, 327682, 0, 0, 327683, 0, 0, 327684, 0, 0, 327685, 0, 0, 327686, 0, 0, 327687, 0, 0, 327688, 0, 0, 327689, 0, 0, 327690, 0, 0, 327691, 0, 0, 327692, 0, 0, 327693, 0, 0, 327694, 0, 0, 327695, 0, 0, 393216, 0, 0, 393217, 0, 0, 393218, 0, 0, 393219, 0, 0, 393220, 0, 0, 393221, 0, 0, 393222, 0, 0, 393223, 0, 0, 393224, 0, 0, 393225, 0, 0, 393226, 0, 0, 393227, 0, 0, 393228, 0, 0, 393229, 0, 0, 393230, 0, 0, 393231, 0, 0, 458752, 0, 0, 458753, 0, 0, 458754, 0, 0, 458755, 0, 0, 458756, 0, 0, 458757, 0, 0, 458758, 0, 0, 458759, 0, 0, 458760, 0, 0, 458761, 0, 0, 458762, 0, 0, 458763, 0, 0, 458764, 0, 0, 458765, 0, 0, 458766, 0, 0, 458767, 0, 0, 524288, 0, 0, 524289, 0, 0, 524290, 0, 0, 524291, 0, 0, 524292, 0, 0, 524293, 0, 0, 524294, 0, 0, 524295, 0, 0, 524296, 0, 0, 524297, 0, 0, 524298, 0, 0, 524299, 0, 0, 524300, 0, 0, 524301, 0, 0, 524302, 0, 0, 524303, 0, 0 )
+
+[node name="BuildingsTiles" type="TileMap" parent="."]
+tile_set = ExtResource( 3 )
+cell_size = Vector2( 80, 80 )
+format = 1
+
+[node name="TileInfo" type="Control" parent="."]
+modulate = Color( 1, 1, 1, 0.486275 )
+margin_right = 242.0
+margin_bottom = 401.0
+__meta__ = {
+"_edit_lock_": true,
+"_edit_use_anchors_": false
+}
+
+[node name="ColorRect" type="ColorRect" parent="TileInfo"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_bottom = 7.0
+color = Color( 0.0352941, 0.0352941, 0.0352941, 1 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="VBoxContainer" type="VBoxContainer" parent="TileInfo"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 5.0
+margin_top = 5.0
+margin_bottom = -4.0
+custom_constants/separation = 10
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="HBoxContainer5" type="HBoxContainer" parent="TileInfo/VBoxContainer"]
+margin_right = 237.0
+margin_bottom = 31.0
+custom_constants/separation = 10
+
+[node name="TileName" type="Label" parent="TileInfo/VBoxContainer/HBoxContainer5"]
+margin_right = 204.0
+margin_bottom = 31.0
+custom_fonts/font = SubResource( 1 )
+text = "Nombre del Tile"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="HBoxContainer" type="HBoxContainer" parent="TileInfo/VBoxContainer"]
+margin_top = 41.0
+margin_right = 237.0
+margin_bottom = 72.0
+custom_constants/separation = 10
+
+[node name="Owner" type="Label" parent="TileInfo/VBoxContainer/HBoxContainer"]
+margin_right = 87.0
+margin_bottom = 31.0
+custom_fonts/font = SubResource( 1 )
+text = "Dueño:"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="OwnerName" type="Label" parent="TileInfo/VBoxContainer/HBoxContainer"]
+margin_left = 97.0
+margin_right = 222.0
+margin_bottom = 31.0
+custom_fonts/font = SubResource( 1 )
+text = "Sin dueño"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="TileInfo/VBoxContainer"]
+margin_top = 82.0
+margin_right = 237.0
+margin_bottom = 113.0
+custom_constants/separation = 10
+
+[node name="Talentos" type="Label" parent="TileInfo/VBoxContainer/HBoxContainer2"]
+margin_right = 128.0
+margin_bottom = 31.0
+custom_fonts/font = SubResource( 1 )
+text = "Talentos:"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Amount" type="Label" parent="TileInfo/VBoxContainer/HBoxContainer2"]
+margin_left = 138.0
+margin_right = 153.0
+margin_bottom = 31.0
+custom_fonts/font = SubResource( 1 )
+text = "0"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="HBoxContainer6" type="HBoxContainer" parent="TileInfo/VBoxContainer"]
+margin_top = 123.0
+margin_right = 237.0
+margin_bottom = 154.0
+custom_constants/separation = 10
+
+[node name="Strength" type="Label" parent="TileInfo/VBoxContainer/HBoxContainer6"]
+margin_right = 102.0
+margin_bottom = 31.0
+custom_fonts/font = SubResource( 1 )
+text = "Fuerza:"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="StrengthText" type="Label" parent="TileInfo/VBoxContainer/HBoxContainer6"]
+margin_left = 112.0
+margin_right = 127.0
+margin_bottom = 31.0
+custom_fonts/font = SubResource( 1 )
+text = "0"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="HBoxContainer3" type="HBoxContainer" parent="TileInfo/VBoxContainer"]
+margin_top = 164.0
+margin_right = 237.0
+margin_bottom = 195.0
+custom_constants/separation = 10
+
+[node name="Population" type="Label" parent="TileInfo/VBoxContainer/HBoxContainer3"]
+margin_right = 141.0
+margin_bottom = 31.0
+custom_fonts/font = SubResource( 1 )
+text = "Población:"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="HBoxContainer4" type="HBoxContainer" parent="TileInfo/VBoxContainer"]
+margin_top = 205.0
+margin_right = 237.0
+margin_bottom = 236.0
+custom_constants/separation = 10
+
+[node name="PopulationText" type="Label" parent="TileInfo/VBoxContainer/HBoxContainer4"]
+margin_right = 99.0
+margin_bottom = 31.0
+custom_fonts/font = SubResource( 1 )
+text = "___________"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="CivilizationInfo" type="Control" parent="."]
+modulate = Color( 1, 1, 1, 0.486275 )
+anchor_left = 1.0
+anchor_right = 1.0
+margin_left = 1008.0
+margin_right = 1277.0
+margin_bottom = 402.0
+__meta__ = {
+"_edit_lock_": true,
+"_edit_use_anchors_": false
+}
+
+[node name="ColorRect" type="ColorRect" parent="CivilizationInfo"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_bottom = 2.0
+color = Color( 0.0352941, 0.0352941, 0.0352941, 1 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CivilizationInfo"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 5.0
+margin_top = 5.0
+margin_bottom = 4.0
+custom_constants/separation = 10
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="HBoxContainer5" type="HBoxContainer" parent="CivilizationInfo/VBoxContainer"]
+margin_right = 264.0
+margin_bottom = 31.0
+custom_constants/separation = 10
+
+[node name="CivilizationText" type="Label" parent="CivilizationInfo/VBoxContainer/HBoxContainer5"]
+margin_right = 165.0
+margin_bottom = 31.0
+custom_fonts/font = SubResource( 1 )
+text = "Civilizacion"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="HBoxContainer" type="HBoxContainer" parent="CivilizationInfo/VBoxContainer"]
+margin_top = 41.0
+margin_right = 264.0
+margin_bottom = 72.0
+custom_constants/separation = 10
+
+[node name="TotTalentos" type="Label" parent="CivilizationInfo/VBoxContainer/HBoxContainer"]
+margin_right = 128.0
+margin_bottom = 31.0
+custom_fonts/font = SubResource( 1 )
+text = "Talentos:"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="TotTalentosText" type="Label" parent="CivilizationInfo/VBoxContainer/HBoxContainer"]
+margin_left = 138.0
+margin_right = 153.0
+margin_bottom = 31.0
+custom_fonts/font = SubResource( 1 )
+text = "0"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="CivilizationInfo/VBoxContainer"]
+margin_top = 82.0
+margin_right = 264.0
+margin_bottom = 113.0
+custom_constants/separation = 10
+
+[node name="Strength" type="Label" parent="CivilizationInfo/VBoxContainer/HBoxContainer2"]
+margin_right = 102.0
+margin_bottom = 31.0
+custom_fonts/font = SubResource( 1 )
+text = "Fuerza:"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="StrengthText" type="Label" parent="CivilizationInfo/VBoxContainer/HBoxContainer2"]
+margin_left = 112.0
+margin_right = 127.0
+margin_bottom = 31.0
+custom_fonts/font = SubResource( 1 )
+text = "0"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="HBoxContainer3" type="HBoxContainer" parent="CivilizationInfo/VBoxContainer"]
+margin_top = 123.0
+margin_right = 264.0
+margin_bottom = 154.0
+custom_constants/separation = 10
+
+[node name="TotPopulation" type="Label" parent="CivilizationInfo/VBoxContainer/HBoxContainer3"]
+margin_right = 141.0
+margin_bottom = 31.0
+custom_fonts/font = SubResource( 1 )
+text = "Población:"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="HBoxContainer4" type="HBoxContainer" parent="CivilizationInfo/VBoxContainer"]
+margin_top = 164.0
+margin_right = 264.0
+margin_bottom = 195.0
+custom_constants/separation = 10
+
+[node name="TotPopulationText" type="Label" parent="CivilizationInfo/VBoxContainer/HBoxContainer4"]
+margin_right = 99.0
+margin_bottom = 31.0
+custom_fonts/font = SubResource( 1 )
+text = "___________"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="PreGameInfo" type="Control" parent="."]
+visible = false
+anchor_left = 1.0
+anchor_right = 1.0
+margin_left = 945.0
+margin_top = 637.0
+margin_right = 1281.0
+margin_bottom = 718.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="HBoxContainer" type="HBoxContainer" parent="PreGameInfo"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 6.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="PointsLeft" type="Label" parent="PreGameInfo/HBoxContainer"]
+margin_top = 25.0
+margin_right = 265.0
+margin_bottom = 56.0
+custom_fonts/font = SubResource( 1 )
+text = "Puntos disponibles:"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="PointsLeftText" type="Label" parent="PreGameInfo/HBoxContainer"]
+margin_left = 269.0
+margin_top = 25.0
+margin_right = 284.0
+margin_bottom = 56.0
+custom_fonts/font = SubResource( 1 )
+text = "0"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="GameInfo" type="Control" parent="."]
+anchor_left = 1.0
+anchor_right = 1.0
+margin_left = 916.0
+margin_top = 637.0
+margin_right = 1281.0
+margin_bottom = 718.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="HBoxContainer" type="HBoxContainer" parent="GameInfo"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 13.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ActionsLeft" type="Label" parent="GameInfo/HBoxContainer"]
+margin_top = 25.0
+margin_right = 301.0
+margin_bottom = 56.0
+custom_fonts/font = SubResource( 1 )
+text = "Acciones disponibles: "
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ActionsLeftText" type="Label" parent="GameInfo/HBoxContainer"]
+margin_left = 305.0
+margin_top = 25.0
+margin_right = 320.0
+margin_bottom = 56.0
+custom_fonts/font = SubResource( 1 )
+text = "0"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ActionsMenu" type="CanvasLayer" parent="."]
+layer = 2
+
+[node name="ExtrasMenu" type="Control" parent="ActionsMenu"]
+visible = false
+anchor_right = 1.0
+anchor_bottom = 1.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ColorRect" type="ColorRect" parent="ActionsMenu/ExtrasMenu"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color( 0, 0, 0, 0.435294 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="VBoxContainer" type="VBoxContainer" parent="ActionsMenu/ExtrasMenu"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 539.0
+margin_top = 266.0
+margin_right = -531.0
+margin_bottom = -265.0
+custom_constants/separation = 12
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ObtenerTalentos" type="TextureButton" parent="ActionsMenu/ExtrasMenu/VBoxContainer"]
+margin_right = 210.0
+margin_bottom = 55.0
+texture_normal = ExtResource( 5 )
+texture_pressed = ExtResource( 6 )
+texture_hover = ExtResource( 7 )
+texture_focused = ExtResource( 7 )
+
+[node name="CenterContainer" type="CenterContainer" parent="ActionsMenu/ExtrasMenu/VBoxContainer/ObtenerTalentos"]
+margin_right = 210.0
+margin_bottom = 56.0
+mouse_filter = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="ActionsMenu/ExtrasMenu/VBoxContainer/ObtenerTalentos/CenterContainer"]
+margin_left = 18.0
+margin_top = 12.0
+margin_right = 191.0
+margin_bottom = 43.0
+custom_fonts/font = SubResource( 1 )
+text = "+10 TALENTOS"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ObtenerTropas" type="TextureButton" parent="ActionsMenu/ExtrasMenu/VBoxContainer"]
+margin_top = 67.0
+margin_right = 210.0
+margin_bottom = 122.0
+texture_normal = ExtResource( 5 )
+texture_pressed = ExtResource( 6 )
+texture_hover = ExtResource( 7 )
+texture_focused = ExtResource( 7 )
+
+[node name="CenterContainer" type="CenterContainer" parent="ActionsMenu/ExtrasMenu/VBoxContainer/ObtenerTropas"]
+margin_right = 210.0
+margin_bottom = 56.0
+mouse_filter = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="ActionsMenu/ExtrasMenu/VBoxContainer/ObtenerTropas/CenterContainer"]
+margin_left = 18.0
+margin_top = 12.0
+margin_right = 191.0
+margin_bottom = 43.0
+custom_fonts/font = SubResource( 1 )
+text = "+1000 TROPAS"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Cancelar" type="TextureButton" parent="ActionsMenu/ExtrasMenu/VBoxContainer"]
+margin_top = 134.0
+margin_right = 210.0
+margin_bottom = 189.0
+texture_normal = ExtResource( 5 )
+texture_pressed = ExtResource( 6 )
+texture_hover = ExtResource( 7 )
+texture_focused = ExtResource( 7 )
+
+[node name="CenterContainer" type="CenterContainer" parent="ActionsMenu/ExtrasMenu/VBoxContainer/Cancelar"]
+margin_right = 210.0
+margin_bottom = 56.0
+mouse_filter = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="ActionsMenu/ExtrasMenu/VBoxContainer/Cancelar/CenterContainer"]
+margin_left = 45.0
+margin_top = 12.0
+margin_right = 165.0
+margin_bottom = 43.0
+custom_fonts/font = SubResource( 1 )
+text = "CANCELAR"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="InGameTileActions" type="Control" parent="ActionsMenu"]
+visible = false
+anchor_right = 1.0
+anchor_bottom = 1.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ColorRect" type="ColorRect" parent="ActionsMenu/InGameTileActions"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color( 0, 0, 0, 0.435294 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="VBoxContainer" type="VBoxContainer" parent="ActionsMenu/InGameTileActions"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 539.0
+margin_top = 266.0
+margin_right = -531.0
+margin_bottom = -265.0
+custom_constants/separation = 12
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="VenderTile" type="TextureButton" parent="ActionsMenu/InGameTileActions/VBoxContainer"]
+margin_right = 210.0
+margin_bottom = 55.0
+texture_normal = ExtResource( 5 )
+texture_pressed = ExtResource( 6 )
+texture_hover = ExtResource( 7 )
+texture_focused = ExtResource( 7 )
+
+[node name="CenterContainer" type="CenterContainer" parent="ActionsMenu/InGameTileActions/VBoxContainer/VenderTile"]
+margin_right = 210.0
+margin_bottom = 56.0
+mouse_filter = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="ActionsMenu/InGameTileActions/VBoxContainer/VenderTile/CenterContainer"]
+margin_left = 60.0
+margin_top = 12.0
+margin_right = 150.0
+margin_bottom = 43.0
+custom_fonts/font = SubResource( 1 )
+text = "VENDER"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="UrbanizarTile" type="TextureButton" parent="ActionsMenu/InGameTileActions/VBoxContainer"]
+margin_top = 67.0
+margin_right = 210.0
+margin_bottom = 122.0
+texture_normal = ExtResource( 5 )
+texture_pressed = ExtResource( 6 )
+texture_hover = ExtResource( 7 )
+texture_focused = ExtResource( 7 )
+
+[node name="CenterContainer" type="CenterContainer" parent="ActionsMenu/InGameTileActions/VBoxContainer/UrbanizarTile"]
+margin_right = 210.0
+margin_bottom = 56.0
+mouse_filter = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="ActionsMenu/InGameTileActions/VBoxContainer/UrbanizarTile/CenterContainer"]
+margin_left = 39.0
+margin_top = 12.0
+margin_right = 171.0
+margin_bottom = 43.0
+custom_fonts/font = SubResource( 1 )
+text = "URBANIZAR"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Construir" type="TextureButton" parent="ActionsMenu/InGameTileActions/VBoxContainer"]
+margin_top = 134.0
+margin_right = 210.0
+margin_bottom = 189.0
+texture_normal = ExtResource( 5 )
+texture_pressed = ExtResource( 6 )
+texture_hover = ExtResource( 7 )
+texture_focused = ExtResource( 7 )
+
+[node name="CenterContainer" type="CenterContainer" parent="ActionsMenu/InGameTileActions/VBoxContainer/Construir"]
+margin_right = 210.0
+margin_bottom = 56.0
+mouse_filter = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="ActionsMenu/InGameTileActions/VBoxContainer/Construir/CenterContainer"]
+margin_left = 39.0
+margin_top = 12.0
+margin_right = 171.0
+margin_bottom = 43.0
+custom_fonts/font = SubResource( 1 )
+text = "CONSTRUIR"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Cancelar" type="TextureButton" parent="ActionsMenu/InGameTileActions/VBoxContainer"]
+margin_top = 201.0
+margin_right = 210.0
+margin_bottom = 256.0
+texture_normal = ExtResource( 5 )
+texture_pressed = ExtResource( 6 )
+texture_hover = ExtResource( 7 )
+texture_focused = ExtResource( 7 )
+
+[node name="CenterContainer" type="CenterContainer" parent="ActionsMenu/InGameTileActions/VBoxContainer/Cancelar"]
+margin_right = 210.0
+margin_bottom = 56.0
+mouse_filter = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="ActionsMenu/InGameTileActions/VBoxContainer/Cancelar/CenterContainer"]
+margin_left = 45.0
+margin_top = 12.0
+margin_right = 165.0
+margin_bottom = 43.0
+custom_fonts/font = SubResource( 1 )
+text = "CANCELAR"
+__meta__ = {
+"_edit_use_anchors_": false
+}
