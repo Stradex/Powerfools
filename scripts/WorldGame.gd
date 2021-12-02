@@ -194,8 +194,68 @@ func move_to_next_player_turn() -> void:
 		i+=1
 
 func process_turn_end(playerNumber: int) -> void:
-	get_total_gold_gain_and_losses(playerNumber)
-	
+	update_gold_stats(playerNumber)
+
+func update_gold_stats(playerNumber: int) -> void:
+	var positiveBalanceTerritories: Array = []
+	var negativeBalanceTerritories: Array = []
+	var totalAmountOfGold: int = 0
+	#Step 1, update all gold in all the tiles
+	for x in range(tile_map_size.x):
+		for y in range(tile_map_size.y):
+			if tiles_data[x][y].owner == playerNumber:
+				update_gold_stats_in_tile(Vector2(x, y), playerNumber)
+				totalAmountOfGold+=tiles_data[x][y].gold
+				if tiles_data[x][y].gold > 0.0:
+					positiveBalanceTerritories.append(Vector2(x, y))
+				elif tiles_data[x][y].gold < 0.0:
+					negativeBalanceTerritories.append(Vector2(x, y))
+
+	if totalAmountOfGold < 0:
+		if positiveBalanceTerritories.size() <= 0 or totalAmountOfGold < -10:
+			destroy_player(playerNumber)
+			return
+		#first, remove the capital
+		
+		var capitalVec2Coords: Vector2 = get_player_capital_vec2(playerNumber)
+		var capitalId: int = -1
+		for i in range(positiveBalanceTerritories.size()):
+			if positiveBalanceTerritories[i] == capitalVec2Coords:
+				capitalId = i
+		if capitalId != -1:
+			positiveBalanceTerritories.remove(capitalId)
+		if positiveBalanceTerritories.size() <= 0:
+			destroy_player(playerNumber)
+			return
+		tiles_data[capitalVec2Coords.x][capitalVec2Coords.y].gold += 10.0
+		var rndCellToSell: int = rng.randi_range(0, positiveBalanceTerritories.size() -1)
+		clear_tile(positiveBalanceTerritories[rndCellToSell])
+		positiveBalanceTerritories.remove(rndCellToSell)
+		print("PLAYER " + str(playerNumber) + " SOLD A TERRITORY TO AVOID BANKRUNPCY!")
+		
+	#Step 2, distribute gold to make sure there are no territorie with negative gold.
+	var nX: int
+	var nY: int
+	var pX: int
+	var pY: int 
+	for i in range(negativeBalanceTerritories.size()):
+		nX = negativeBalanceTerritories[i].x
+		nY = negativeBalanceTerritories[i].y
+		for j in range(positiveBalanceTerritories.size()):
+			pX = positiveBalanceTerritories[j].x
+			pY = positiveBalanceTerritories[j].y
+			if tiles_data[pX][pY].gold <= 0:
+				continue
+			if tiles_data[nX][nY].gold + tiles_data[pX][pY].gold >= 0:
+				tiles_data[pX][pY].gold += tiles_data[nX][nY].gold
+				tiles_data[nX][nY].gold = 0
+			else:
+				tiles_data[nX][nY].gold += tiles_data[pX][pY].gold
+				tiles_data[pX][pY].gold = 0
+
+func update_gold_stats_in_tile(tile_pos: Vector2, playerNumber: int) ->  void:
+	tiles_data[tile_pos.x][tile_pos.y].gold += get_tile_gold_gain_and_losses(tile_pos, playerNumber)
+
 func get_total_gold_gain_and_losses(playerNumber: int) -> float:
 	var goldGains: float = 0
 	for x in range(tile_map_size.x):
@@ -240,6 +300,13 @@ func player_has_capital(playerNumber: int) -> bool:
 			if tiles_data[x][y].owner == playerNumber and tiles_data[x][y].tile_id == Game.tileTypes.getIDByName("capital"):
 				return true
 	return false
+
+func get_player_capital_vec2(playerNumber: int) -> Vector2:
+	for x in range(tile_map_size.x):
+		for y in range(tile_map_size.y):
+			if tiles_data[x][y].owner == playerNumber and tiles_data[x][y].tile_id == Game.tileTypes.getIDByName("capital"):
+				return Vector2(x, y)
+	return Vector2(-1, -1)
 
 func get_player_tiles_count(playerNumber: int) -> int:
 	var count: int = 0
@@ -331,7 +398,22 @@ func get_civ_population_info(playerNumber: int) -> Array:
 				if !troopExists:
 					troopsInfo.append({troop_id = troopDict.troop_id, amount = troopDict.amount})
 	return troopsInfo
-	
+
+func destroy_player(playerNumber: int):
+	for x in range(tile_map_size.x):
+		for y in range(tile_map_size.y):
+			if tiles_data[x][y].owner == playerNumber:
+				clear_tile(Vector2(x, y))
+	Game.playersData[playerNumber].alive = false
+	print("PLAYER " + str(playerNumber) + " LOST!")
+
+func clear_tile(tile_pos: Vector2):
+	tiles_data[tile_pos.x][tile_pos.y].owner = -1
+	tiles_data[tile_pos.x][tile_pos.y].name = "untitled"
+	tiles_data[tile_pos.x][tile_pos.y].tile_id = Game.tileTypes.getIDByName("vacio")
+	tiles_data[tile_pos.x][tile_pos.y].gold = 0
+	tiles_data[tile_pos.x][tile_pos.y].troops.clear()
+
 func gui_update_civilization_info(playerNumber: int) -> void:
 	$CivilizationInfo/VBoxContainer/HBoxContainer5/CivilizationText.text = str(Game.playersData[playerNumber].civilizationName)
 	$CivilizationInfo/VBoxContainer/HBoxContainer/TotTalentosText.text = str(get_total_gold(playerNumber))
