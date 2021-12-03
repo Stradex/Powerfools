@@ -5,6 +5,36 @@ extends Node2D
 #	2) Prepare the tile/cell data object (data that should be stored in the tile)
 #	3) Prepare the object data for different troops (recruits, soldiers and Elite)
 
+# Cardinal bitflags, really useful.
+const N: int = 1
+const NE: int = 2
+const E: int = 4
+const SE: int = 8
+const S: int = 16
+const SW: int = 32
+const W: int = 64
+const NW: int = 128
+
+const ACTIONS_PER_TURN: int = 3
+const MAX_DEPLOYEMENTS_PER_TILE: int = 1
+const MININUM_TROOPS_TO_FIGHT: int = 5
+const EXTRA_CIVILIANS_TO_GAIN_CONQUER: int = 500
+
+const ALL_DIR: int = N | NE | E | SE | S | SW | W | NW # All 8 directions
+const DIAG_DIR: int = NE | SE | SW | NW # Diagonal directions only
+const HOR_AND_VER_DIR: int = ALL_DIR - DIAG_DIR # Horizontal and vertical directions
+
+const DIRS: Dictionary = { # The keys are vectors 2D, which is awesome and handy
+	Vector2(0, -1): N,
+	Vector2(1, -1): NE,
+	Vector2(1, 0): E,
+	Vector2(1, 1): SE,
+	Vector2(0, 1): S,
+	Vector2(-1, 1): SW,
+	Vector2(-1, 0): W,
+	Vector2(-1, -1): NW
+};
+
 const MINIMUM_CIVILIAN_ICON_COUNT: int = 50 
 const MINIMUM_TROOPS_ICON_COUNT: int = 10
 
@@ -20,7 +50,7 @@ onready var id_tile_overpopulation: int = $CivilianTiles.tile_set.find_tile_by_n
 onready var id_tile_underpopulation: int = $CivilianTiles.tile_set.find_tile_by_name('civilians_underpopulation')
 onready var id_tile_troops: int = $TroopsTiles.tile_set.find_tile_by_name('military_troops')
 onready var id_tile_deploying_troops: int = $TroopsTiles.tile_set.find_tile_by_name('military_troops_wip')
-
+onready var id_tile_battle: int = $ConstructionTiles.tile_set.find_tile_by_name('battle_in_progress')
 onready var tile_map_size: Vector2 = Vector2(round(Game.SCREEN_WIDTH/Game.TILE_SIZE), round(Game.SCREEN_HEIGHT/Game.TILE_SIZE))
 
 onready var current_game_status: int = -1
@@ -28,6 +58,7 @@ onready var current_player_turn: int = -1
 var time_offset: float = 0.0
 var player_in_menu: bool = false
 var player_can_interact: bool = true
+var actions_available: int = ACTIONS_PER_TURN
 var tiles_data = []
 var rng: RandomNumberGenerator = RandomNumberGenerator.new();
 
@@ -54,10 +85,6 @@ var actionTileToDo: Dictionary = {
 	troopsToMove = []
 }
 
-var turnActionsToDo: Dictionary = {
-	goldToAdd = 0
-}
-
 var current_tile_selected: Vector2 = Vector2.ZERO
 
 ###################################################
@@ -78,7 +105,7 @@ func _process(delta):
 	player_in_menu = is_player_menu_open()
 	if player_was_in_menu != player_in_menu: #little delay to avoid player spaming actions and also bugs
 		player_can_interact = false
-		tween.interpolate_callback(self, 0.25, "allow_player_interact");
+		tween.interpolate_callback(self, 0.25, "allow_player_interact")
 		tween.start()
 
 	if player_in_menu or !player_can_interact:
@@ -91,6 +118,7 @@ func _process(delta):
 		update_building_tiles()
 		gui_update_tile_info(current_tile_selected)
 		gui_update_civilization_info(current_player_turn)
+		$GameInfo/HBoxContainer/ActionsLeftText.text = str(actions_available)
 		$PreGameInfo/HBoxContainer/PointsLeftText.text = str(Game.playersData[current_player_turn].selectLeft)
 
 func is_player_menu_open() -> bool:
@@ -165,8 +193,11 @@ func game_interact():
 			interactTileSelected = current_tile_selected
 		nextInteractTileSelected = Vector2(-1, -1)
 	elif nextInteractTileSelected == Vector2(-1, -1):
-		nextInteractTileSelected = current_tile_selected
-		popup_tiles_actions()
+		if is_tile_next_to_tile(interactTileSelected, current_tile_selected):
+			nextInteractTileSelected = current_tile_selected
+			popup_tiles_actions()
+		else:
+			interactTileSelected = Vector2(-1, -1)
 
 func pre_game_interact():
 	if is_tile_owned_by_player(current_tile_selected):
@@ -191,8 +222,29 @@ func change_game_status(new_status: int) -> void:
 		Game.STATUS.GAME_STARTED:
 			$PreGameInfo.visible = false
 			$GameInfo.visible = true
+			process_unused_tiles()
 	print("Game Status changed to value: " + str(new_status))
 
+func process_unused_tiles() -> void:
+	for x in range(tile_map_size.x):
+		for y in range(tile_map_size.y):
+			if tiles_data[x][y].owner == -1:
+				add_tribal_society_to_tile(Vector2(x, y))
+
+func add_tribal_society_to_tile(cell: Vector2) -> void:
+	tiles_data[cell.x][cell.y].gold = int(rand_range(0.0, 5.0))
+	var troopsToAdd: Dictionary = {
+		owner = -1,
+		troop_id = Game.troopTypes.getIDByName("recluta"),
+		amount = int(rand_range(250.0, 2000.0))
+	}
+	var civiliansToAdd: Dictionary = {
+		owner = -1,
+		troop_id = Game.troopTypes.getIDByName("civil"),
+		amount = int(rand_range(500.0, 5000.0))
+	}
+	add_troops_to_tile(cell, troopsToAdd)
+	add_troops_to_tile(cell, civiliansToAdd)
 func game_on() -> void:
 	match current_game_status:
 		Game.STATUS.PRE_GAME:
@@ -215,9 +267,16 @@ func move_to_next_player_turn() -> void:
 	for i in range(Game.playersData.size()):
 		if i != current_player_turn and Game.playersData[i].alive:
 			current_player_turn = i
+			update_actions_available()
 			print("Player " + str(i) + " turn")
 			return
 		i+=1
+
+	update_actions_available()
+
+func update_actions_available() -> void:
+	if current_game_status == Game.STATUS.GAME_STARTED:
+		actions_available = int(round(count_productive_territories(current_player_turn)/3.0 + 0.5))
 
 func process_turn_end(playerNumber: int) -> void:
 	update_gold_stats(playerNumber)
@@ -229,6 +288,83 @@ func process_tiles_turn_end(playerNumber: int) -> void:
 			process_tile_upgrade(Vector2(x, y), playerNumber)
 			process_tile_builings(Vector2(x, y), playerNumber)
 			process_tile_recruitments(Vector2(x, y), playerNumber)
+			process_tile_battles(Vector2(x, y))
+
+func process_tile_battles(tile_pos: Vector2) -> void:
+	if !is_this_tile_in_battle(tile_pos):
+		return
+	var damageMultiplier: float = rand_range(0.25, 1.0) #some battles can last more than others
+	#Step 1: calculate Damage to do by each army
+	var damageToDoArray: Array = []
+	for troopDict in tiles_data[tile_pos.x][tile_pos.y].troops:
+		var existsInArray: bool = false
+		var damageToApply: float = Game.troopTypes.calculateTroopDamage(troopDict.troop_id)*troopDict.amount*damageMultiplier
+		for damageToDo in damageToDoArray:
+			if damageToDo.owner == troopDict.owner:
+				damageToDo.amount += damageToApply
+				existsInArray = true
+		if !existsInArray:
+			damageToDoArray.append({owner = troopDict.owner, amount = damageToApply})
+	
+	#Step2: Apply damage to other armies
+	for damageToDo in damageToDoArray:
+		#Calculate how much damage to apply to each troop
+		var enemiesWarriorStrength: Array
+		var enemiesTotalStrength: float = 0.0
+		for troopDict in tiles_data[tile_pos.x][tile_pos.y].troops:
+			if damageToDo.owner == troopDict.owner:
+				continue
+			if troopDict.amount <= 0:
+				continue
+			var troopStrength: float = get_troop_tile_strength(tile_pos, troopDict.owner, troopDict.troop_id)
+			enemiesWarriorStrength.append(troopStrength)
+			enemiesTotalStrength += troopStrength
+		
+		#apply the damage now to enemy troops
+		var initial_damage_to_do: float = damageToDo.amount
+		var i: int = 0
+		for troopDict in tiles_data[tile_pos.x][tile_pos.y].troops:
+			if damageToDo.owner == troopDict.owner:
+				continue
+			if troopDict.amount <= 0:
+				continue
+
+			var individualTroopHealth: float = Game.troopTypes.getByID(troopDict.troop_id).health
+			var percentOfDamageToApply: float = float(enemiesWarriorStrength[i]/enemiesTotalStrength)
+			var damageToApplyToThisTroop: float = initial_damage_to_do*percentOfDamageToApply
+			var troopsToKill: int = round(damageToApplyToThisTroop/individualTroopHealth)
+			troopDict.amount-= troopsToKill
+			if troopDict.amount < MININUM_TROOPS_TO_FIGHT: #avoid problems
+				troopDict.amount = 0
+			i+=1
+	#Step4: Check if battle is over
+	if !is_this_tile_in_battle(tile_pos):
+		var playerWhoWonId: int = -1
+		for troopDict in tiles_data[tile_pos.x][tile_pos.y].troops:
+			if troopDict.amount <= 0:
+				continue
+			playerWhoWonId = troopDict.owner
+		tiles_data[tile_pos.x][tile_pos.y].owner = playerWhoWonId
+		var extra_population: Dictionary = {
+			owner = playerWhoWonId,
+			troop_id = Game.troopTypes.getIDByName("civil"),
+			amount = EXTRA_CIVILIANS_TO_GAIN_CONQUER+Game.tileTypes.getByID(tiles_data[tile_pos.x][tile_pos.y].tile_id).min_civil_to_produce_gold
+		}
+		add_troops_to_tile(tile_pos, extra_population)
+
+func is_this_tile_in_battle(tile_pos: Vector2) -> bool:
+	var playersInTileArray: Array = []
+	for troopDict in tiles_data[tile_pos.x][tile_pos.y].troops:
+		if troopDict.amount <= 0:
+			continue
+		var newPlayerInTile: bool = true
+		for playerNumber in playersInTileArray:
+			if playerNumber == troopDict.owner:
+				newPlayerInTile = false
+				break
+		if newPlayerInTile:
+			playersInTileArray.append(troopDict.owner)
+	return playersInTileArray.size() > 1
 
 func process_tile_recruitments(tile_pos: Vector2, playerNumber: int) -> void:
 	var upcomingTroopsArray: Array = tiles_data[tile_pos.x][tile_pos.y].upcomingTroops
@@ -361,14 +497,20 @@ func tile_is_producing_gold(tile_pos: Vector2,  playerNumber: int) -> bool:
 	var tileTypeDict: Dictionary = Game.tileTypes.getByID(tiles_data[tile_pos.x][tile_pos.y].tile_id)
 	return civilianCountInTile >= tileTypeDict.min_civil_to_produce_gold && civilianCountInTile <= tileTypeDict.max_civil_to_produce_gold
 
+func tile_has_minimum_civilization(tile_pos: Vector2,  playerNumber: int) -> bool:
+	var civilianCountInTile: int = get_tile_civilian_count(tile_pos, playerNumber)
+	var tileTypeDict: Dictionary = Game.tileTypes.getByID(tiles_data[tile_pos.x][tile_pos.y].tile_id)
+	return civilianCountInTile >= tileTypeDict.min_civil_to_produce_gold
+
 func is_recruiting_possible(tile_pos: Vector2, playerNumber: int) -> bool:
 	if tiles_data[tile_pos.x][tile_pos.y].building_id == -1:
 		return false
 	if tiles_data[tile_pos.x][tile_pos.y].turns_to_build > 0:
 		return false
-
 	var currentBuildingType = Game.buildingTypes.getByID(tiles_data[tile_pos.x][tile_pos.y].building_id)
 	if currentBuildingType.deploy_prize > get_total_gold(playerNumber):
+		return false
+	if tiles_data[tile_pos.x][tile_pos.y].upcomingTroops.size() >= MAX_DEPLOYEMENTS_PER_TILE: 
 		return false
 	return true
 
@@ -381,7 +523,9 @@ func update_building_tiles() -> void:
 		for y in range(tile_map_size.y):
 			var tileImgToSet = $BuildingsTiles.tile_set.find_tile_by_name(Game.tileTypes.getImg(tiles_data[x][y].tile_id))
 			var buildingImgToSet = -1
-			if is_tile_upgrading(Vector2(x, y)):
+			if is_this_tile_in_battle(Vector2(x, y)):
+				$ConstructionTiles.set_cellv(Vector2(x, y), id_tile_battle)
+			elif is_tile_upgrading(Vector2(x, y)):
 				$ConstructionTiles.set_cellv(Vector2(x, y), id_tile_upgrading)
 			else:
 				$ConstructionTiles.set_cellv(Vector2(x, y), -1)
@@ -441,7 +585,12 @@ func update_selection_tiles() -> void:
 
 func get_tile_selected_img_id(tile_pos: Vector2) -> int:
 	if current_game_status == Game.STATUS.GAME_STARTED:
-		if tiles_data[tile_pos.x][tile_pos.y].owner != current_player_turn:
+		if interactTileSelected != Vector2(-1, -1) and nextInteractTileSelected == Vector2(-1, -1):
+			if is_tile_next_to_tile(interactTileSelected, tile_pos):
+				return id_tile_selected
+			else:
+				return id_tile_not_allowed
+		elif tiles_data[tile_pos.x][tile_pos.y].owner != current_player_turn:
 			return id_tile_not_allowed
 	return id_tile_selected
 
@@ -513,22 +662,29 @@ func get_total_gold(playerNumber: int) -> float:
 				totalGold += tiles_data[x][y].gold
 	return floor(totalGold)
 
-func get_tile_strength(tilePos: Vector2, playerNumber: int) -> float:
-	var totalStrength: float = 0.0
-	var totalTroops: int = 0
-	var totalHealth: int = 0
-	var averageHealth: float = 0.0
+func get_troop_tile_strength(tilePos: Vector2, playerNumber: int, troop_id: int) -> float:
 	for troopDict in tiles_data[tilePos.x][tilePos.y].troops:
 		if troopDict.owner != playerNumber:
 			continue
-		totalHealth += Game.troopTypes.getByID(troopDict.troop_id).health*troopDict.amount
-		totalTroops += troopDict.amount
+		if troopDict.troop_id != troop_id:
+			continue
+		if troopDict.amount <= 0:
+			continue
+		var troopHealth: float = Game.troopTypes.getByID(troopDict.troop_id).health
 		var averageTroopDamage: float = (Game.troopTypes.getByID(troopDict.troop_id).damage.x + Game.troopTypes.getByID(troopDict.troop_id).damage.y)/2.0
-		totalStrength += averageTroopDamage*troopDict.amount
+		return (averageTroopDamage*troopDict.amount*troopHealth/200.0)
+	return 0.0
 
-	if totalTroops > 0:
-		averageHealth = float(totalHealth) / float(totalTroops)
-	return round(totalStrength*averageHealth/200.0)
+func get_tile_strength(tilePos: Vector2, playerNumber: int) -> float:
+	var totalStrength: float = 0.0
+	for troopDict in tiles_data[tilePos.x][tilePos.y].troops:
+		if troopDict.owner != playerNumber:
+			continue
+		if troopDict.amount <= 0:
+			continue
+		totalStrength += get_troop_tile_strength(tilePos, playerNumber, troopDict.troop_id)
+
+	return round(totalStrength)
 
 func get_total_strength(playerNumber: int) -> float:
 	var totalStrength: float = 0.0
@@ -558,6 +714,42 @@ func get_civ_population_info(playerNumber: int) -> Array:
 ###################################
 #	UTIL & STUFF
 ###################################
+
+func count_productive_territories(playerNumber: int) -> int:
+	var productiveTerritoriesCount: int = 0
+	for x in range(tile_map_size.x):
+		for y in range(tile_map_size.y):
+			if tiles_data[x][y].owner == playerNumber && tile_has_minimum_civilization(Vector2(x, y), playerNumber):
+				productiveTerritoriesCount+=1
+	return productiveTerritoriesCount
+
+func is_a_valid_tile(cell: Vector2) -> bool:
+	if cell.x < 0 or cell.y < 0:
+		return false
+	if cell.x >= tile_map_size.x or cell.y >= tile_map_size.y:
+		return false
+	return true
+
+func get_neighbors(cell: Vector2, bitmask: int = ALL_DIR, mult: int = 1) -> Array:
+	var neighbors: Array = []
+	for n in DIRS.keys():
+		if (bitmask & DIRS[n]) && is_a_valid_tile(cell+n*mult):
+			neighbors.append(cell+n*mult)
+	return neighbors
+
+func is_tile_next_to_tile(cell: Vector2, to_compare_cell: Vector2) -> bool:
+	var neighbors: Array = get_neighbors(cell)
+	for v in neighbors:
+		if to_compare_cell == v:
+			return true
+	return false
+
+func is_next_to_own_territory(cell: Vector2, playerNumber: int) -> bool:
+	var neighbors: Array = get_neighbors(cell)
+	for neighbor in neighbors:
+		if tiles_data[neighbor.x][neighbor.y].owner == playerNumber:
+			return true 
+	return false
 
 func is_tile_upgrading(tile_pos: Vector2):
 	return tiles_data[tile_pos.x][tile_pos.y].turns_to_improve_left > 0
@@ -621,6 +813,9 @@ func clear_tile(tile_pos: Vector2):
 	tiles_data[tile_pos.x][tile_pos.y].name = "untitled"
 	tiles_data[tile_pos.x][tile_pos.y].tile_id = Game.tileTypes.getIDByName("vacio")
 	tiles_data[tile_pos.x][tile_pos.y].gold = 0
+	tiles_data[tile_pos.x][tile_pos.y].turns_to_build = 0
+	tiles_data[tile_pos.x][tile_pos.y].building_id = -1
+	tiles_data[tile_pos.x][tile_pos.y].upcomingTroops.clear()
 	tiles_data[tile_pos.x][tile_pos.y].troops.clear()
 
 ###################################
@@ -753,10 +948,20 @@ func gui_update_tile_info(tile_pos: Vector2) -> void:
 	$TileInfo/VBoxContainer/HBoxContainer7/GainsText.text = str(get_tile_gold_gain_and_losses(tile_pos, current_player_turn))
 	
 	var populationStr: String = ""
-	
+	var isEnemyPopulation: bool = false
 	for troopDict in tiles_data[tile_pos.x][tile_pos.y].troops:
-		populationStr += "* " + str(Game.troopTypes.getName(troopDict.troop_id)) + ": " + str(troopDict.amount) + "\n"
-	
+		if troopDict.amount <= 0:
+			continue
+		if troopDict.owner == current_player_turn:
+			populationStr += "* " + str(Game.troopTypes.getName(troopDict.troop_id)) + ": " + str(troopDict.amount) + "\n"
+		else:
+			isEnemyPopulation = true
+	if isEnemyPopulation:
+		populationStr += "Enemigos: \n"
+		for troopDict in tiles_data[tile_pos.x][tile_pos.y].troops:
+			if troopDict.amount <= 0 or troopDict.owner == current_player_turn: 
+				continue
+			populationStr += "* " + str(Game.troopTypes.getName(troopDict.troop_id)) + ": " + str(troopDict.amount) + "\n"
 	$TileInfo/VBoxContainer/HBoxContainer4/PopulationText.text = populationStr
 
 ###################################
@@ -783,16 +988,19 @@ func gui_recruit_troops():
 	}
 	tiles_data[x][y].gold -= currentBuildingTypeSelected.deploy_prize
 	tiles_data[x][y].upcomingTroops.append(upcomingTroopsDict)
+	action_in_turn_executed()
 	$ActionsMenu/InGameTileActions.visible = false
 	
 func gui_buy_building():
-	var selectedBuildTypeId: int = int($ActionsMenu/BuildingsMenu/VBoxContainer/BuildingsList.selected)
+	var selectionIndex: int = $ActionsMenu/BuildingsMenu/VBoxContainer/BuildingsList.selected
+	var selectedBuildTypeId: int = int($ActionsMenu/BuildingsMenu/VBoxContainer/BuildingsList.get_item_id(selectionIndex))
 	if selectedBuildTypeId< 0:
 		return
 	var currentBuildingTypeSelected = Game.buildingTypes.getByID(selectedBuildTypeId)
 	tiles_data[current_tile_selected.x][current_tile_selected.y].gold -= currentBuildingTypeSelected.buy_prize
 	tiles_data[current_tile_selected.x][current_tile_selected.y].turns_to_build = currentBuildingTypeSelected.turns_to_build
 	tiles_data[current_tile_selected.x][current_tile_selected.y].building_id = selectedBuildTypeId
+	action_in_turn_executed()
 	$ActionsMenu/BuildingsMenu.visible = false
 
 func gui_exit_build_window():
@@ -818,10 +1026,11 @@ func gui_urbanizar_tile():
 		return
 	tiles_data[current_tile_selected.x][current_tile_selected.y].gold -= tileTypeData.improve_prize
 	tiles_data[current_tile_selected.x][current_tile_selected.y].turns_to_improve_left = tileTypeData.turns_to_improve
+	action_in_turn_executed()
 	$ActionsMenu/InGameTileActions.visible = false
 
 func update_troops_move_data( var index: int ):
-	actionTileToDo.currentTroopId = index
+	actionTileToDo.currentTroopId = $ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.get_item_id(index)
 	var startX: int = interactTileSelected.x
 	var startY: int = interactTileSelected.y
 	for troopInActionTileDict in actionTileToDo.troopsToMove:
@@ -830,7 +1039,9 @@ func update_troops_move_data( var index: int ):
 			break
 	$ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TropasDisponibles.text = "0"
 	for troopDict in tiles_data[startX][startY].troops:
-		if troopDict.troop_id == index:
+		if troopDict.owner != current_player_turn:
+			continue
+		if troopDict.troop_id == actionTileToDo.currentTroopId:
 			$ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TropasDisponibles.text = str(troopDict.amount)
 			break
 
@@ -843,8 +1054,16 @@ func accept_tiles_actions():
 	if !player_in_menu or !player_can_interact:
 		return
 	execute_tile_action()
+	action_in_turn_executed()
 	$ActionsMenu/TilesActions.visible = false
 
+func action_in_turn_executed():
+	if current_game_status != Game.STATUS.GAME_STARTED:
+		return
+	actions_available-=1
+	if actions_available <= 0:
+		move_to_next_player_turn()
+		
 func execute_tile_action():
 	var startX: int = interactTileSelected.x
 	var startY: int = interactTileSelected.y

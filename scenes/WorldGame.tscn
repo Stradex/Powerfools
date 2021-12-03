@@ -89,7 +89,6 @@ cell_size = Vector2( 80, 80 )
 format = 1
 
 [node name="TileInfo" type="Control" parent="."]
-visible = false
 modulate = Color( 1, 1, 1, 0.486275 )
 margin_right = 242.0
 margin_bottom = 399.0
@@ -232,25 +231,10 @@ __meta__ = {
 "_edit_use_anchors_": false
 }
 
-[node name="HBoxContainer3" type="HBoxContainer" parent="TileInfo/VBoxContainer"]
+[node name="HBoxContainer4" type="HBoxContainer" parent="TileInfo/VBoxContainer"]
 margin_top = 205.0
 margin_right = 237.0
 margin_bottom = 236.0
-custom_constants/separation = 10
-
-[node name="Population" type="Label" parent="TileInfo/VBoxContainer/HBoxContainer3"]
-margin_right = 141.0
-margin_bottom = 31.0
-custom_fonts/font = SubResource( 1 )
-text = "Población:"
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="HBoxContainer4" type="HBoxContainer" parent="TileInfo/VBoxContainer"]
-margin_top = 246.0
-margin_right = 237.0
-margin_bottom = 277.0
 custom_constants/separation = 10
 
 [node name="PopulationText" type="Label" parent="TileInfo/VBoxContainer/HBoxContainer4"]

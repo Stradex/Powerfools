@@ -47,6 +47,14 @@ func getName(troopID: int) -> String:
 		i+=1
 	return "error"
 
+func calculateTroopDamage(troopID: int) -> float:
+	var i: int = 0
+	for troopDict in TroopsTypes:
+		if i == troopID:
+			return rand_range(troopDict.damage.x, troopDict.damage.y)
+		i+=1
+	return 0.0
+
 func getByID(troopID: int) -> Dictionary:
 	var i: int = 0
 	for troopDict in TroopsTypes:
