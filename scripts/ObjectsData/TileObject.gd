@@ -46,6 +46,14 @@ func getIDByName(tileTypeName: String) -> int:
 		i+=1
 	return -1
 
+func getNextStageID(tileTypeID: int) -> int:
+	var i: int = 0
+	for tileDict in TilesTypes:
+		if i == tileTypeID:
+			return getIDByName(tileDict.next_stage)
+		i+=1
+	return -1
+
 func getByID(tileTypeID: int) -> Dictionary:
 	var i: int = 0
 	for tileDict in TilesTypes:
@@ -56,3 +64,6 @@ func getByID(tileTypeID: int) -> Dictionary:
 
 func getImg(tileTypeID: int) -> String:
 	return getByID(tileTypeID).tile_img
+
+func getList() -> Array:
+	return TilesTypes.duplicate(true) #gives a copy so no one can fuck up the original list

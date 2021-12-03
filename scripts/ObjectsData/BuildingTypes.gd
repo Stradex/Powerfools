@@ -10,7 +10,9 @@ var InvalidBuilding: Dictionary = {
 	deploy_prize = 0,
 	turns_to_build = 0,
 	id_troop_generate = -1,
-	turns_to_deploy_troops = 0
+	building_img='no_building',
+	turns_to_deploy_troops = 0,
+	deploy_amount = 0
 }
 
 func _init():
@@ -36,6 +38,10 @@ func getIDByName(buildingName: String) -> int:
 		i+=1
 	return -1
 
+func getImg(buildingID: int) -> String:
+	return getByID(buildingID).building_img
+
+
 func getByID(buildingID: int) -> Dictionary:
 	var i: int = 0
 	for buildDict in BuildingTypes:
@@ -43,3 +49,6 @@ func getByID(buildingID: int) -> Dictionary:
 			return buildDict
 		i+=1
 	return InvalidBuilding
+
+func getList() -> Array:
+	return BuildingTypes.duplicate(true) #gives a copy so no one can fuck up the original list

@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=2]
+[gd_scene load_steps=19 format=2]
 
 [ext_resource path="res://scripts/WorldGame.gd" type="Script" id=1]
 [ext_resource path="res://tilesResources/SelectionTiles.tres" type="TileSet" id=2]
@@ -7,9 +7,31 @@
 [ext_resource path="res://assets/mainmenu/button_out.png" type="Texture" id=5]
 [ext_resource path="res://assets/mainmenu/button_pressed.png" type="Texture" id=6]
 [ext_resource path="res://assets/mainmenu/button_on.png" type="Texture" id=7]
+[ext_resource path="res://assets/fonts/PixelOperatorSC-Bold.ttf" type="DynamicFontData" id=8]
+[ext_resource path="res://assets/fonts/PixelOperatorHB.ttf" type="DynamicFontData" id=9]
+[ext_resource path="res://tilesResources/ConstructionTiles.tres" type="TileSet" id=10]
+[ext_resource path="res://tilesResources/BuildingTypesTiles.tres" type="TileSet" id=11]
+[ext_resource path="res://tilesResources/TroopsTiles.tres" type="TileSet" id=12]
+[ext_resource path="res://tilesResources/CiviliansTiles.tres" type="TileSet" id=13]
 
 [sub_resource type="DynamicFont" id=1]
 size = 30
+font_data = ExtResource( 4 )
+
+[sub_resource type="DynamicFont" id=5]
+size = 25
+font_data = ExtResource( 8 )
+
+[sub_resource type="DynamicFont" id=2]
+size = 25
+font_data = ExtResource( 9 )
+
+[sub_resource type="DynamicFont" id=3]
+size = 25
+font_data = ExtResource( 8 )
+
+[sub_resource type="DynamicFont" id=4]
+size = 25
 font_data = ExtResource( 4 )
 
 [node name="World" type="Node2D"]
@@ -27,11 +49,39 @@ __meta__ = {
 [node name="SelectionTiles" type="TileMap" parent="."]
 modulate = Color( 1, 1, 1, 0.533333 )
 light_mask = -2147483647
-z_index = 1
+z_index = 3
 tile_set = ExtResource( 2 )
 cell_size = Vector2( 80, 80 )
 format = 1
-tile_data = PoolIntArray( 0, 0, 0, 1, 0, 0, 2, 0, 0, 3, 0, 0, 4, 0, 0, 5, 0, 0, 6, 0, 0, 7, 0, 0, 8, 0, 0, 9, 0, 0, 10, 0, 0, 11, 0, 0, 12, 0, 0, 13, 0, 0, 14, 0, 0, 15, 0, 0, 65536, 0, 0, 65537, 0, 0, 65538, 0, 0, 65539, 0, 0, 65540, 0, 0, 65541, 0, 0, 65542, 0, 0, 65543, 0, 0, 65544, 0, 0, 65545, 0, 0, 65546, 0, 0, 65547, 0, 0, 65548, 0, 0, 65549, 0, 0, 65550, 0, 0, 65551, 0, 0, 131072, 0, 0, 131073, 0, 0, 131074, 0, 0, 131075, 0, 0, 131076, 0, 0, 131077, 0, 0, 131078, 0, 0, 131079, 0, 0, 131080, 0, 0, 131081, 0, 0, 131082, 0, 0, 131083, 0, 0, 131084, 0, 0, 131085, 0, 0, 131086, 0, 0, 131087, 0, 0, 196608, 0, 0, 196609, 0, 0, 196610, 0, 0, 196611, 0, 0, 196612, 0, 0, 196613, 0, 0, 196614, 0, 0, 196615, 0, 0, 196616, 0, 0, 196617, 0, 0, 196618, 0, 0, 196619, 0, 0, 196620, 0, 0, 196621, 0, 0, 196622, 0, 0, 196623, 0, 0, 262144, 0, 0, 262145, 0, 0, 262146, 0, 0, 262147, 0, 0, 262148, 0, 0, 262149, 0, 0, 262150, 0, 0, 262151, 0, 0, 262152, 0, 0, 262153, 0, 0, 262154, 0, 0, 262155, 0, 0, 262156, 0, 0, 262157, 0, 0, 262158, 0, 0, 262159, 0, 0, 327680, 0, 0, 327681, 0, 0, 327682, 0, 0, 327683, 0, 0, 327684, 0, 0, 327685, 0, 0, 327686, 0, 0, 327687, 0, 0, 327688, 0, 0, 327689, 0, 0, 327690, 0, 0, 327691, 0, 0, 327692, 0, 0, 327693, 0, 0, 327694, 0, 0, 327695, 0, 0, 393216, 0, 0, 393217, 0, 0, 393218, 0, 0, 393219, 0, 0, 393220, 0, 0, 393221, 0, 0, 393222, 0, 0, 393223, 0, 0, 393224, 0, 0, 393225, 0, 0, 393226, 0, 0, 393227, 0, 0, 393228, 0, 0, 393229, 0, 0, 393230, 0, 0, 393231, 0, 0, 458752, 0, 0, 458753, 0, 0, 458754, 0, 0, 458755, 0, 0, 458756, 0, 0, 458757, 0, 0, 458758, 0, 0, 458759, 0, 0, 458760, 0, 0, 458761, 0, 0, 458762, 0, 0, 458763, 0, 0, 458764, 0, 0, 458765, 0, 0, 458766, 0, 0, 458767, 0, 0, 524288, 0, 0, 524289, 0, 0, 524290, 0, 0, 524291, 0, 0, 524292, 0, 0, 524293, 0, 0, 524294, 0, 0, 524295, 0, 0, 524296, 0, 0, 524297, 0, 0, 524298, 0, 0, 524299, 0, 0, 524300, 0, 0, 524301, 0, 0, 524302, 0, 0, 524303, 0, 0 )
+tile_data = PoolIntArray( 0, 0, 0, 1, 0, 0, 2, 0, 0, 3, 0, 0, 4, 0, 0, 5, 0, 0, 6, 0, 0, 7, 0, 0, 8, 0, 0, 9, 0, 0, 10, 0, 0, 11, 0, 0, 12, 0, 0, 13, 0, 0, 14, 0, 0, 15, 0, 0, 65536, 0, 0, 65537, 0, 0, 65538, 0, 0, 65539, 0, 0, 65540, 0, 0, 65541, 0, 0, 65542, 0, 0, 65543, 0, 0, 65544, 0, 0, 65545, 0, 0, 65546, 0, 0, 65547, 0, 0, 65548, 0, 0, 65549, 0, 0, 65550, 0, 0, 65551, 0, 0, 131072, 0, 0, 131073, 0, 0, 131074, 0, 0, 131075, 0, 0, 131076, 0, 0, 131077, 0, 0, 131078, 0, 0, 131079, 0, 0, 131080, 0, 0, 131081, 0, 0, 131082, 0, 0, 131083, 0, 0, 131084, 0, 0, 131085, 0, 0, 131086, 0, 0, 131087, 0, 0, 196608, 0, 0, 196609, 0, 0, 196610, 0, 0, 196611, 0, 0, 196612, 0, 0, 196613, 0, 0, 196614, 0, 0, 196615, 0, 0, 196616, 0, 0, 196617, 0, 0, 196618, 0, 0, 196620, 0, 0, 196621, 0, 0, 196622, 0, 0, 196623, 0, 0, 262144, 0, 0, 262145, 0, 0, 262146, 0, 0, 262147, 0, 0, 262148, 0, 0, 262149, 0, 0, 262150, 0, 0, 262151, 0, 0, 262152, 0, 0, 262153, 0, 0, 262154, 0, 0, 262155, 0, 0, 262156, 0, 0, 262157, 0, 0, 262158, 0, 0, 262159, 0, 0, 327680, 0, 0, 327681, 0, 0, 327682, 0, 0, 327683, 0, 0, 327684, 0, 0, 327685, 0, 0, 327686, 0, 0, 327687, 0, 0, 327688, 0, 0, 327689, 0, 0, 327690, 0, 0, 327691, 0, 0, 327692, 0, 0, 327693, 0, 0, 327694, 0, 0, 327695, 0, 0, 393216, 0, 0, 393217, 0, 0, 393218, 0, 0, 393219, 0, 0, 393220, 0, 0, 393221, 0, 0, 393222, 0, 0, 393223, 0, 0, 393224, 0, 0, 393225, 0, 0, 393226, 0, 0, 393227, 0, 0, 393228, 0, 0, 393229, 0, 0, 393230, 0, 0, 393231, 0, 0, 458752, 0, 0, 458753, 0, 0, 458754, 0, 0, 458755, 0, 0, 458756, 0, 0, 458757, 0, 0, 458758, 0, 0, 458759, 0, 0, 458760, 0, 0, 458761, 0, 0, 458762, 0, 0, 458763, 0, 0, 458764, 0, 0, 458765, 0, 0, 458766, 0, 0, 458767, 0, 0, 524288, 0, 0, 524289, 0, 0, 524290, 0, 0, 524291, 0, 0, 524292, 0, 0, 524293, 0, 0, 524294, 0, 0, 524295, 0, 0, 524296, 0, 0, 524297, 0, 0, 524298, 0, 0, 524299, 0, 0, 524300, 0, 0, 524301, 0, 0, 524302, 0, 0, 524303, 0, 0 )
+
+[node name="TroopsTiles" type="TileMap" parent="."]
+modulate = Color( 1, 1, 1, 0.886275 )
+z_index = 2
+tile_set = ExtResource( 12 )
+cell_size = Vector2( 80, 80 )
+format = 1
+
+[node name="CivilianTiles" type="TileMap" parent="."]
+modulate = Color( 1, 1, 1, 0.858824 )
+z_index = 2
+tile_set = ExtResource( 13 )
+cell_size = Vector2( 80, 80 )
+format = 1
+
+[node name="BuildingTypesTiles" type="TileMap" parent="."]
+modulate = Color( 1, 1, 1, 0.854902 )
+z_index = 2
+tile_set = ExtResource( 11 )
+cell_size = Vector2( 80, 80 )
+format = 1
+
+[node name="ConstructionTiles" type="TileMap" parent="."]
+modulate = Color( 1, 1, 1, 0.713726 )
+z_index = 1
+tile_set = ExtResource( 10 )
+cell_size = Vector2( 80, 80 )
+format = 1
 
 [node name="BuildingsTiles" type="TileMap" parent="."]
 tile_set = ExtResource( 3 )
@@ -39,6 +89,7 @@ cell_size = Vector2( 80, 80 )
 format = 1
 
 [node name="TileInfo" type="Control" parent="."]
+visible = false
 modulate = Color( 1, 1, 1, 0.486275 )
 margin_right = 242.0
 margin_bottom = 399.0
@@ -212,6 +263,7 @@ __meta__ = {
 }
 
 [node name="GameInfo" type="Control" parent="."]
+visible = false
 anchor_left = 1.0
 anchor_right = 1.0
 margin_left = -2.0
@@ -319,6 +371,7 @@ __meta__ = {
 }
 
 [node name="CivilizationInfo" type="Control" parent="."]
+visible = false
 modulate = Color( 1, 1, 1, 0.486275 )
 anchor_left = 1.0
 anchor_right = 1.0
@@ -624,8 +677,125 @@ __meta__ = {
 "_edit_use_anchors_": false
 }
 
-[node name="InGameTileActions" type="Control" parent="ActionsMenu"]
+[node name="BuildingsMenu" type="Control" parent="ActionsMenu"]
 visible = false
+anchor_right = 1.0
+anchor_bottom = 1.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ColorRect" type="ColorRect" parent="ActionsMenu/BuildingsMenu"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color( 0, 0, 0, 0.435294 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="VBoxContainer" type="VBoxContainer" parent="ActionsMenu/BuildingsMenu"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 539.0
+margin_top = 266.0
+margin_right = -531.0
+margin_bottom = -265.0
+custom_constants/separation = 12
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="BuildingsList" type="OptionButton" parent="ActionsMenu/BuildingsMenu/VBoxContainer"]
+margin_right = 210.0
+margin_bottom = 32.0
+custom_fonts/font = SubResource( 5 )
+text = "Cacona"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="ActionsMenu/BuildingsMenu/VBoxContainer"]
+margin_top = 44.0
+margin_right = 210.0
+margin_bottom = 75.0
+custom_constants/separation = 12
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="BuilidngPrice" type="Label" parent="ActionsMenu/BuildingsMenu/VBoxContainer/HBoxContainer"]
+margin_right = 132.0
+margin_bottom = 31.0
+custom_fonts/font = SubResource( 1 )
+text = "TALENTOS:"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="BuilidngPriceText" type="Label" parent="ActionsMenu/BuildingsMenu/VBoxContainer/HBoxContainer"]
+margin_left = 144.0
+margin_right = 189.0
+margin_bottom = 31.0
+custom_fonts/font = SubResource( 1 )
+text = "100"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Comprar" type="TextureButton" parent="ActionsMenu/BuildingsMenu/VBoxContainer"]
+margin_top = 87.0
+margin_right = 210.0
+margin_bottom = 142.0
+texture_normal = ExtResource( 5 )
+texture_pressed = ExtResource( 6 )
+texture_hover = ExtResource( 7 )
+texture_focused = ExtResource( 7 )
+
+[node name="CenterContainer" type="CenterContainer" parent="ActionsMenu/BuildingsMenu/VBoxContainer/Comprar"]
+margin_right = 210.0
+margin_bottom = 56.0
+mouse_filter = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="ActionsMenu/BuildingsMenu/VBoxContainer/Comprar/CenterContainer"]
+margin_left = 51.0
+margin_top = 12.0
+margin_right = 158.0
+margin_bottom = 43.0
+custom_fonts/font = SubResource( 1 )
+text = "COMPRAR"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Cancelar" type="TextureButton" parent="ActionsMenu/BuildingsMenu/VBoxContainer"]
+margin_top = 154.0
+margin_right = 210.0
+margin_bottom = 209.0
+texture_normal = ExtResource( 5 )
+texture_pressed = ExtResource( 6 )
+texture_hover = ExtResource( 7 )
+texture_focused = ExtResource( 7 )
+
+[node name="CenterContainer" type="CenterContainer" parent="ActionsMenu/BuildingsMenu/VBoxContainer/Cancelar"]
+margin_right = 210.0
+margin_bottom = 56.0
+mouse_filter = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="ActionsMenu/BuildingsMenu/VBoxContainer/Cancelar/CenterContainer"]
+margin_left = 45.0
+margin_top = 12.0
+margin_right = 165.0
+margin_bottom = 43.0
+custom_fonts/font = SubResource( 1 )
+text = "CANCELAR"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="InGameTileActions" type="Control" parent="ActionsMenu"]
 anchor_right = 1.0
 anchor_bottom = 1.0
 __meta__ = {
@@ -644,9 +814,9 @@ __meta__ = {
 anchor_right = 1.0
 anchor_bottom = 1.0
 margin_left = 539.0
-margin_top = 266.0
+margin_top = 206.0
 margin_right = -531.0
-margin_bottom = -265.0
+margin_bottom = -191.0
 custom_constants/separation = 12
 __meta__ = {
 "_edit_use_anchors_": false
@@ -735,10 +905,38 @@ __meta__ = {
 "_edit_use_anchors_": false
 }
 
-[node name="Cancelar" type="TextureButton" parent="ActionsMenu/InGameTileActions/VBoxContainer"]
+[node name="Reclutar" type="TextureButton" parent="ActionsMenu/InGameTileActions/VBoxContainer"]
 margin_top = 201.0
 margin_right = 210.0
 margin_bottom = 256.0
+texture_normal = ExtResource( 5 )
+texture_pressed = ExtResource( 6 )
+texture_hover = ExtResource( 7 )
+texture_focused = ExtResource( 7 )
+
+[node name="CenterContainer" type="CenterContainer" parent="ActionsMenu/InGameTileActions/VBoxContainer/Reclutar"]
+margin_right = 210.0
+margin_bottom = 56.0
+mouse_filter = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="ActionsMenu/InGameTileActions/VBoxContainer/Reclutar/CenterContainer"]
+margin_left = 45.0
+margin_top = 12.0
+margin_right = 165.0
+margin_bottom = 43.0
+custom_fonts/font = SubResource( 1 )
+text = "RECLUTAR"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Cancelar" type="TextureButton" parent="ActionsMenu/InGameTileActions/VBoxContainer"]
+margin_top = 268.0
+margin_right = 210.0
+margin_bottom = 323.0
 texture_normal = ExtResource( 5 )
 texture_pressed = ExtResource( 6 )
 texture_hover = ExtResource( 7 )
@@ -753,6 +951,191 @@ __meta__ = {
 }
 
 [node name="Label" type="Label" parent="ActionsMenu/InGameTileActions/VBoxContainer/Cancelar/CenterContainer"]
+margin_left = 45.0
+margin_top = 12.0
+margin_right = 165.0
+margin_bottom = 43.0
+custom_fonts/font = SubResource( 1 )
+text = "CANCELAR"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="TilesActions" type="Control" parent="ActionsMenu"]
+visible = false
+anchor_right = 1.0
+anchor_bottom = 1.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ColorRect" type="ColorRect" parent="ActionsMenu/TilesActions"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color( 0, 0, 0, 0.435294 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="VBoxContainer" type="VBoxContainer" parent="ActionsMenu/TilesActions"]
+margin_left = 424.836
+margin_top = 280.767
+margin_right = 856.836
+margin_bottom = 469.767
+custom_constants/separation = 12
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="ActionsMenu/TilesActions/VBoxContainer"]
+margin_right = 432.0
+margin_bottom = 32.0
+rect_min_size = Vector2( 0, 32 )
+custom_constants/separation = 12
+
+[node name="Label" type="Label" parent="ActionsMenu/TilesActions/VBoxContainer/HBoxContainer2"]
+margin_top = 3.0
+margin_right = 115.0
+margin_bottom = 29.0
+custom_fonts/font = SubResource( 2 )
+text = "Talentos: "
+
+[node name="TalentosDisponibles" type="TextEdit" parent="ActionsMenu/TilesActions/VBoxContainer/HBoxContainer2"]
+margin_left = 127.0
+margin_right = 227.0
+margin_bottom = 32.0
+rect_min_size = Vector2( 100, 30 )
+custom_fonts/font = SubResource( 3 )
+text = "0"
+readonly = true
+context_menu_enabled = false
+shortcut_keys_enabled = false
+virtual_keyboard_enabled = false
+selecting_enabled = false
+
+[node name="Label2" type="Label" parent="ActionsMenu/TilesActions/VBoxContainer/HBoxContainer2"]
+margin_left = 239.0
+margin_top = 3.0
+margin_right = 269.0
+margin_bottom = 29.0
+custom_fonts/font = SubResource( 2 )
+text = "-->"
+
+[node name="TalentosAMover" type="TextEdit" parent="ActionsMenu/TilesActions/VBoxContainer/HBoxContainer2"]
+margin_left = 281.0
+margin_right = 381.0
+margin_bottom = 32.0
+rect_min_size = Vector2( 100, 30 )
+custom_fonts/font = SubResource( 3 )
+text = "0"
+
+[node name="HBoxContainer3" type="HBoxContainer" parent="ActionsMenu/TilesActions/VBoxContainer"]
+margin_top = 44.0
+margin_right = 432.0
+margin_bottom = 76.0
+rect_min_size = Vector2( 0, 32 )
+custom_constants/separation = 12
+
+[node name="Label" type="Label" parent="ActionsMenu/TilesActions/VBoxContainer/HBoxContainer3"]
+margin_top = 3.0
+margin_right = 160.0
+margin_bottom = 29.0
+custom_fonts/font = SubResource( 2 )
+text = "Mover Tropas:"
+
+[node name="HBoxContainer4" type="HBoxContainer" parent="ActionsMenu/TilesActions/VBoxContainer"]
+margin_top = 88.0
+margin_right = 432.0
+margin_bottom = 120.0
+rect_min_size = Vector2( 0, 32 )
+custom_constants/separation = 12
+
+[node name="TiposTropas" type="OptionButton" parent="ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4"]
+margin_right = 125.0
+margin_bottom = 32.0
+custom_fonts/font = SubResource( 4 )
+text = "Tropas.."
+
+[node name="TropasDisponibles" type="TextEdit" parent="ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4"]
+margin_left = 137.0
+margin_right = 237.0
+margin_bottom = 32.0
+rect_min_size = Vector2( 100, 30 )
+custom_fonts/font = SubResource( 3 )
+text = "0"
+readonly = true
+context_menu_enabled = false
+shortcut_keys_enabled = false
+virtual_keyboard_enabled = false
+selecting_enabled = false
+
+[node name="Label2" type="Label" parent="ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4"]
+margin_left = 249.0
+margin_top = 3.0
+margin_right = 279.0
+margin_bottom = 29.0
+custom_fonts/font = SubResource( 2 )
+text = "-->"
+
+[node name="TropasAMover" type="TextEdit" parent="ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4"]
+margin_left = 291.0
+margin_right = 391.0
+margin_bottom = 32.0
+rect_min_size = Vector2( 100, 30 )
+custom_fonts/font = SubResource( 3 )
+text = "0"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="ActionsMenu/TilesActions/VBoxContainer"]
+margin_top = 132.0
+margin_right = 432.0
+margin_bottom = 187.0
+custom_constants/separation = 12
+
+[node name="Aceptar" type="TextureButton" parent="ActionsMenu/TilesActions/VBoxContainer/HBoxContainer"]
+margin_right = 210.0
+margin_bottom = 55.0
+texture_normal = ExtResource( 5 )
+texture_pressed = ExtResource( 6 )
+texture_hover = ExtResource( 7 )
+texture_focused = ExtResource( 7 )
+
+[node name="CenterContainer" type="CenterContainer" parent="ActionsMenu/TilesActions/VBoxContainer/HBoxContainer/Aceptar"]
+margin_right = 210.0
+margin_bottom = 56.0
+mouse_filter = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="ActionsMenu/TilesActions/VBoxContainer/HBoxContainer/Aceptar/CenterContainer"]
+margin_left = 52.0
+margin_top = 12.0
+margin_right = 157.0
+margin_bottom = 43.0
+custom_fonts/font = SubResource( 1 )
+text = "ACEPTAR"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Cancelar" type="TextureButton" parent="ActionsMenu/TilesActions/VBoxContainer/HBoxContainer"]
+margin_left = 222.0
+margin_right = 432.0
+margin_bottom = 55.0
+texture_normal = ExtResource( 5 )
+texture_pressed = ExtResource( 6 )
+texture_hover = ExtResource( 7 )
+texture_focused = ExtResource( 7 )
+
+[node name="CenterContainer" type="CenterContainer" parent="ActionsMenu/TilesActions/VBoxContainer/HBoxContainer/Cancelar"]
+margin_right = 210.0
+margin_bottom = 56.0
+mouse_filter = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="ActionsMenu/TilesActions/VBoxContainer/HBoxContainer/Cancelar/CenterContainer"]
 margin_left = 45.0
 margin_top = 12.0
 margin_right = 165.0

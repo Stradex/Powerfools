@@ -141,7 +141,9 @@ func init_buildings_types():
 		deploy_prize = 5,
 		turns_to_build = 10,
 		id_troop_generate = troopTypes.getIDByName("recluta"),
-		turns_to_deploy_troops = 1000 #edit later
+		building_img = 'military_camp',
+		turns_to_deploy_troops = 3,
+		deploy_amount = 500
 	})
 	#Adding builinds END
 

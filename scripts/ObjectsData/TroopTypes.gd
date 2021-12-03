@@ -54,3 +54,6 @@ func getByID(troopID: int) -> Dictionary:
 			return troopDict
 		i+=1
 	return InvalidTroop
+
+func getList() -> Array:
+	return TroopsTypes.duplicate(true) #gives a copy so no one can fuck up the original list
