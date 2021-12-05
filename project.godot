@@ -28,12 +28,18 @@ _global_script_classes=[ {
 "class": "TroopTypesObject",
 "language": "GDScript",
 "path": "res://scripts/ObjectsData/TroopTypes.gd"
+}, {
+"base": "Node2D",
+"class": "WorldGameNode",
+"language": "GDScript",
+"path": "res://scripts/WorldGame.gd"
 } ]
 _global_script_class_icons={
 "BuildingTypesObject": "",
 "CuteGrid": "",
 "TilesTypesObject": "",
-"TroopTypesObject": ""
+"TroopTypesObject": "",
+"WorldGameNode": ""
 }
 
 [application]

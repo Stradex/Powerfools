@@ -1,3 +1,4 @@
+class_name WorldGameNode
 extends Node2D
 
 #TODO: 
@@ -95,8 +96,7 @@ var current_tile_selected: Vector2 = Vector2.ZERO
 func _ready():
 	tween = Tween.new(); #useful to avoid having to add it manually in each map
 	add_child(tween);
-	init_menu_graphics()
-	init_button_signals()
+	$UI.init_gui(self)
 	init_tile_data()
 	change_game_status(Game.STATUS.PRE_GAME)
 	move_to_next_player_turn()
@@ -119,17 +119,14 @@ func _process(delta):
 		update_building_tiles()
 		gui_update_tile_info(current_tile_selected)
 		gui_update_civilization_info(current_player_turn)
-		$GameInfo/HBoxContainer/ActionsLeftText.text = str(actions_available)
-		$PreGameInfo/HBoxContainer/PointsLeftText.text = str(Game.playersData[current_player_turn].selectLeft)
-
-func is_player_menu_open() -> bool:
-	return $ActionsMenu/ExtrasMenu.visible or $ActionsMenu/InGameTileActions.visible or $ActionsMenu/TilesActions.visible or $ActionsMenu/BuildingsMenu.visible
+		$UI/HUD/GameInfo/HBoxContainer/ActionsLeftText.text = str(actions_available)
+		$UI/HUD/PreGameInfo/HBoxContainer/PointsLeftText.text = str(Game.playersData[current_player_turn].selectLeft)
 
 func _input(event):
 	if Input.is_action_just_pressed("toggle_tile_info"):
-		$TileInfo.visible = !$TileInfo.visible 
+		$UI/HUD/TileInfo.visible = !$UI/HUD/TileInfo.visible 
 	if Input.is_action_just_pressed("toggle_civ_info"):
-		$CivilizationInfo.visible = !$CivilizationInfo.visible
+		$UI/HUD/CivilizationInfo.visible = !$UI/HUD/CivilizationInfo.visible
 		
 	if player_in_menu or !player_can_interact:
 		return
@@ -161,24 +158,6 @@ func init_tile_data() -> void:
 		for y in range(tile_map_size.y):
 			tiles_data[x].append(default_tile.duplicate(true))
 
-func init_button_signals():
-	$ActionsMenu/InGameTileActions/VBoxContainer/Reclutar.connect("pressed", self, "gui_recruit_troops")
-	$ActionsMenu/BuildingsMenu/VBoxContainer/Comprar.connect("pressed", self, "gui_buy_building")
-	$ActionsMenu/BuildingsMenu/VBoxContainer/Cancelar.connect("pressed", self, "gui_exit_build_window")
-	$ActionsMenu/InGameTileActions/VBoxContainer/Construir.connect("pressed", self, "gui_open_build_window")
-	$ActionsMenu/InGameTileActions/VBoxContainer/VenderTile.connect("pressed", self, "gui_vender_tile")
-	$ActionsMenu/InGameTileActions/VBoxContainer/UrbanizarTile.connect("pressed", self, "gui_urbanizar_tile")
-	$ActionsMenu/TilesActions/VBoxContainer/HBoxContainer2/TalentosAMover.connect("text_changed", self, "gold_to_move_text_changed")
-	$ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TropasAMover.connect("text_changed", self, "troops_to_move_text_changed")
-	$ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.connect("item_selected", self, "update_troops_move_data")
-	$GameInfo/HBoxContainer3/FinishTurn.connect("pressed", self, "btn_finish_turn")
-	$ActionsMenu/ExtrasMenu/VBoxContainer/Cancelar.connect("pressed", self, "hide_extras_menu")
-	$ActionsMenu/ExtrasMenu/VBoxContainer/ObtenerTalentos.connect("pressed", self, "give_extra_gold")
-	$ActionsMenu/ExtrasMenu/VBoxContainer/ObtenerTropas.connect("pressed", self, "add_extra_troops")
-	$ActionsMenu/InGameTileActions/VBoxContainer/Cancelar.connect("pressed", self, "hide_ingame_actions")
-	$ActionsMenu/TilesActions/VBoxContainer/HBoxContainer/Cancelar.connect("pressed", self, "hide_tiles_actions")
-	$ActionsMenu/TilesActions/VBoxContainer/HBoxContainer/Aceptar.connect("pressed", self, "accept_tiles_actions")
-
 ###################################
 #	GAME LOGIC
 ###################################
@@ -203,7 +182,7 @@ func game_interact():
 func pre_game_interact():
 	if is_tile_owned_by_player(current_tile_selected):
 		if tiles_data[current_tile_selected.x][current_tile_selected.y].owner == current_player_turn:
-			$ActionsMenu/ExtrasMenu.visible = true
+			$UI/ActionsMenu/ExtrasMenu.visible = true
 		return
 	if !player_has_capital(current_player_turn):
 		give_player_capital(current_player_turn, current_tile_selected)
@@ -218,11 +197,11 @@ func change_game_status(new_status: int) -> void:
 	current_game_status = new_status
 	match new_status:
 		Game.STATUS.PRE_GAME:
-			$GameInfo.visible = false
-			$PreGameInfo.visible = true
+			$UI/HUD/GameInfo.visible = false
+			$UI/HUD/PreGameInfo.visible = true
 		Game.STATUS.GAME_STARTED:
-			$PreGameInfo.visible = false
-			$GameInfo.visible = true
+			$UI/HUD/PreGameInfo.visible = false
+			$UI/HUD/GameInfo.visible = true
 			process_unused_tiles()
 	print("Game Status changed to value: " + str(new_status))
 
@@ -456,6 +435,8 @@ func upgrade_tile(tile_pos: Vector2, playerNumber: int) -> void:
 	tiles_data[tile_pos.x][tile_pos.y].tile_id = nextStageTileTypeId
 	add_troops_to_tile(tile_pos, extra_population)
 
+# TODO: CONTINUE WITH WAR COSTS MECHANICS IN THE GAME
+
 func calculate_war_costs(playerNumber: int) -> float:
 	var war_costs: float = 0
 	for x in range(tile_map_size.x):
@@ -533,6 +514,9 @@ func update_gold_stats_in_tile(tile_pos: Vector2, playerNumber: int) ->  void:
 ###################################
 #	BOOLEANS FUNCTIONS
 ###################################
+
+func is_player_menu_open() -> bool:
+	return $UI.is_a_menu_open()
 
 func did_player_lost(playerNumber: int) -> bool:
 	return !player_has_capital(playerNumber)
@@ -885,25 +869,19 @@ func clear_tile(tile_pos: Vector2):
 #	UI 
 ###################################
 
-func init_menu_graphics():
-	$ActionsMenu/InGameTileActions.visible = false
-	$ActionsMenu/ExtrasMenu.visible = false
-	$ActionsMenu/TilesActions.visible = false
-	$ActionsMenu/BuildingsMenu.visible = false
-
 func update_build_menu():
 	var getTotalGoldAvailable: int = get_total_gold(current_player_turn)
-	$ActionsMenu/BuildingsMenu/VBoxContainer/BuildingsList.clear()
+	$UI/ActionsMenu/BuildingsMenu/VBoxContainer/BuildingsList.clear()
 	var buildingTypesList: Array = Game.buildingTypes.getList() #Gives a copy, not the original list edit is safe
 	for i in range(buildingTypesList.size()):
 		if getTotalGoldAvailable >= buildingTypesList[i].buy_prize:
-			$ActionsMenu/BuildingsMenu/VBoxContainer/BuildingsList.add_item(buildingTypesList[i].name, i)
+			$UI/ActionsMenu/BuildingsMenu/VBoxContainer/BuildingsList.add_item(buildingTypesList[i].name, i)
 	
-	update_build_menu_price($ActionsMenu/BuildingsMenu/VBoxContainer/BuildingsList.selected)
+	update_build_menu_price($UI/ActionsMenu/BuildingsMenu/VBoxContainer/BuildingsList.selected)
 
 func update_build_menu_price(index: int):
 	var currentBuildingTypeSelected = Game.buildingTypes.getByID(index)
-	$ActionsMenu/BuildingsMenu/VBoxContainer/HBoxContainer/BuilidngPriceText.text = str(currentBuildingTypeSelected.buy_prize)
+	$UI/ActionsMenu/BuildingsMenu/VBoxContainer/HBoxContainer/BuilidngPriceText.text = str(currentBuildingTypeSelected.buy_prize)
 
 func check_if_player_can_buy_buildings(playerNumber: int) -> bool:
 	var getTotalGoldAvailable: int = get_total_gold(playerNumber)
@@ -914,24 +892,24 @@ func check_if_player_can_buy_buildings(playerNumber: int) -> bool:
 	return false
 
 func gold_to_move_text_changed():
-	var goldAvailable: int = int($ActionsMenu/TilesActions/VBoxContainer/HBoxContainer2/TalentosDisponibles.text)
-	var goldToMove: int = int($ActionsMenu/TilesActions/VBoxContainer/HBoxContainer2/TalentosAMover.text)
+	var goldAvailable: int = int($UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer2/TalentosDisponibles.text)
+	var goldToMove: int = int($UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer2/TalentosAMover.text)
 	goldToMove = int(clamp(float(goldToMove), 0.0, float(goldAvailable)))
-	$ActionsMenu/TilesActions/VBoxContainer/HBoxContainer2/TalentosAMover.text = str(goldToMove)
+	$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer2/TalentosAMover.text = str(goldToMove)
 	actionTileToDo.goldToSend = goldToMove
 
 func troops_to_move_text_changed():
-	var troopAvailable: int = int($ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TropasDisponibles.text)
-	var troopsToMove: int = int($ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TropasAMover.text)
+	var troopAvailable: int = int($UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TropasDisponibles.text)
+	var troopsToMove: int = int($UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TropasAMover.text)
 	troopsToMove = int(clamp(float(troopsToMove), 0.0, float(troopAvailable)))
-	$ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TropasAMover.text = str(troopsToMove)
+	$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TropasAMover.text = str(troopsToMove)
 	for troopInActionTileDict in actionTileToDo.troopsToMove:
 		if actionTileToDo.currentTroopId == troopInActionTileDict.troop_id:
 			troopInActionTileDict.amountToMove = troopsToMove
 			return
 
 func popup_tiles_actions():
-	$ActionsMenu/TilesActions.visible = true
+	$UI/ActionsMenu/TilesActions.visible = true
 	clear_action_tile_to_do()
 	update_tiles_actions_data()
 
@@ -953,34 +931,34 @@ func update_tiles_actions_data():
 	var startY: int = interactTileSelected.y
 	var endX: int = nextInteractTileSelected.x
 	var endY: int = nextInteractTileSelected.y
-	$ActionsMenu/TilesActions/VBoxContainer/HBoxContainer2/TalentosDisponibles.text = str(tiles_data[startX][startY].gold)
-	$ActionsMenu/TilesActions/VBoxContainer/HBoxContainer2/TalentosAMover.text = str(actionTileToDo.goldToSend)
+	$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer2/TalentosDisponibles.text = str(tiles_data[startX][startY].gold)
+	$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer2/TalentosAMover.text = str(actionTileToDo.goldToSend)
 	
-	$ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.clear()
+	$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.clear()
 	for troopDict in tiles_data[startX][startY].troops:
 		if troopDict.owner != current_player_turn:
 			continue
-		$ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.add_item(Game.troopTypes.getByID(troopDict.troop_id).name, troopDict.troop_id)
-	update_troops_move_data($ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.selected)
+		$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.add_item(Game.troopTypes.getByID(troopDict.troop_id).name, troopDict.troop_id)
+	update_troops_move_data($UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.selected)
 
 func game_tile_show_info():
 	if tiles_data[current_tile_selected.x][current_tile_selected.y].owner != current_player_turn:
 		return
 	
-	$ActionsMenu/InGameTileActions/VBoxContainer/VenderTile.visible = Game.tileTypes.canBeSold(tiles_data[current_tile_selected.x][current_tile_selected.y].tile_id)
+	$UI/ActionsMenu/InGameTileActions/VBoxContainer/VenderTile.visible = Game.tileTypes.canBeSold(tiles_data[current_tile_selected.x][current_tile_selected.y].tile_id)
 	#if tiles_data[current_tile_selected.x][current_tile_selected.y].tile_id ==  Game.tileTypes.getIDByName("capital"):
-	$ActionsMenu/InGameTileActions/VBoxContainer/UrbanizarTile.visible = can_tile_be_upgraded(current_tile_selected, current_player_turn)
-	$ActionsMenu/InGameTileActions/VBoxContainer/Construir.visible = check_if_player_can_buy_buildings(current_player_turn)
-	$ActionsMenu/InGameTileActions/VBoxContainer/Reclutar.visible = is_recruiting_possible(current_tile_selected, current_player_turn)
-	$ActionsMenu/InGameTileActions.visible = true
+	$UI/ActionsMenu/InGameTileActions/VBoxContainer/UrbanizarTile.visible = can_tile_be_upgraded(current_tile_selected, current_player_turn)
+	$UI/ActionsMenu/InGameTileActions/VBoxContainer/Construir.visible = check_if_player_can_buy_buildings(current_player_turn)
+	$UI/ActionsMenu/InGameTileActions/VBoxContainer/Reclutar.visible = is_recruiting_possible(current_tile_selected, current_player_turn)
+	$UI/ActionsMenu/InGameTileActions.visible = true
 
 
 func gui_update_civilization_info(playerNumber: int) -> void:
-	$CivilizationInfo/VBoxContainer/HBoxContainer5/CivilizationText.text = str(Game.playersData[playerNumber].civilizationName)
-	$CivilizationInfo/VBoxContainer/HBoxContainer/TotTalentosText.text = str(get_total_gold(playerNumber))
-	$CivilizationInfo/VBoxContainer/HBoxContainer2/StrengthText.text = str(get_total_strength(playerNumber))
-	$CivilizationInfo/VBoxContainer/HBoxContainer6/GainText.text = str(get_total_gold_gain_and_losses(playerNumber))
-	$CivilizationInfo/VBoxContainer/HBoxContainer7/WarCostsText.text = str(calculate_war_costs(playerNumber))
+	$UI/HUD/CivilizationInfo/VBoxContainer/HBoxContainer5/CivilizationText.text = str(Game.playersData[playerNumber].civilizationName)
+	$UI/HUD/CivilizationInfo/VBoxContainer/HBoxContainer/TotTalentosText.text = str(get_total_gold(playerNumber))
+	$UI/HUD/CivilizationInfo/VBoxContainer/HBoxContainer2/StrengthText.text = str(get_total_strength(playerNumber))
+	$UI/HUD/CivilizationInfo/VBoxContainer/HBoxContainer6/GainText.text = str(get_total_gold_gain_and_losses(playerNumber))
+	$UI/HUD/CivilizationInfo/VBoxContainer/HBoxContainer7/WarCostsText.text = str(calculate_war_costs(playerNumber))
 
 	var civilizationTroopsInfo: Array = get_civ_population_info(playerNumber)
 	var populationStr: String = ""
@@ -988,28 +966,28 @@ func gui_update_civilization_info(playerNumber: int) -> void:
 	for troopDict in civilizationTroopsInfo:
 		populationStr += "* " + str(Game.troopTypes.getName(troopDict.troop_id)) + ": " + str(troopDict.amount) + "\n"
 	
-	$CivilizationInfo/VBoxContainer/HBoxContainer4/TotPopulationText.text = populationStr
+	$UI/HUD/CivilizationInfo/VBoxContainer/HBoxContainer4/TotPopulationText.text = populationStr
 
 
 func gui_update_tile_info(tile_pos: Vector2) -> void:
 
 	if current_game_status == Game.STATUS.PRE_GAME:
-		$GameInfo/HBoxContainer2/TurnText.text = "PRE-GAME: " + str(Game.playersData[current_player_turn].civilizationName)
+		$UI/HUD/GameInfo/HBoxContainer2/TurnText.text = "PRE-GAME: " + str(Game.playersData[current_player_turn].civilizationName)
 	elif current_game_status == Game.STATUS.GAME_STARTED:
-		$GameInfo/HBoxContainer2/TurnText.text = str(Game.playersData[current_player_turn].civilizationName)
+		$UI/HUD/GameInfo/HBoxContainer2/TurnText.text = str(Game.playersData[current_player_turn].civilizationName)
 	else:
-		$GameInfo/HBoxContainer2/TurnText.text = "??"
+		$UI/HUD/GameInfo/HBoxContainer2/TurnText.text = "??"
 
 	
-	$TileInfo/VBoxContainer/HBoxContainer5/TileName.text = tiles_data[tile_pos.x][tile_pos.y].name
+	$UI/HUD/TileInfo/VBoxContainer/HBoxContainer5/TileName.text = tiles_data[tile_pos.x][tile_pos.y].name
 	if tiles_data[tile_pos.x][tile_pos.y].owner == -1:
-		$TileInfo/VBoxContainer/HBoxContainer/OwnerName.text = "No info"
+		$UI/HUD/TileInfo/VBoxContainer/HBoxContainer/OwnerName.text = "No info"
 	else:
-		$TileInfo/VBoxContainer/HBoxContainer/OwnerName.text = str(Game.playersData[tiles_data[tile_pos.x][tile_pos.y].owner].civilizationName)
-	$TileInfo/VBoxContainer/HBoxContainer2/Amount.text = str(floor(tiles_data[tile_pos.x][tile_pos.y].gold))
+		$UI/HUD/TileInfo/VBoxContainer/HBoxContainer/OwnerName.text = str(Game.playersData[tiles_data[tile_pos.x][tile_pos.y].owner].civilizationName)
+	$UI/HUD/TileInfo/VBoxContainer/HBoxContainer2/Amount.text = str(floor(tiles_data[tile_pos.x][tile_pos.y].gold))
 	
-	$TileInfo/VBoxContainer/HBoxContainer6/StrengthText.text = str(get_tile_strength(tile_pos, current_player_turn))
-	$TileInfo/VBoxContainer/HBoxContainer7/GainsText.text = str(get_tile_gold_gain_and_losses(tile_pos, current_player_turn))
+	$UI/HUD/TileInfo/VBoxContainer/HBoxContainer6/StrengthText.text = str(get_tile_strength(tile_pos, current_player_turn))
+	$UI/HUD/TileInfo/VBoxContainer/HBoxContainer7/GainsText.text = str(get_tile_gold_gain_and_losses(tile_pos, current_player_turn))
 	
 	var populationStr: String = ""
 	var isEnemyPopulation: bool = false
@@ -1026,14 +1004,17 @@ func gui_update_tile_info(tile_pos: Vector2) -> void:
 			if troopDict.amount <= 0 or troopDict.owner == current_player_turn: 
 				continue
 			populationStr += "* " + str(Game.troopTypes.getName(troopDict.troop_id)) + ": " + str(troopDict.amount) + "\n"
-	$TileInfo/VBoxContainer/HBoxContainer4/PopulationText.text = populationStr
+	$UI/HUD/TileInfo/VBoxContainer/HBoxContainer4/PopulationText.text = populationStr
+
 
 ###################################
 #	BUTTONS & SIGNALS
 ###################################
 
-func gui_recruit_troops():
+func can_interact_with_menu() -> bool:
+	return player_in_menu and player_can_interact
 
+func execute_recruit_troops():
 	assert(is_recruiting_possible(current_tile_selected, current_player_turn))
 	
 	var x: int = current_tile_selected.x
@@ -1053,29 +1034,15 @@ func gui_recruit_troops():
 	tiles_data[x][y].gold -= currentBuildingTypeSelected.deploy_prize
 	tiles_data[x][y].upcomingTroops.append(upcomingTroopsDict)
 	action_in_turn_executed()
-	$ActionsMenu/InGameTileActions.visible = false
 	
-func gui_buy_building():
-	var selectionIndex: int = $ActionsMenu/BuildingsMenu/VBoxContainer/BuildingsList.selected
-	var selectedBuildTypeId: int = int($ActionsMenu/BuildingsMenu/VBoxContainer/BuildingsList.get_item_id(selectionIndex))
-	if selectedBuildTypeId< 0:
-		return
+func execute_buy_building(var selectedBuildTypeId: int):
 	var currentBuildingTypeSelected = Game.buildingTypes.getByID(selectedBuildTypeId)
 	tiles_data[current_tile_selected.x][current_tile_selected.y].gold -= currentBuildingTypeSelected.buy_prize
 	tiles_data[current_tile_selected.x][current_tile_selected.y].turns_to_build = currentBuildingTypeSelected.turns_to_build
 	tiles_data[current_tile_selected.x][current_tile_selected.y].building_id = selectedBuildTypeId
 	action_in_turn_executed()
-	$ActionsMenu/BuildingsMenu.visible = false
 
-func gui_exit_build_window():
-	$ActionsMenu/ExtrasMenu.visible = true
-	$ActionsMenu/BuildingsMenu.visible = false
-
-func gui_open_build_window():
-	$ActionsMenu/BuildingsMenu.visible = true
-	$ActionsMenu/ExtrasMenu.visible = false
-	$ActionsMenu/InGameTileActions.visible = false
-	$ActionsMenu/TilesActions.visible = false
+func execute_open_build_window():
 	update_build_menu()
 
 func gui_urbanizar_tile():
@@ -1091,35 +1058,27 @@ func gui_urbanizar_tile():
 	tiles_data[current_tile_selected.x][current_tile_selected.y].gold -= tileTypeData.improve_prize
 	tiles_data[current_tile_selected.x][current_tile_selected.y].turns_to_improve_left = tileTypeData.turns_to_improve
 	action_in_turn_executed()
-	$ActionsMenu/InGameTileActions.visible = false
+	$UI/ActionsMenu/InGameTileActions.visible = false
 
 func update_troops_move_data( var index: int ):
-	actionTileToDo.currentTroopId = $ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.get_item_id(index)
+	actionTileToDo.currentTroopId = $UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.get_item_id(index)
 	var startX: int = interactTileSelected.x
 	var startY: int = interactTileSelected.y
 	for troopInActionTileDict in actionTileToDo.troopsToMove:
 		if actionTileToDo.currentTroopId == troopInActionTileDict.troop_id:
-			$ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TropasAMover.text = str(troopInActionTileDict.amountToMove)
+			$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TropasAMover.text = str(troopInActionTileDict.amountToMove)
 			break
-	$ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TropasDisponibles.text = "0"
+	$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TropasDisponibles.text = "0"
 	for troopDict in tiles_data[startX][startY].troops:
 		if troopDict.owner != current_player_turn:
 			continue
 		if troopDict.troop_id == actionTileToDo.currentTroopId:
-			$ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TropasDisponibles.text = str(troopDict.amount)
+			$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TropasDisponibles.text = str(troopDict.amount)
 			break
 
-func hide_tiles_actions():
-	if !player_in_menu or !player_can_interact:
-		return
-	$ActionsMenu/TilesActions.visible = false
-
-func accept_tiles_actions():
-	if !player_in_menu or !player_can_interact:
-		return
+func execute_accept_tiles_actions():
 	execute_tile_action()
 	action_in_turn_executed()
-	$ActionsMenu/TilesActions.visible = false
 
 func action_in_turn_executed():
 	if current_game_status != Game.STATUS.GAME_STARTED:
@@ -1158,41 +1117,23 @@ func execute_tile_action():
 		if !troopToAddExists:
 			tiles_data[endX][endY].troops.append({owner = current_player_turn, troop_id = toMoveTroopDict.troop_id, amount = toMoveTroopDict.amountToMove})
 
-func hide_ingame_actions():
-	if !player_in_menu or !player_can_interact:
-		return
-	$ActionsMenu/InGameTileActions.visible = false
-	
-func hide_extras_menu():
-	if !player_in_menu or !player_can_interact:
-		return
-	$ActionsMenu/ExtrasMenu.visible = false
-
-func btn_finish_turn():
-	if player_in_menu or !player_can_interact:
-		return
+func execute_btn_finish_turn():
 	if current_game_status == Game.STATUS.GAME_STARTED:
 		move_to_next_player_turn()
 
-func give_extra_gold():
-	if !player_in_menu or !player_can_interact:
-		return
+func execute_give_extra_gold():
 	tiles_data[current_tile_selected.x][current_tile_selected.y].gold += 10
-	$ActionsMenu/ExtrasMenu.visible = false
 	Game.playersData[current_player_turn].selectLeft-=1
 	if Game.playersData[current_player_turn].selectLeft == 0: 
 		move_to_next_player_turn()
 
-func add_extra_troops():
-	if !player_in_menu or !player_can_interact:
-		return
+func execute_add_extra_troops():
 	var extraRecruits: Dictionary = {
 		owner = current_player_turn,
 		troop_id = Game.troopTypes.getIDByName("recluta"),
 		amount = 1000
 	}
 	add_troops_to_tile(current_tile_selected, extraRecruits)
-	$ActionsMenu/ExtrasMenu.visible = false
 	Game.playersData[current_player_turn].selectLeft-=1
 	if Game.playersData[current_player_turn].selectLeft == 0: 
 		move_to_next_player_turn()
