@@ -20,9 +20,14 @@ _global_script_classes=[ {
 "path": "res://scripts/Procedural/GridObject.gd"
 }, {
 "base": "Object",
+"class": "TileGameObject",
+"language": "GDScript",
+"path": "res://scripts/ObjectsData/TileGameObject.gd"
+}, {
+"base": "Object",
 "class": "TilesTypesObject",
 "language": "GDScript",
-"path": "res://scripts/ObjectsData/TileObject.gd"
+"path": "res://scripts/ObjectsData/TileTypes.gd"
 }, {
 "base": "Object",
 "class": "TroopTypesObject",
@@ -37,6 +42,7 @@ _global_script_classes=[ {
 _global_script_class_icons={
 "BuildingTypesObject": "",
 "CuteGrid": "",
+"TileGameObject": "",
 "TilesTypesObject": "",
 "TroopTypesObject": "",
 "WorldGameNode": ""

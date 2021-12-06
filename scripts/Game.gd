@@ -18,7 +18,9 @@ var current_turn: int = 0
 onready var troopTypes: TroopTypesObject = TroopTypesObject.new()
 onready var buildingTypes: BuildingTypesObject = BuildingTypesObject.new()
 onready var tileTypes: TilesTypesObject = TilesTypesObject.new()
-var playersData: Array 
+var tilesObj: TileGameObject
+
+var playersData: Array
 var currentPlayerTurn: int = 0
 
 enum STATUS {
