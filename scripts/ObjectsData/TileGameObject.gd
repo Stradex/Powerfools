@@ -9,11 +9,9 @@ const S: int = 16
 const SW: int = 32
 const W: int = 64
 const NW: int = 128
-
 const ALL_DIR: int = N | NE | E | SE | S | SW | W | NW # All 8 directions
 const DIAG_DIR: int = NE | SE | SW | NW # Diagonal directions only
 const HOR_AND_VER_DIR: int = ALL_DIR - DIAG_DIR # Horizontal and vertical directions
-
 const DIRS: Dictionary = { # The keys are vectors 2D, which is awesome and handy
 	Vector2(0, -1): N,
 	Vector2(1, -1): NE,
@@ -54,6 +52,9 @@ func _init(init_tile_size: Vector2, default_tile_id: int, init_tile_types_obj, i
 		tiles_data.append([])
 		for y in range(tile_size.y):
 			tiles_data[x].append(default_tile.duplicate(true))
+################
+#	BOOLEANS   #
+################
 
 func is_owned_by_player(tile_pos: Vector2) -> bool:
 	return tiles_data[tile_pos.x][tile_pos.y].owner >= 0
@@ -73,6 +74,51 @@ func has_minimum_civilization(tile_pos: Vector2,  playerNumber: int) -> bool:
 	var civilianCountInTile: int = get_civilian_count(tile_pos, playerNumber)
 	var tileTypeDict: Dictionary = tile_types_obj.getByID(tiles_data[tile_pos.x][tile_pos.y].tile_id)
 	return civilianCountInTile >= tileTypeDict.min_civil_to_produce_gold
+
+func is_a_valid_tile(cell: Vector2) -> bool:
+	if cell.x < 0 or cell.y < 0:
+		return false
+	if cell.x >= tile_size.x or cell.y >= tile_size.y:
+		return false
+	return true
+
+func is_next_to_tile(cell: Vector2, to_compare_cell: Vector2) -> bool:
+	var neighbors: Array = get_neighbors(cell)
+	for v in neighbors:
+		if to_compare_cell == v:
+			return true
+	return false
+
+func is_next_to_own_territory(cell: Vector2, playerNumber: int) -> bool:
+	var neighbors: Array = get_neighbors(cell)
+	for neighbor in neighbors:
+		if tiles_data[neighbor.x][neighbor.y].owner == playerNumber:
+			return true 
+	return false
+
+func is_upgrading(tile_pos: Vector2) -> bool:
+	return tiles_data[tile_pos.x][tile_pos.y].turns_to_improve_left > 0
+
+func is_building(tile_pos: Vector2) -> bool:
+	return tiles_data[tile_pos.x][tile_pos.y].turns_to_build > 0
+
+func can_be_upgraded(tile_pos: Vector2, playerNumber: int) -> bool:
+	if tiles_data[tile_pos.x][tile_pos.y].owner != playerNumber:
+		return false
+	if is_upgrading(tile_pos):
+		return false
+	var tileTypeDict = tile_types_obj.getByID(tiles_data[tile_pos.x][tile_pos.y].tile_id)
+	if get_total_gold(playerNumber) < tileTypeDict.improve_prize:
+		return false
+	
+	return tile_types_obj.canBeUpgraded(tiles_data[tile_pos.x][tile_pos.y].tile_id)
+
+func is_cell_in_battle(tile_pos: Vector2) -> bool:
+	return get_number_of_players_in_cell(tile_pos) > 1
+
+################
+#	GETTERS    #
+################
 
 func get_total_gold_gain_and_losses(playerNumber: int) -> float:
 	var goldGains: float = 0
@@ -186,7 +232,7 @@ func get_civ_population_info(playerNumber: int) -> Array:
 					troopsInfo.append({troop_id = troopDict.troop_id, amount = troopDict.amount})
 	return troopsInfo
 
-func number_of_productive_territories(playerNumber: int) -> int:
+func get_number_of_productive_territories(playerNumber: int) -> int:
 	var productiveTerritoriesCount: int = 0
 	for x in range(tile_size.x):
 		for y in range(tile_size.y):
@@ -194,40 +240,12 @@ func number_of_productive_territories(playerNumber: int) -> int:
 				productiveTerritoriesCount+=1
 	return productiveTerritoriesCount
 
-func is_a_valid_tile(cell: Vector2) -> bool:
-	if cell.x < 0 or cell.y < 0:
-		return false
-	if cell.x >= tile_size.x or cell.y >= tile_size.y:
-		return false
-	return true
-
 func get_neighbors(cell: Vector2, bitmask: int = ALL_DIR, mult: int = 1) -> Array:
 	var neighbors: Array = []
 	for n in DIRS.keys():
 		if (bitmask & DIRS[n]) && is_a_valid_tile(cell+n*mult):
 			neighbors.append(cell+n*mult)
 	return neighbors
-
-func is_next_to_tile(cell: Vector2, to_compare_cell: Vector2) -> bool:
-	var neighbors: Array = get_neighbors(cell)
-	for v in neighbors:
-		if to_compare_cell == v:
-			return true
-	return false
-
-func is_next_to_own_territory(cell: Vector2, playerNumber: int) -> bool:
-	var neighbors: Array = get_neighbors(cell)
-	for neighbor in neighbors:
-		if tiles_data[neighbor.x][neighbor.y].owner == playerNumber:
-			return true 
-	return false
-
-func is_upgrading(tile_pos: Vector2):
-	return tiles_data[tile_pos.x][tile_pos.y].turns_to_improve_left > 0
-
-func is_building(tile_pos: Vector2):
-	return tiles_data[tile_pos.x][tile_pos.y].turns_to_build > 0
-
 
 func decrease_turns_to_improve(tile_pos: Vector2) -> void:
 	tiles_data[tile_pos.x][tile_pos.y].turns_to_improve_left -= 1
@@ -241,33 +259,84 @@ func get_turns_to_build(tile_pos: Vector2) -> int:
 func decrease_turns_to_build(tile_pos: Vector2) -> void:
 	tiles_data[tile_pos.x][tile_pos.y].turns_to_build -= 1
 
-func can_be_upgraded(tile_pos: Vector2, playerNumber: int):
-	if tiles_data[tile_pos.x][tile_pos.y].owner != playerNumber:
-		return false
-	if is_upgrading(tile_pos):
-		return false
-	var tileTypeDict = tile_types_obj.getByID(tiles_data[tile_pos.x][tile_pos.y].tile_id)
-	if get_total_gold(playerNumber) < tileTypeDict.improve_prize:
-		return false
-	
-	return tile_types_obj.canBeUpgraded(tiles_data[tile_pos.x][tile_pos.y].tile_id)
+func get_upcoming_troops(tile_pos: Vector2, read_only: bool = false) -> Array:
+	if read_only:
+		return tiles_data[tile_pos.x][tile_pos.y].upcomingTroops.duplicate(true)
+	return tiles_data[tile_pos.x][tile_pos.y].upcomingTroops
+
+func get_size() -> Vector2:
+	return tile_size
+
+func get_troops(tile_pos: Vector2, read_only: bool = false) -> Array:
+	if read_only:
+		return tiles_data[tile_pos.x][tile_pos.y].troops.duplicate(true)
+	return tiles_data[tile_pos.x][tile_pos.y].troops
+
+func get_cell(tile_pos: Vector2, read_only: bool = false) -> Dictionary:
+	if read_only:
+		return tiles_data[tile_pos.x][tile_pos.y].duplicate(true)
+	return tiles_data[tile_pos.x][tile_pos.y]
+
+func get_all(read_only: bool = false) -> Array:
+	if read_only:
+		return tiles_data.duplicate(true)
+	return tiles_data
+
+func get_cell_gold(cell: Vector2) -> float:
+	return tiles_data[cell.x][cell.y].gold
+
+func get_tile_type_dict(tile_pos: Vector2) -> Dictionary:
+	return tile_types_obj.getByID(tiles_data[tile_pos.x][tile_pos.y].tile_id)
+
+func get_all_war_costs(playerNumber: int) -> float:
+	var war_costs: float = 0
+	for x in range(tile_size.x):
+		for y in range(tile_size.y):
+			if tiles_data[x][y].owner == playerNumber: #Only invasions cost money
+				continue
+			if is_cell_in_battle(Vector2(x, y)):
+				for troopDict in tiles_data[x][y].troops:
+					if troopDict.amount <= 0:
+						continue
+					if troopDict.owner == playerNumber:
+						war_costs+= troop_types_obj.getByID(troopDict.troop_id).battle_cost_per_turn*troopDict.amount/1000.0
+	return war_costs
+
+func get_number_of_players_in_cell(tile_pos: Vector2) -> int:
+	var playersInTileArray: Array = []
+	for troopDict in tiles_data[tile_pos.x][tile_pos.y].troops:
+		if troopDict.amount <= 0:
+			continue
+		var newPlayerInTile: bool = true
+		for playerNumber in playersInTileArray:
+			if playerNumber == troopDict.owner:
+				newPlayerInTile = false
+				break
+		if newPlayerInTile:
+			playersInTileArray.append(troopDict.owner)
+	return playersInTileArray.size()
+
+################
+#	SETTERS    #
+################
 
 func set_name(tile_pos: Vector2, name: String) -> void:
 	tiles_data[tile_pos.x][tile_pos.y].name = name
 
-func give_to_a_player(playerNumber: int, tile_pos: Vector2, tile_type_id: int, add_gold: int, add_troops: Dictionary) -> void:
-	tiles_data[tile_pos.x][tile_pos.y].owner = playerNumber
-	tiles_data[tile_pos.x][tile_pos.y].gold += add_gold
-	tiles_data[tile_pos.x][tile_pos.y].tile_id = tile_type_id
-	tiles_data[tile_pos.x][tile_pos.y].name =  "Territorio #" + str(get_player_tiles_count(playerNumber)-1)
-	add_troops(tile_pos, add_troops)
+func set_cell_gold(tile_pos: Vector2, gold: float):
+	tiles_data[tile_pos.x][tile_pos.y].gold = gold
 
-func add_troops(tile_pos: Vector2, add_troops: Dictionary) -> void:
-	for i in range(tiles_data[tile_pos.x][tile_pos.y].troops.size()):
-		if tiles_data[tile_pos.x][tile_pos.y].troops[i].owner == add_troops.owner and tiles_data[tile_pos.x][tile_pos.y].troops[i].troop_id == add_troops.troop_id:
-			tiles_data[tile_pos.x][tile_pos.y].troops[i].amount += add_troops.amount
-			return
-	tiles_data[tile_pos.x][tile_pos.y].troops.append(add_troops)
+func set_troops_amount_in_cell(tile_pos: Vector2, troops_owner: int, troop_id: int, amount: int):
+	for troopDict in get_troops(tile_pos):
+		if troopDict.owner == troops_owner and troopDict.troop_id == troop_id:
+			troopDict.amount = amount
+			break
+func set_cell_owner(tile_pos: Vector2, playerNumber: int) -> void:
+	tiles_data[tile_pos.x][tile_pos.y].owner = playerNumber
+
+##################
+#	UTIL & TOOLS #
+##################
 
 func delete_cell(tile_pos: Vector2):
 	tiles_data[tile_pos.x][tile_pos.y].upcomingTroops.clear()
@@ -278,9 +347,6 @@ func clear_cell(tile_pos: Vector2):
 	tiles_data[tile_pos.x][tile_pos.y].upcomingTroops.clear()
 	tiles_data[tile_pos.x][tile_pos.y].troops.clear()
 	tiles_data[tile_pos.x][tile_pos.y] = default_tile.duplicate(true)
-
-func set_cell_gold(tile_pos: Vector2, gold: float):
-	tiles_data[tile_pos.x][tile_pos.y].gold = gold
 
 func clear():
 	for x in range(tile_size.x):
@@ -301,31 +367,19 @@ func remove_troops_index(tile_pos: Vector2, index: int) -> bool:
 	tiles_data[tile_pos.x][tile_pos.y].troops.remove(index)
 	return true
 
-func get_upcoming_troops(tile_pos: Vector2, read_only: bool = false) -> Array:
-	if read_only:
-		return tiles_data[tile_pos.x][tile_pos.y].upcomingTroops.duplicate(true)
-	return tiles_data[tile_pos.x][tile_pos.y].upcomingTroops
+func add_troops(tile_pos: Vector2, add_troops: Dictionary) -> void:
+	for i in range(tiles_data[tile_pos.x][tile_pos.y].troops.size()):
+		if tiles_data[tile_pos.x][tile_pos.y].troops[i].owner == add_troops.owner and tiles_data[tile_pos.x][tile_pos.y].troops[i].troop_id == add_troops.troop_id:
+			tiles_data[tile_pos.x][tile_pos.y].troops[i].amount += add_troops.amount
+			return
+	tiles_data[tile_pos.x][tile_pos.y].troops.append(add_troops)
 
 func append_upcoming_troops(tile_pos: Vector2, troopDict: Dictionary) -> void:
 	tiles_data[tile_pos.x][tile_pos.y].upcomingTroops.append(troopDict)
 
-func get_troops(tile_pos: Vector2, read_only: bool = false) -> Array:
-	if read_only:
-		return tiles_data[tile_pos.x][tile_pos.y].troops.duplicate(true)
-	return tiles_data[tile_pos.x][tile_pos.y].troops
-
-func get_cell(tile_pos: Vector2, read_only: bool = false) -> Dictionary:
-	if read_only:
-		return tiles_data[tile_pos.x][tile_pos.y].duplicate(true)
-	return tiles_data[tile_pos.x][tile_pos.y]
-
-func get_all(read_only: bool = false) -> Array:
-	if read_only:
-		return tiles_data.duplicate(true)
-	return tiles_data
-
-func get_cell_gold(cell: Vector2) -> float:
-	return tiles_data[cell.x][cell.y].gold
+###########################
+# SHORTHANDS & GAME LOGIC #
+###########################
 
 func add_cell_gold(cell: Vector2, add_gold: float) -> void:
 	 tiles_data[cell.x][cell.y].gold += add_gold
@@ -333,39 +387,20 @@ func add_cell_gold(cell: Vector2, add_gold: float) -> void:
 func take_cell_gold(cell: Vector2, take_gold: float) -> void:
 	 tiles_data[cell.x][cell.y].gold -= take_gold
 
+func give_to_a_player(playerNumber: int, tile_pos: Vector2, tile_type_id: int, add_gold: int, add_troops: Dictionary) -> void:
+	tiles_data[tile_pos.x][tile_pos.y].owner = playerNumber
+	tiles_data[tile_pos.x][tile_pos.y].gold += add_gold
+	tiles_data[tile_pos.x][tile_pos.y].tile_id = tile_type_id
+	tiles_data[tile_pos.x][tile_pos.y].name =  "Territorio #" + str(get_player_tiles_count(playerNumber)-1)
+	add_troops(tile_pos, add_troops)
+
+func update_gold_stats(tile_pos: Vector2, playerNumber: int) ->  void:
+	add_cell_gold(tile_pos, get_gold_gain_and_losses(tile_pos, playerNumber))
+
 func upgrade_tile(cell: Vector2) -> void:
 	var tileTypeData = Game.tileTypes.getByID(tiles_data[cell.x][cell.y].tile_id)
 	tiles_data[cell.x][cell.y].gold -= tileTypeData.improve_prize
 	tiles_data[cell.x][cell.y].turns_to_improve_left = tileTypeData.turns_to_improve
-
-func get_size() -> Vector2:
-	return tile_size
-
-func is_cell_in_battle(tile_pos: Vector2) -> bool:
-	return number_of_players_in_cell(tile_pos) > 1
-
-func set_troops_amount_in_cell(tile_pos: Vector2, troops_owner: int, troop_id: int, amount: int):
-	for troopDict in get_troops(tile_pos):
-		if troopDict.owner == troops_owner and troopDict.troop_id == troop_id:
-			troopDict.amount = amount
-			break
-
-func set_cell_owner(tile_pos: Vector2, playerNumber: int) -> void:
-	tiles_data[tile_pos.x][tile_pos.y].owner = playerNumber
-
-func number_of_players_in_cell(tile_pos: Vector2) -> int:
-	var playersInTileArray: Array = []
-	for troopDict in tiles_data[tile_pos.x][tile_pos.y].troops:
-		if troopDict.amount <= 0:
-			continue
-		var newPlayerInTile: bool = true
-		for playerNumber in playersInTileArray:
-			if playerNumber == troopDict.owner:
-				newPlayerInTile = false
-				break
-		if newPlayerInTile:
-			playersInTileArray.append(troopDict.owner)
-	return playersInTileArray.size()
 
 func upgrade_cell(tile_pos: Vector2, playerNumber: int) -> void:
 	tiles_data[tile_pos.x][tile_pos.y].turns_to_improve_left = 0
@@ -378,25 +413,8 @@ func upgrade_cell(tile_pos: Vector2, playerNumber: int) -> void:
 	tiles_data[tile_pos.x][tile_pos.y].tile_id = nextStageTileTypeId
 	add_troops(tile_pos, extra_population)
 
-func get_tile_type_dict(tile_pos: Vector2) -> Dictionary:
-	return tile_types_obj.getByID(tiles_data[tile_pos.x][tile_pos.y].tile_id)
-
 func buy_building(tile_pos: Vector2, var buildTypeId: int):
 	var currentBuildingTypeSelected = building_types_obj.getByID(buildTypeId)
 	tiles_data[tile_pos.x][tile_pos.y].gold -= currentBuildingTypeSelected.buy_prize
 	tiles_data[tile_pos.x][tile_pos.y].turns_to_build = currentBuildingTypeSelected.turns_to_build
 	tiles_data[tile_pos.x][tile_pos.y].building_id = buildTypeId
-
-func get_all_war_costs(playerNumber: int) -> float:
-	var war_costs: float = 0
-	for x in range(tile_size.x):
-		for y in range(tile_size.y):
-			if tiles_data[x][y].owner == playerNumber: #Only invasions cost money
-				continue
-			if is_cell_in_battle(Vector2(x, y)):
-				for troopDict in tiles_data[x][y].troops:
-					if troopDict.amount <= 0:
-						continue
-					if troopDict.owner == playerNumber:
-						war_costs+= troop_types_obj.getByID(troopDict.troop_id).battle_cost_per_turn*troopDict.amount/1000.0
-	return war_costs

@@ -21,7 +21,15 @@ onready var tileTypes: TilesTypesObject = TilesTypesObject.new()
 var tilesObj: TileGameObject
 
 var playersData: Array
-var currentPlayerTurn: int = 0
+
+var tile_map_size: Vector2 = Vector2(round(SCREEN_WIDTH/TILE_SIZE), round(SCREEN_HEIGHT/TILE_SIZE))
+
+var current_tile_selected: Vector2 = Vector2.ZERO
+var current_game_status: int = -1
+var current_player_turn: int = -1
+
+var interactTileSelected: Vector2 = Vector2(-1, -1)
+var nextInteractTileSelected: Vector2 = Vector2(-1, -1)
 
 enum STATUS {
 	PRE_GAME, #Select capital and territories for each players
@@ -183,7 +191,7 @@ func init_troops_types():
 
 func start_new_game():
 	change_to_map(START_MAP);
-	currentPlayerTurn = 0
+	current_player_turn = 0
 	playersData[0].alive = true
 	playersData[0].isBot = false
 	playersData[0].selectLeft = 10

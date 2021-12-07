@@ -96,3 +96,60 @@ func add_extra_troops():
 		return
 	$ActionsMenu/ExtrasMenu.visible = false
 	world_game_node.execute_add_extra_troops()
+
+
+func gui_update_civilization_info(playerNumber: int) -> void:
+	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer5/CivilizationText.text = str(Game.playersData[playerNumber].civilizationName)
+	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer/TotTalentosText.text = str(Game.tilesObj.get_total_gold(playerNumber))
+	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer2/StrengthText.text = str(Game.tilesObj.get_total_strength(playerNumber))
+	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer6/GainText.text = str(Game.tilesObj.get_total_gold_gain_and_losses(playerNumber))
+	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer7/WarCostsText.text = str(Game.tilesObj.get_all_war_costs(playerNumber))
+
+	var civilizationTroopsInfo: Array = Game.tilesObj.get_civ_population_info(playerNumber)
+	var populationStr: String = ""
+	
+	for troopDict in civilizationTroopsInfo:
+		populationStr += "* " + str(Game.troopTypes.getName(troopDict.troop_id)) + ": " + str(troopDict.amount) + "\n"
+	
+	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer4/TotPopulationText.text = populationStr
+
+
+func gui_update_tile_info(tile_pos: Vector2) -> void:
+	
+	var cell_data: Dictionary = Game.tilesObj.get_cell(tile_pos)
+
+	if Game.current_game_status == Game.STATUS.PRE_GAME:
+		$HUD/GameInfo/HBoxContainer2/TurnText.text = "PRE-GAME: " + str(Game.playersData[Game.current_player_turn].civilizationName)
+	elif Game.current_game_status == Game.STATUS.GAME_STARTED:
+		$HUD/GameInfo/HBoxContainer2/TurnText.text = str(Game.playersData[Game.current_player_turn].civilizationName)
+	else:
+		$HUD/GameInfo/HBoxContainer2/TurnText.text = "??"
+
+	
+	$HUD/TileInfo/VBoxContainer/HBoxContainer5/TileName.text = cell_data.name
+	if cell_data.owner == -1:
+		$HUD/TileInfo/VBoxContainer/HBoxContainer/OwnerName.text = "No info"
+	else:
+		$HUD/TileInfo/VBoxContainer/HBoxContainer/OwnerName.text = str(Game.playersData[cell_data.owner].civilizationName)
+	$HUD/TileInfo/VBoxContainer/HBoxContainer2/Amount.text = str(floor(cell_data.gold))
+	
+	$HUD/TileInfo/VBoxContainer/HBoxContainer6/StrengthText.text = str(Game.tilesObj.get_strength(tile_pos, Game.current_player_turn))
+	$HUD/TileInfo/VBoxContainer/HBoxContainer7/GainsText.text = str(Game.tilesObj.get_gold_gain_and_losses(tile_pos, Game.current_player_turn))
+	
+	var populationStr: String = ""
+	var isEnemyPopulation: bool = false
+	var troops_array: Array = Game.tilesObj.get_troops(tile_pos)
+	for troopDict in troops_array:
+		if troopDict.amount <= 0:
+			continue
+		if troopDict.owner == Game.current_player_turn:
+			populationStr += "* " + str(Game.troopTypes.getName(troopDict.troop_id)) + ": " + str(troopDict.amount) + "\n"
+		else:
+			isEnemyPopulation = true
+	if isEnemyPopulation:
+		populationStr += "Enemigos: \n"
+		for troopDict in troops_array:
+			if troopDict.amount <= 0 or troopDict.owner == Game.current_player_turn: 
+				continue
+			populationStr += "* " + str(Game.troopTypes.getName(troopDict.troop_id)) + ": " + str(troopDict.amount) + "\n"
+	$HUD/TileInfo/VBoxContainer/HBoxContainer4/PopulationText.text = populationStr
