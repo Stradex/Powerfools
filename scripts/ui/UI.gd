@@ -29,11 +29,20 @@ func init_menu_graphics():
 	$ActionsMenu/ExtrasMenu.visible = false
 	$ActionsMenu/TilesActions.visible = false
 	$ActionsMenu/BuildingsMenu.visible = false
+	$HUD/GameInfo/Waiting.visible = false
 
 
 ###################################
 #	BUTTONS & SIGNALS
 ###################################
+
+func show_wait_for_player() -> void:
+	$HUD/GameInfo/Waiting.visible = true
+	$HUD/GameInfo/HBoxContainer3/FinishTurn.visible = false
+
+func hide_wait_for_player() -> void:
+	$HUD/GameInfo/Waiting.visible = false
+	$HUD/GameInfo/HBoxContainer3/FinishTurn.visible = true
 
 func is_a_menu_open() -> bool:
 	return $ActionsMenu/ExtrasMenu.visible or $ActionsMenu/InGameTileActions.visible or $ActionsMenu/TilesActions.visible or $ActionsMenu/BuildingsMenu.visible

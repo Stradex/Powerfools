@@ -423,7 +423,12 @@ func buy_building(tile_pos: Vector2, var buildTypeId: int):
 # NETCODE STUFF #
 #################
 
-func get_sync_data() -> Dictionary: #FIXME: Optimize
+func set_sync_cell_data(cell: Vector2, cell_data: Dictionary) -> void:
+	tiles_data[cell.x][cell.y].troops.clear()
+	tiles_data[cell.x][cell.y].upcomingTroops.clear()
+	tiles_data[cell.x][cell.y] = cell_data.duplicate(true)
+
+func get_sync_data() -> Dictionary: #FIXME: Optimize (try to use delta data changes)
 	return { net_tile_size = tile_size, net_tile_data = tiles_data.duplicate( true ) }
 
 func set_sync_data( dictData: Dictionary ) -> void:

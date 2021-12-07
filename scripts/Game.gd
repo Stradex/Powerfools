@@ -203,8 +203,19 @@ func get_player_count() -> int:
 			player_count+=1
 	return player_count
 
-func get_local_player_id() -> Dictionary:
-	return playersData[Network.local_player_id]; #fix later
+func get_local_player() -> Dictionary:
+	for i in range(playersData.size()):
+		if playersData[i].netid == get_tree().get_network_unique_id():
+			return playersData[i]
+	return {}
+
+func get_local_player_number() -> int:
+	if !Network.is_multiplayer():
+		return 0
+	for i in range(playersData.size()):
+		if playersData[i].netid == get_tree().get_network_unique_id():
+			return i
+	return -1
 
 func add_player(netid: int, forceid: int = -1) -> int:
 	var free_player_index: int = 0
