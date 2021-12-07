@@ -418,3 +418,15 @@ func buy_building(tile_pos: Vector2, var buildTypeId: int):
 	tiles_data[tile_pos.x][tile_pos.y].gold -= currentBuildingTypeSelected.buy_prize
 	tiles_data[tile_pos.x][tile_pos.y].turns_to_build = currentBuildingTypeSelected.turns_to_build
 	tiles_data[tile_pos.x][tile_pos.y].building_id = buildTypeId
+
+#################
+# NETCODE STUFF #
+#################
+
+func get_sync_data() -> Dictionary: #FIXME: Optimize
+	return { net_tile_size = tile_size, net_tile_data = tiles_data.duplicate( true ) }
+
+func set_sync_data( dictData: Dictionary ) -> void:
+	clear()
+	tile_size = dictData.net_tile_size
+	tiles_data = dictData.net_tile_data.duplicate(true)

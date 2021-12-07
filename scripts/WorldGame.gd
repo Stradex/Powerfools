@@ -5,14 +5,17 @@ const MIN_ACTIONS_PER_TURN: int = 3
 const MAX_DEPLOYEMENTS_PER_TILE: int = 1
 const MININUM_TROOPS_TO_FIGHT: int = 5
 const EXTRA_CIVILIANS_TO_GAIN_CONQUER: int = 500
+const WORLD_GAME_NODE_ID: int = 666 #NODE ID unique
 
 var time_offset: float = 0.0
 var player_in_menu: bool = false
 var player_can_interact: bool = true
 var actions_available: int = MIN_ACTIONS_PER_TURN
 var rng: RandomNumberGenerator = RandomNumberGenerator.new();
+var node_id: int = -1
 
 onready var tween: Tween
+var NetBoop = Game.Boop_Object.new(self);
 
 var actionTileToDo: Dictionary = {
 	goldToSend = 0,
@@ -33,6 +36,8 @@ func _ready():
 	Game.tilesObj = TileGameObject.new(Game.tile_map_size, Game.tileTypes.getIDByName('vacio'), Game.tileTypes, Game.troopTypes, Game.buildingTypes)
 	change_game_status(Game.STATUS.PRE_GAME)
 	move_to_next_player_turn()
+	#if 
+	Game.Network.register_synced_node(self, WORLD_GAME_NODE_ID);
 
 func _process(delta):
 	var player_was_in_menu: bool = player_in_menu
@@ -49,6 +54,7 @@ func _process(delta):
 	if (time_offset > 1.0/Game.GAME_FPS):
 		time_offset = 0.0
 		game_on()
+		$UI.update_server_info()
 		$Tiles.update_building_tiles()
 		$UI.gui_update_tile_info(Game.current_tile_selected)
 		$UI.gui_update_civilization_info(Game.current_player_turn)
@@ -683,3 +689,24 @@ func execute_add_extra_troops():
 	Game.playersData[Game.current_player_turn].selectLeft-=1
 	if Game.playersData[Game.current_player_turn].selectLeft == 0: 
 		move_to_next_player_turn()
+
+############
+# NETCODE  #
+############
+
+func server_send_boop() -> Dictionary:
+	var boopData = { player_turn = Game.current_player_turn, players_data = Game.playersData, game_status = Game.current_game_status, tile_info = Game.tilesObj.get_sync_data() } #INFO RECEIVED AND WORKING < 3
+	return boopData
+
+func client_send_boop() -> Dictionary:
+
+	var boopData = { }
+	
+	return boopData
+
+func client_process_boop(boopData) -> void:
+	Game.current_game_status = boopData.game_status
+	Game.current_player_turn = boopData.player_turn
+	Game.playersData.clear()
+	Game.playersData = boopData.players_data
+	Game.tilesObj.set_sync_data(boopData.tile_info)

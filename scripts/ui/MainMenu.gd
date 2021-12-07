@@ -31,7 +31,7 @@ func ui_open_multiplayer_window():
 	$Buttons.visible = false
 
 func ui_join_game():
-	pass
+	Game.Network.join_server($MultiplayerMenu/IPTextBox.text);
 
 func ui_host_game():
-	pass
+	Game.Network.host_server(2);

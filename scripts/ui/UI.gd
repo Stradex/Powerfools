@@ -97,6 +97,8 @@ func add_extra_troops():
 	$ActionsMenu/ExtrasMenu.visible = false
 	world_game_node.execute_add_extra_troops()
 
+func update_server_info():
+	$HUD/ServerInfo/HBoxContainer/PlayerCountText.text = str(Game.get_player_count())
 
 func gui_update_civilization_info(playerNumber: int) -> void:
 	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer5/CivilizationText.text = str(Game.playersData[playerNumber].civilizationName)

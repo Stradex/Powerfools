@@ -4,30 +4,26 @@ const VERSION: String = "0.1.1" #Major, Minor, build count
 const PORT: int = 27666
 const MAX_PLAYERS: int = 4
 const SNAPSHOT_DELAY: float = 1.0/30.0 #msec to sec
-
 const MAPS_FOLDER: String = "res://scenes/"
 const START_MAP: String = "WorldGame.tscn"
-
 const SCREEN_WIDTH: int = 1280
 const SCREEN_HEIGHT: int = 720
 const TILE_SIZE: int = 80
 const GAME_FPS: int = 4 # we really don't need to much higher FPS, this is mostly for game logic, not graphic stuff
 
 var current_turn: int = 0
-
 onready var troopTypes: TroopTypesObject = TroopTypesObject.new()
 onready var buildingTypes: BuildingTypesObject = BuildingTypesObject.new()
 onready var tileTypes: TilesTypesObject = TilesTypesObject.new()
+onready var Network: NetworkBase = NetworkBase.new()
+var Boop_Object = preload("res://scripts/Netcode/Boop.gd");
+
 var tilesObj: TileGameObject
-
 var playersData: Array
-
 var tile_map_size: Vector2 = Vector2(round(SCREEN_WIDTH/TILE_SIZE), round(SCREEN_HEIGHT/TILE_SIZE))
-
 var current_tile_selected: Vector2 = Vector2.ZERO
 var current_game_status: int = -1
 var current_player_turn: int = -1
-
 var interactTileSelected: Vector2 = Vector2(-1, -1)
 var nextInteractTileSelected: Vector2 = Vector2(-1, -1)
 
@@ -43,22 +39,13 @@ var defaultCivilizationNames: Array = [
 	"Sparta"
 ]
 
-#var InvalidTile: Dictionary = {
-#	name = "invalid",
-#	next_stage = "none", #leave it blank if this tile cannot be improved
-#	improve_prize = 0,
-#	turns_to_improve = 0,
-#	gold_to_produce = 0, #ammount of gold to produce per turn
-#	strength_boost = 0, #ammount of extra damage in % that the owner of this tile gets in their troops
-#	sell_prize = 0, #ammount of gold to receive in case of this sold
-#	conquer_gain = 0 #ammount of gold to receive in case of conquering this land
-#}
-
 func _ready():
 	init_players()
 	init_tiles_types()
 	init_troops_types()
 	init_buildings_types()
+	Network.ready()
+	clear_players_data()
 
 func init_players():
 	playersData.clear()
@@ -68,7 +55,8 @@ func init_players():
 			civilizationName = defaultCivilizationNames[i],
 			alive = false,
 			isBot = false,
-			selectLeft = 0
+			selectLeft = 0,
+			netid = -1
 		})
 
 func init_tiles_types():
@@ -189,15 +177,51 @@ func init_troops_types():
 	})
 	#Adding troops ends
 
-func start_new_game():
-	change_to_map(START_MAP);
+func clear_players_data():
+	for i in range(playersData.size()):
+		playersData[i].netid = -1
+		playersData[i].alive = false
+
+func start_new_game(is_mp_game: bool = false):
 	current_player_turn = 0
-	playersData[0].alive = true
-	playersData[0].isBot = false
-	playersData[0].selectLeft = 10
-	playersData[1].alive = true
-	playersData[1].isBot = false
-	playersData[1].selectLeft = 10
+	if !is_mp_game:
+		init_player(0, Game.Network.SERVER_NETID) #human
+		init_player(1, Game.Network.SERVER_NETID, true) #bot
+	change_to_map(START_MAP)
+
+func init_player(player_id: int, net_id: int, is_bot:bool = false):
+	playersData[player_id].alive = true
+	playersData[player_id].isBot = is_bot
+	playersData[player_id].selectLeft = 10
+	playersData[player_id].netid = net_id
+	print("Adding player %d with netid %d" % [player_id, net_id])
+
+func get_player_count() -> int:
+	var player_count: int = 0
+	for i in range(playersData.size()):
+		if playersData[i].alive:
+			player_count+=1
+	return player_count
+
+func get_local_player_id() -> Dictionary:
+	return playersData[Network.local_player_id]; #fix later
+
+func add_player(netid: int, forceid: int = -1) -> int:
+	var free_player_index: int = 0
+	for i in range(playersData.size()):
+		if playersData[i].netid != -1:
+			free_player_index += 1
+			if playersData[i].netid == netid: #already exists this player
+				print("The player %d with netid %d was already in the list!!" % [i, netid])
+				return i
+			continue
+		break
+	
+	if forceid != -1:
+		free_player_index = forceid
+	
+	init_player(free_player_index, netid)
+	return free_player_index
 
 remote func change_to_map(map_name: String):
 	var full_map_path: String = self.MAPS_FOLDER + map_name;
@@ -209,16 +233,5 @@ func pause() -> void:
 func unpause() -> void:
 	get_tree().paused = false
 
-func is_singleplayer_game():
-	return !get_tree().has_network_peer()
-
-func is_network_master_or_sp(caller: Node):
-	return is_singleplayer_game() or caller.is_network_master()
-
-func is_client() -> bool:
-	return get_tree().has_network_peer() and !get_tree().is_network_server()
-
-func is_client_connected() -> bool:
-	if !get_tree().has_network_peer() or get_tree().is_network_server():
-		return false
-	return get_tree().get_network_peer().get_connection_status() == get_tree().get_network_peer().CONNECTION_CONNECTED
+remote func game_process_rpc(method_name: String, data: Array): 
+	Network.callv(method_name, data);

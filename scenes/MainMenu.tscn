@@ -108,7 +108,7 @@ __meta__ = {
 "_edit_use_anchors_": false
 }
 
-[node name="TextEdit" type="TextEdit" parent="MultiplayerMenu"]
+[node name="IPTextBox" type="TextEdit" parent="MultiplayerMenu"]
 margin_right = 210.0
 margin_bottom = 30.0
 rect_min_size = Vector2( 0, 30 )
