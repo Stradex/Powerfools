@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://assets/graphics/functiles/tile_invisible.png" type="Texture" id=1]
+
+[node name="SelectionTiles" type="Node2D"]
+
+[node name="tile_invisible" type="Sprite" parent="."]
+position = Vector2( 40.2722, 41.352 )
+texture = ExtResource( 1 )

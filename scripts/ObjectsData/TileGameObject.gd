@@ -75,6 +75,10 @@ func has_minimum_civilization(tile_pos: Vector2,  playerNumber: int) -> bool:
 	var tileTypeDict: Dictionary = tile_types_obj.getByID(tiles_data[tile_pos.x][tile_pos.y].tile_id)
 	return civilianCountInTile >= tileTypeDict.min_civil_to_produce_gold
 
+func has_troops_or_citizen(tile_pos: Vector2,  playerNumber: int) -> bool:
+	var allEntitiesCountInTile: int = get_civilian_count(tile_pos, playerNumber) + get_troops_count(tile_pos, playerNumber)
+	return allEntitiesCountInTile > 0
+
 func is_a_valid_tile(cell: Vector2) -> bool:
 	if cell.x < 0 or cell.y < 0:
 		return false
@@ -89,13 +93,20 @@ func is_next_to_tile(cell: Vector2, to_compare_cell: Vector2) -> bool:
 			return true
 	return false
 
-func is_next_to_own_territory(cell: Vector2, playerNumber: int) -> bool:
+func is_next_to_player_territory(cell: Vector2, playerNumber: int) -> bool:
 	var neighbors: Array = get_neighbors(cell)
 	for neighbor in neighbors:
 		if tiles_data[neighbor.x][neighbor.y].owner == playerNumber:
 			return true 
 	return false
 
+func is_next_to_enemy_territory(cell: Vector2, playerNumber: int) -> bool:
+	var neighbors: Array = get_neighbors(cell)
+	for neighbor in neighbors:
+		if tiles_data[neighbor.x][neighbor.y].owner != playerNumber and tiles_data[neighbor.x][neighbor.y].owner != -1:
+			return true 
+	return false
+	
 func is_upgrading(tile_pos: Vector2) -> bool:
 	return tiles_data[tile_pos.x][tile_pos.y].turns_to_improve_left > 0
 

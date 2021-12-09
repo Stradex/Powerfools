@@ -109,14 +109,19 @@ func add_extra_troops():
 func update_server_info():
 	$HUD/ServerInfo/HBoxContainer/PlayerCountText.text = str(Game.get_player_count())
 
-func gui_update_civilization_info(playerNumber: int) -> void:
-	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer5/CivilizationText.text = str(Game.playersData[playerNumber].civilizationName)
-	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer/TotTalentosText.text = str(Game.tilesObj.get_total_gold(playerNumber))
-	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer2/StrengthText.text = str(Game.tilesObj.get_total_strength(playerNumber))
-	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer6/GainText.text = str(Game.tilesObj.get_total_gold_gain_and_losses(playerNumber))
-	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer7/WarCostsText.text = str(Game.tilesObj.get_all_war_costs(playerNumber))
+func gui_update_civilization_info() -> void:
+	
+	var player_mask: int = Game.current_player_turn
+	if Game.Network.is_multiplayer():
+		player_mask = Game.get_local_player_number()
 
-	var civilizationTroopsInfo: Array = Game.tilesObj.get_civ_population_info(playerNumber)
+	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer5/CivilizationText.text = str(Game.playersData[player_mask].civilizationName)
+	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer/TotTalentosText.text = str(Game.tilesObj.get_total_gold(player_mask))
+	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer2/StrengthText.text = str(Game.tilesObj.get_total_strength(player_mask))
+	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer6/GainText.text = str(Game.tilesObj.get_total_gold_gain_and_losses(player_mask))
+	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer7/WarCostsText.text = str(Game.tilesObj.get_all_war_costs(player_mask))
+
+	var civilizationTroopsInfo: Array = Game.tilesObj.get_civ_population_info(player_mask)
 	var populationStr: String = ""
 	
 	for troopDict in civilizationTroopsInfo:
@@ -127,6 +132,10 @@ func gui_update_civilization_info(playerNumber: int) -> void:
 
 func gui_update_tile_info(tile_pos: Vector2) -> void:
 	
+	var player_mask: int = Game.current_player_turn
+	if Game.Network.is_multiplayer():
+		player_mask = Game.get_local_player_number()
+	
 	var cell_data: Dictionary = Game.tilesObj.get_cell(tile_pos)
 
 	if Game.current_game_status == Game.STATUS.PRE_GAME:
@@ -136,6 +145,13 @@ func gui_update_tile_info(tile_pos: Vector2) -> void:
 	else:
 		$HUD/GameInfo/HBoxContainer2/TurnText.text = "??"
 
+	if !allow_show_tile_info(tile_pos, player_mask):
+		$HUD/TileInfo/VBoxContainer/HBoxContainer/OwnerName.text = "No info"
+		$HUD/TileInfo/VBoxContainer/HBoxContainer2/Amount.text = "No info"
+		$HUD/TileInfo/VBoxContainer/HBoxContainer6/StrengthText.text = "No info"
+		$HUD/TileInfo/VBoxContainer/HBoxContainer7/GainsText.text = "No info"
+		$HUD/TileInfo/VBoxContainer/HBoxContainer4/PopulationText.text = "No info"
+		return
 	
 	$HUD/TileInfo/VBoxContainer/HBoxContainer5/TileName.text = cell_data.name
 	if cell_data.owner == -1:
@@ -144,8 +160,8 @@ func gui_update_tile_info(tile_pos: Vector2) -> void:
 		$HUD/TileInfo/VBoxContainer/HBoxContainer/OwnerName.text = str(Game.playersData[cell_data.owner].civilizationName)
 	$HUD/TileInfo/VBoxContainer/HBoxContainer2/Amount.text = str(floor(cell_data.gold))
 	
-	$HUD/TileInfo/VBoxContainer/HBoxContainer6/StrengthText.text = str(Game.tilesObj.get_strength(tile_pos, Game.current_player_turn))
-	$HUD/TileInfo/VBoxContainer/HBoxContainer7/GainsText.text = str(Game.tilesObj.get_gold_gain_and_losses(tile_pos, Game.current_player_turn))
+	$HUD/TileInfo/VBoxContainer/HBoxContainer6/StrengthText.text = str(Game.tilesObj.get_strength(tile_pos, player_mask))
+	$HUD/TileInfo/VBoxContainer/HBoxContainer7/GainsText.text = str(Game.tilesObj.get_gold_gain_and_losses(tile_pos, player_mask))
 	
 	var populationStr: String = ""
 	var isEnemyPopulation: bool = false
@@ -153,14 +169,22 @@ func gui_update_tile_info(tile_pos: Vector2) -> void:
 	for troopDict in troops_array:
 		if troopDict.amount <= 0:
 			continue
-		if troopDict.owner == Game.current_player_turn:
+		if troopDict.owner == player_mask:
 			populationStr += "* " + str(Game.troopTypes.getName(troopDict.troop_id)) + ": " + str(troopDict.amount) + "\n"
 		else:
 			isEnemyPopulation = true
 	if isEnemyPopulation:
 		populationStr += "Enemigos: \n"
 		for troopDict in troops_array:
-			if troopDict.amount <= 0 or troopDict.owner == Game.current_player_turn: 
+			if troopDict.amount <= 0 or troopDict.owner == player_mask: 
 				continue
 			populationStr += "* " + str(Game.troopTypes.getName(troopDict.troop_id)) + ": " + str(troopDict.amount) + "\n"
 	$HUD/TileInfo/VBoxContainer/HBoxContainer4/PopulationText.text = populationStr
+
+func allow_show_tile_info(tile_pos: Vector2, playerNumber: int) -> bool:
+	var tile_cell_data: Dictionary = Game.tilesObj.get_cell(tile_pos)
+	if tile_cell_data.owner == playerNumber:
+		return true
+	if Game.tilesObj.is_next_to_player_territory(tile_pos, playerNumber):
+		return true
+	return Game.tilesObj.has_troops_or_citizen(tile_pos, playerNumber)

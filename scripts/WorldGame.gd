@@ -65,7 +65,8 @@ func _process(delta):
 		$UI.update_server_info()
 		$Tiles.update_building_tiles()
 		$UI.gui_update_tile_info(Game.current_tile_selected)
-		$UI.gui_update_civilization_info(Game.current_player_turn)
+		$UI.gui_update_civilization_info()
+		$Tiles.update_visibility_tiles()
 		if is_local_player_turn():
 			$UI.hide_wait_for_player()
 		else:
@@ -138,6 +139,8 @@ func pre_game_interact():
 	if Game.tilesObj.is_owned_by_player(Game.current_tile_selected):
 		if Game.tilesObj.belongs_to_player(Game.current_tile_selected, Game.current_player_turn):
 			$UI/ActionsMenu/ExtrasMenu.visible = true
+		return
+	if Game.tilesObj.is_next_to_enemy_territory(Game.current_tile_selected, Game.current_player_turn):
 		return
 	if !player_has_capital(Game.current_player_turn):
 		give_player_capital(Game.current_player_turn, Game.current_tile_selected)
@@ -453,7 +456,6 @@ func check_if_player_can_buy_buildings(playerNumber: int) -> bool:
 #	DRAWING & GRAPHICS TILES
 ###################################
 
-
 ###################################
 #	GETTERS
 ###################################
@@ -639,9 +641,9 @@ func gui_urbanizar_tile():
 	if tileTypeData.improve_prize > Game.tilesObj.get_total_gold(Game.current_player_turn):
 		print("Not enough money to improve!")
 		return
-	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = Game.current_tile_selected, cell_data = Game.tilesObj.get_cell(Game.current_tile_selected)})
 	Game.tilesObj.upgrade_tile(Game.current_tile_selected)
 	action_in_turn_executed()
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = Game.current_tile_selected, cell_data = Game.tilesObj.get_cell(Game.current_tile_selected)})
 	$UI/ActionsMenu/InGameTileActions.visible = false
 
 func update_troops_move_data( var index: int ):
@@ -749,6 +751,8 @@ func use_selection_point():
 ###########
 # NETCODE #
 ###########
+
+#OPTIMIZAR NETCODE, USAR EVENTOS NO SNAPSHOTS!, Y USAR LO MINIMO Y NECESARIO
 
 func server_send_boop() -> Dictionary:
 	var boopData = { player_turn = Game.current_player_turn, players_data = Game.playersData, game_status = Game.current_game_status, net_actions_available = actions_available, tile_info = Game.tilesObj.get_sync_data() }
