@@ -98,6 +98,13 @@ func is_next_to_tile(cell: Vector2, to_compare_cell: Vector2) -> bool:
 			return true
 	return false
 
+func is_next_to_any_player_territory(cell: Vector2) -> bool:
+	var neighbors: Array = get_neighbors(cell)
+	for neighbor in neighbors:
+		if tiles_data[neighbor.x][neighbor.y].owner != -1:
+			return true 
+	return false
+
 func is_next_to_player_territory(cell: Vector2, playerNumber: int) -> bool:
 	var neighbors: Array = get_neighbors(cell)
 	for neighbor in neighbors:
@@ -518,13 +525,44 @@ func get_sync_data() -> Array: #FIXME: Optimize (try to use delta data changes)
 	var cellsToSync: Array = []
 	for x in range(tile_size.x):
 		for y in range(tile_size.y):
+			if tiles_data[x][y].owner == -1 and !is_next_to_any_player_territory(Vector2(x, y)):
+				continue
 			if old_tiles_data.size() <= x or old_tiles_data[x].size() <= y:
 				continue
 			if !dicts_are_equal(tiles_data[x][y], old_tiles_data[x][y]):
 				cellsToSync.append({ cell_pos = Vector2(x, y), cell_data = tiles_data[x][y].duplicate( true ) })
-	print( cellsToSync.size() )
+	print( "get_sync_data" + str(cellsToSync.size()) )
 	old_tiles_data = tiles_data.duplicate( true )
+	
+	for x in range(tile_size.x):
+		for y in range(tile_size.y):
+			if old_tiles_data[x][y].owner == -1 and !is_next_to_any_player_territory(Vector2(x, y)):
+				old_tiles_data[x][y].owner = -2 #shitty hack to ensure sync in future
 	return cellsToSync
+
+func get_sync_neighbors (playerNumber: int) -> Array:
+	var cellsToSync: Array = []
+	for x in range(tile_size.x):
+		for y in range(tile_size.y):
+			if tiles_data[x][y].owner != playerNumber and is_next_to_player_territory(Vector2(x, y), playerNumber):
+				cellsToSync.append({ cell_pos = Vector2(x, y), cell_data = tiles_data[x][y].duplicate( true ) })
+	print( "get_sync_neighbors" + str(cellsToSync.size()) )
+	return cellsToSync
+
+func merge_sync_arrays(oldSyncArray: Array, newSyncArray: Array) -> Array:
+	for i in range(newSyncArray.size()):
+		var exists: bool = false
+		for j in range(oldSyncArray.size()):
+			if newSyncArray[i].cell_pos == oldSyncArray[j].cell_pos: #already exists, replace for new one
+				exists = true
+				oldSyncArray[j].clear()
+				oldSyncArray[j] = newSyncArray[i].duplicate(true)
+				break
+		if !exists:
+			oldSyncArray.append(newSyncArray[i].duplicate(true))
+	
+	return oldSyncArray
+		
 
 func set_sync_data( dictArray: Array ) -> void:
 	for cellData in dictArray:

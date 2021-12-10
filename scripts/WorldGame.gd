@@ -15,6 +15,7 @@ var rng: RandomNumberGenerator = RandomNumberGenerator.new();
 var node_id: int = -1
 
 onready var tween: Tween
+onready var net_sync_timer: Timer
 var NetBoop = Game.Boop_Object.new(self);
 
 var actionTileToDo: Dictionary = {
@@ -38,7 +39,12 @@ enum NET_EVENTS {
 
 func _ready():
 	tween = Tween.new(); #useful to avoid having to add it manually in each map
-	add_child(tween);
+	net_sync_timer = Timer.new()
+	net_sync_timer.set_wait_time(10.0)
+	net_sync_timer.connect("timeout", self, "on_net_sync_timeout")
+	add_child(tween)
+	add_child(net_sync_timer)
+	net_sync_timer.start()
 	$UI.init_gui(self)
 	if Game.tilesObj:
 		Game.tilesObj.clear()
@@ -47,6 +53,12 @@ func _ready():
 	move_to_next_player_turn()
 	Game.Network.register_synced_node(self, WORLD_GAME_NODE_ID);
 	Game.tilesObj.save_sync_data()
+
+func on_net_sync_timeout():
+	if Game.Network.is_client():
+		return
+	server_send_game_info()
+
 
 func _process(delta):
 	var player_was_in_menu: bool = player_in_menu
@@ -170,13 +182,13 @@ func change_game_status(new_status: int) -> void:
 func process_unused_tiles() -> void:
 	if Game.Network.is_client():
 		return
-	Game.tilesObj.recover_sync_data()
+	#Game.tilesObj.recover_sync_data()
 	for x in range(Game.tile_map_size.x):
 		for y in range(Game.tile_map_size.y):
 			if !Game.tilesObj.is_owned_by_player(Vector2(x, y)):
 				add_tribal_society_to_tile(Vector2(x, y))
-	Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = Game.tilesObj.get_sync_data() })
-	Game.tilesObj.save_sync_data()
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = Game.tilesObj.get_sync_neighbors(Game.current_player_turn) })
+	#Game.tilesObj.save_sync_data()
 
 func game_on() -> void:
 	if Game.Network.is_client():
@@ -195,6 +207,12 @@ func pre_game() -> void:
 			return
 	
 	change_game_status(Game.STATUS.GAME_STARTED)
+
+func get_next_player_turn() -> int:
+	for i in range(Game.playersData.size()):
+		if i != Game.current_player_turn and Game.playersData[i].alive:
+			return i
+	return Game.current_player_turn
 
 func move_to_next_player_turn() -> void: 
 	if Game.Network.is_client() and is_local_player_turn():
@@ -236,7 +254,10 @@ func process_tiles_turn_end(playerNumber: int) -> void:
 			process_tile_battles(Vector2(x, y))
 			update_tile_owner(Vector2(x, y))
 	if Game.Network.is_server():
-		Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = Game.tilesObj.get_sync_data() })
+		var sync_arrayA: Array = Game.tilesObj.get_sync_neighbors(get_next_player_turn())
+		var sync_arrayB: Array = Game.tilesObj.get_sync_data()
+		var merged_sync_arrays: Array = Game.tilesObj.merge_sync_arrays(sync_arrayA, sync_arrayB)
+		Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = merged_sync_arrays })
 	Game.tilesObj.save_sync_data()
 
 
@@ -792,7 +813,7 @@ func use_selection_point():
 # NETCODE #
 ###########
 
-func server_send_game_info() -> void:
+func server_send_game_info(unreliable: bool = false) -> void:
 	if !Game.Network.is_server():
 		return
 	Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_UPDATE_GAME_INFO, {
@@ -800,7 +821,7 @@ func server_send_game_info() -> void:
 		player_turn = Game.current_player_turn,
 		select_left = Game.playersData[Game.current_player_turn].selectLeft,
 		actions_left = actions_available
-	})
+	}, unreliable)
 	
 #OPTIMIZAR NETCODE, USAR EVENTOS NO SNAPSHOTS!, Y USAR LO MINIMO Y NECESARIO
 """
@@ -849,8 +870,15 @@ func client_process_event(eventId : int, eventData) -> void:
 		NET_EVENTS.SERVER_SEND_DELTA_TILES:
 			Game.tilesObj.set_sync_data(eventData.dictArray)
 		NET_EVENTS.SERVER_UPDATE_GAME_INFO:
-			change_game_status(eventData.game_status )
+			var old_player_turn: int = Game.current_player_turn
+			change_game_status( eventData.game_status )
 			Game.current_player_turn = eventData.player_turn
+			if is_local_player_turn() and old_player_turn == Game.current_player_turn:
+				if  Game.playersData[Game.current_player_turn].selectLeft > 0 and eventData.select_left > Game.playersData[Game.current_player_turn].selectLeft:
+					return
+				if actions_available > 0 and eventData.actions_left > actions_available:
+					return
+			
 			Game.playersData[Game.current_player_turn].selectLeft = eventData.select_left
 			actions_available = eventData.actions_left
 		_:

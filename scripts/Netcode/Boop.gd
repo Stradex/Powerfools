@@ -24,9 +24,11 @@ func update_event_data(event_data: Dictionary, client_num: int = 0):
 	for i in range(lastEventData[client_num].size()):
 		if typeof(lastEventData[client_num][i]) != TYPE_DICTIONARY or !lastEventData[client_num][i].has('event_id') or !lastEventData[client_num][i].has('event_time'):
 			lastEventData[client_num][i] = event_data.duplicate(true)
+			break
 		if lastEventData[client_num][i].event_id == event_data.event_id and lastEventData[client_num][i].event_time <= event_data.event_time:
 			lastEventData[client_num][i].clear()
 			lastEventData[client_num][i] = event_data.duplicate(true)
+			break
 	lastEventData[client_num].append(event_data.duplicate(true))
 
 func get_event_data(event_id: int, client_num: int = 0):
