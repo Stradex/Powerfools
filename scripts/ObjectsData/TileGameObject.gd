@@ -35,6 +35,7 @@ var default_tile: Dictionary = {
 	upcomingTroops = [] #array with all the upcoming troops. DATA: turns to wait, owner, troop_id and amount
 }
 
+var saved_tiles_data: Array = []
 var old_tiles_data: Array = []
 var tiles_data: Array = []
 var tile_types_obj = null
@@ -504,6 +505,15 @@ func set_sync_cell_data(cell: Vector2, cell_data: Dictionary) -> void:
 	tiles_data[cell.x][cell.y].upcomingTroops.clear()
 	tiles_data[cell.x][cell.y] = cell_data.duplicate(true)
 
+func save_sync_data() -> void:
+	saved_tiles_data = tiles_data.duplicate( true )
+
+func recover_sync_data() -> void:
+	old_tiles_data = saved_tiles_data.duplicate( true )
+
+func update_sync_data() -> void:
+	old_tiles_data = tiles_data.duplicate( true )
+
 func get_sync_data() -> Array: #FIXME: Optimize (try to use delta data changes)
 	var cellsToSync: Array = []
 	for x in range(tile_size.x):
@@ -521,6 +531,3 @@ func set_sync_data( dictArray: Array ) -> void:
 		var cell: Vector2 = cellData.cell_pos
 		var cell_info = cellData.cell_data
 		set_sync_cell_data(cell, cell_info)
-
-#func get_delta( cell: Vector2 ) -> void:
-	

@@ -1,13 +1,45 @@
 extends Object
 
-var current_boop: Array;
-var father_node: Node2D;
+var default_event_data: Dictionary = {
+	event_id = -1,
+	event_time = -1,
+	event_data = {}
+}
+
+var current_boop: Array
+var father_node: Node2D
+var lastEventData: Array
 
 func _init(node: Node2D):
 	father_node = node;
-	current_boop.resize(Game.Network.MAX_PLAYERS);
+	lastEventData.resize(Game.Network.MAX_PLAYERS)
+	current_boop.resize(Game.Network.MAX_PLAYERS)
 	for _i in range(Game.Network.MAX_PLAYERS):
-		current_boop.append({}); #empty dictionary
+		current_boop.append({}) #empty dictionary
+		lastEventData.append([])
+
+func update_event_data(event_data: Dictionary, client_num: int = 0):
+	if !lastEventData[client_num]:
+		lastEventData[client_num] = []
+	for i in range(lastEventData[client_num].size()):
+		if typeof(lastEventData[client_num][i]) != TYPE_DICTIONARY or !lastEventData[client_num][i].has('event_id') or !lastEventData[client_num][i].has('event_time'):
+			lastEventData[client_num][i] = event_data.duplicate(true)
+		if lastEventData[client_num][i].event_id == event_data.event_id and lastEventData[client_num][i].event_time <= event_data.event_time:
+			lastEventData[client_num][i].clear()
+			lastEventData[client_num][i] = event_data.duplicate(true)
+	lastEventData[client_num].append(event_data.duplicate(true))
+
+func get_event_data(event_id: int, client_num: int = 0):
+	for i in range(lastEventData[client_num].size()):
+		if typeof(lastEventData[client_num][i]) != TYPE_DICTIONARY or !lastEventData[client_num][i].has('event_id') or !lastEventData[client_num][i].has('event_time'):
+			continue
+		if lastEventData[client_num][i].event_id == event_id:
+			if lastEventData[client_num][i].has('event_data') and typeof(lastEventData[client_num][i].event_data) == TYPE_DICTIONARY:
+				return lastEventData[client_num][i].event_data.duplicate(true)
+			else: #Null case
+				return lastEventData[client_num][i].event_data
+	print("[FATAL ERROR] get_event_data can't find event data")
+	return {} #ERROR
 
 func boops_are_equal(boopA: Dictionary, boopB: Dictionary) -> bool:
 	for key in boopA:

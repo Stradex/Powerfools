@@ -22,7 +22,6 @@ var actionTileToDo: Dictionary = {
 	currentTroopId=0,
 	troopsToMove = []
 }
-
 enum NET_EVENTS {
 	UPDATE_TILE_DATA,
 	CLIENT_USE_POINT,
@@ -31,7 +30,7 @@ enum NET_EVENTS {
 	SERVER_SEND_DELTA_TILES,
 	SERVER_UPDATE_GAME_INFO
 	MAX_EVENTS 
-};
+}
 
 ###################################################
 # GODOT _READY, _PROCESS & FUNDAMENTAL FUNCTIONS
@@ -46,8 +45,8 @@ func _ready():
 	Game.tilesObj = TileGameObject.new(Game.tile_map_size, Game.tileTypes.getIDByName('vacio'), Game.tileTypes, Game.troopTypes, Game.buildingTypes)
 	change_game_status(Game.STATUS.PRE_GAME)
 	move_to_next_player_turn()
-	#if 
 	Game.Network.register_synced_node(self, WORLD_GAME_NODE_ID);
+	Game.tilesObj.save_sync_data()
 
 func _process(delta):
 	var player_was_in_menu: bool = player_in_menu
@@ -171,12 +170,13 @@ func change_game_status(new_status: int) -> void:
 func process_unused_tiles() -> void:
 	if Game.Network.is_client():
 		return
+	Game.tilesObj.recover_sync_data()
 	for x in range(Game.tile_map_size.x):
 		for y in range(Game.tile_map_size.y):
 			if !Game.tilesObj.is_owned_by_player(Vector2(x, y)):
 				add_tribal_society_to_tile(Vector2(x, y))
-	if Game.Network.is_server():
-		Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = Game.tilesObj.get_sync_data() })
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = Game.tilesObj.get_sync_data() })
+	Game.tilesObj.save_sync_data()
 
 func game_on() -> void:
 	if Game.Network.is_client():
@@ -227,6 +227,7 @@ func process_turn_end(playerNumber: int) -> void:
 		destroy_player(playerNumber)
 
 func process_tiles_turn_end(playerNumber: int) -> void:
+	Game.tilesObj.recover_sync_data()
 	for x in range(Game.tile_map_size.x):
 		for y in range(Game.tile_map_size.y):
 			process_tile_upgrade(Vector2(x, y), playerNumber)
@@ -236,6 +237,7 @@ func process_tiles_turn_end(playerNumber: int) -> void:
 			update_tile_owner(Vector2(x, y))
 	if Game.Network.is_server():
 		Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = Game.tilesObj.get_sync_data() })
+	Game.tilesObj.save_sync_data()
 
 
 func update_tile_owner(cell: Vector2) -> void:
@@ -483,6 +485,7 @@ func allow_player_interact():
 	player_can_interact = true
 
 func give_player_capital(playerNumber: int, tile_pos: Vector2) ->void:
+	Game.tilesObj.update_sync_data()
 	var starting_population: Dictionary = {
 		owner = playerNumber,
 		troop_id = Game.troopTypes.getIDByName("civil"),
@@ -490,16 +493,19 @@ func give_player_capital(playerNumber: int, tile_pos: Vector2) ->void:
 	}
 	Game.tilesObj.give_to_a_player(playerNumber, tile_pos, Game.tileTypes.getIDByName("capital"), 0, starting_population)
 	Game.tilesObj.set_name(tile_pos, "Capital")
-	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = tile_pos, cell_data = Game.tilesObj.get_cell(tile_pos)})
+	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = tile_pos, cell_data = Game.tilesObj.get_cell(tile_pos)})
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 
 func give_player_rural(playerNumber: int, tile_pos: Vector2) ->void:
+	Game.tilesObj.update_sync_data()
 	var starting_population: Dictionary = {
 		owner = playerNumber,
 		troop_id = Game.troopTypes.getIDByName("civil"),
 		amount = 1000
 	}
 	Game.tilesObj.give_to_a_player(playerNumber, tile_pos, Game.tileTypes.getIDByName("rural"), 0, starting_population)
-	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = tile_pos, cell_data = Game.tilesObj.get_cell(tile_pos)})
+	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = tile_pos, cell_data = Game.tilesObj.get_cell(tile_pos)})
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 
 func add_tribal_society_to_tile(cell: Vector2) -> void:
 	Game.tilesObj.set_cell_gold(cell, round(rand_range(5.0, 20.0)))
@@ -605,11 +611,17 @@ func game_tile_show_info():
 #	BUTTONS & SIGNALS	#
 #########################
 
+func can_execute_action() -> bool:
+	return actions_available > 0
+
+func have_selection_points_left() -> bool:
+	return Game.playersData[Game.current_player_turn].selectLeft > 0
+
 func can_interact_with_menu() -> bool:
 	return player_in_menu and player_can_interact
 
 func execute_recruit_troops():
-	if !is_local_player_turn():
+	if !is_local_player_turn() or !can_execute_action():
 		return
 	assert(is_recruiting_possible(Game.current_tile_selected, Game.current_player_turn))
 	
@@ -627,23 +639,26 @@ func execute_recruit_troops():
 		amount = currentBuildingTypeSelected.deploy_amount,
 		turns_left = currentBuildingTypeSelected.turns_to_deploy_troops
 	}
+	Game.tilesObj.update_sync_data()
 	Game.tilesObj.take_cell_gold(Game.current_tile_selected, currentBuildingTypeSelected.deploy_prize)
 	Game.tilesObj.append_upcoming_troops(Game.current_tile_selected, upcomingTroopsDict)
 	action_in_turn_executed()
-	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = Game.current_tile_selected, cell_data = Game.tilesObj.get_cell(Game.current_tile_selected)})
+	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = Game.current_tile_selected, cell_data = Game.tilesObj.get_cell(Game.current_tile_selected)})
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 	
 func execute_buy_building(var selectedBuildTypeId: int):
-	if !is_local_player_turn():
+	if !is_local_player_turn() or !can_execute_action():
 		return
+	Game.tilesObj.update_sync_data()
 	Game.tilesObj.buy_building(Game.current_tile_selected, selectedBuildTypeId)
 	action_in_turn_executed()
-	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = Game.current_tile_selected, cell_data = Game.tilesObj.get_cell(Game.current_tile_selected)})
-
+	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = Game.current_tile_selected, cell_data = Game.tilesObj.get_cell(Game.current_tile_selected)})
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 func execute_open_build_window():
 	update_build_menu()
 
 func gui_urbanizar_tile():
-	if !is_local_player_turn():
+	if !is_local_player_turn() or !can_execute_action():
 		return
 	var cell_data: Dictionary = Game.tilesObj.get_cell(Game.current_tile_selected)
 	
@@ -656,9 +671,11 @@ func gui_urbanizar_tile():
 	if tileTypeData.improve_prize > Game.tilesObj.get_total_gold(Game.current_player_turn):
 		print("Not enough money to improve!")
 		return
+	Game.tilesObj.update_sync_data()
 	Game.tilesObj.upgrade_tile(Game.current_tile_selected)
 	action_in_turn_executed()
-	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = Game.current_tile_selected, cell_data = Game.tilesObj.get_cell(Game.current_tile_selected)})
+	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = Game.current_tile_selected, cell_data = Game.tilesObj.get_cell(Game.current_tile_selected)})
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 	$UI/ActionsMenu/InGameTileActions.visible = false
 
 func update_troops_move_data( var index: int ):
@@ -680,20 +697,22 @@ func update_troops_move_data( var index: int ):
 			break
 
 func execute_accept_tiles_actions():
-	if !is_local_player_turn():
+	if !is_local_player_turn() or !can_execute_action():
 		return
+	Game.tilesObj.update_sync_data()
 	execute_tile_action()
 	action_in_turn_executed()
-	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = Game.interactTileSelected, cell_data = Game.tilesObj.get_cell(Game.interactTileSelected)})
-	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = Game.nextInteractTileSelected, cell_data = Game.tilesObj.get_cell(Game.nextInteractTileSelected)})
+	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = Game.interactTileSelected, cell_data = Game.tilesObj.get_cell(Game.interactTileSelected)})
+	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = Game.nextInteractTileSelected, cell_data = Game.tilesObj.get_cell(Game.nextInteractTileSelected)})
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 
 func action_in_turn_executed():
 	if Game.current_game_status != Game.STATUS.GAME_STARTED:
 		return
+	actions_available-=1
 	if Game.Network.is_client() and is_local_player_turn():
 		Game.Network.net_send_event(self.node_id, NET_EVENTS.CLIENT_USE_ACTION, null)
 		return
-	actions_available-=1
 	server_send_game_info()
 	if actions_available <= 0:
 		move_to_next_player_turn()
@@ -738,15 +757,18 @@ func execute_btn_finish_turn():
 		move_to_next_player_turn()
 
 func execute_give_extra_gold():
-	if !is_local_player_turn():
+	if !is_local_player_turn() or !have_selection_points_left():
 		return
+	Game.tilesObj.update_sync_data()
 	Game.tilesObj.add_cell_gold(Game.current_tile_selected, 10)
 	use_selection_point()
-	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = Game.current_tile_selected, cell_data = Game.tilesObj.get_cell(Game.current_tile_selected)})
+	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = Game.current_tile_selected, cell_data = Game.tilesObj.get_cell(Game.current_tile_selected)})
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 
 func execute_add_extra_troops():
-	if !is_local_player_turn():
+	if !is_local_player_turn() or !have_selection_points_left():
 		return
+	Game.tilesObj.update_sync_data()
 	var extraRecruits: Dictionary = {
 		owner = Game.current_player_turn,
 		troop_id = Game.troopTypes.getIDByName("recluta"),
@@ -754,13 +776,14 @@ func execute_add_extra_troops():
 	}
 	Game.tilesObj.add_troops(Game.current_tile_selected, extraRecruits)
 	use_selection_point()
-	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = Game.current_tile_selected, cell_data = Game.tilesObj.get_cell(Game.current_tile_selected)})
+	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = Game.current_tile_selected, cell_data = Game.tilesObj.get_cell(Game.current_tile_selected)})
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 
 func use_selection_point():
-	if Game.Network.is_client() and Game.playersData[Game.current_player_turn].selectLeft > 0:
+	Game.playersData[Game.current_player_turn].selectLeft-=1
+	if Game.Network.is_client() and Game.playersData[Game.current_player_turn].selectLeft >= 0:
 		Game.Network.net_send_event(self.node_id, NET_EVENTS.CLIENT_USE_POINT, null)
 		return
-	Game.playersData[Game.current_player_turn].selectLeft-=1
 	server_send_game_info()
 	if Game.playersData[Game.current_player_turn].selectLeft == 0: 
 		move_to_next_player_turn()
@@ -806,7 +829,8 @@ func server_process_boop(boopData) -> void:
 func server_process_event(eventId : int, eventData) -> void:
 	match eventId:
 		NET_EVENTS.UPDATE_TILE_DATA:
-			Game.tilesObj.set_sync_cell_data(eventData.cell, eventData.cell_data)
+			Game.tilesObj.set_sync_data(eventData.dictArray)
+			#Game.tilesObj.set_sync_cell_data(eventData.cell, eventData.cell_data)
 		NET_EVENTS.CLIENT_USE_POINT:
 			use_selection_point()
 		NET_EVENTS.CLIENT_USE_ACTION:
@@ -820,7 +844,8 @@ func server_process_event(eventId : int, eventData) -> void:
 func client_process_event(eventId : int, eventData) -> void:
 	match eventId:
 		NET_EVENTS.UPDATE_TILE_DATA:
-			Game.tilesObj.set_sync_cell_data(eventData.cell, eventData.cell_data)
+			Game.tilesObj.set_sync_data(eventData.dictArray)
+			#Game.tilesObj.set_sync_cell_data(eventData.cell, eventData.cell_data)
 		NET_EVENTS.SERVER_SEND_DELTA_TILES:
 			Game.tilesObj.set_sync_data(eventData.dictArray)
 		NET_EVENTS.SERVER_UPDATE_GAME_INFO:

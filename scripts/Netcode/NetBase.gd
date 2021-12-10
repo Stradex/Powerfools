@@ -266,35 +266,39 @@ func net_send_event(entityId, eventId, eventData=null, unreliable = false) -> vo
 
 func client_send_event(entityId, eventId, eventData=null, unreliable = false) -> void:
 	print("client sending event...")
+	var eventTime: int = OS.get_ticks_msec()
 	if is_client():
 		if unreliable: # When it is not vital to the event to reach the server (not recommended unless necessary)
-			send_rpc_unreliable_id(SERVER_NETID, "server_process_event", [entityId, eventId, eventData])
+			send_rpc_unreliable_id(SERVER_NETID, "server_process_event", [entityId, eventId, eventTime, eventData])
 		else:
-			send_rpc_id(SERVER_NETID, "server_process_event", [entityId, eventId, eventData])
+			send_rpc_id(SERVER_NETID, "server_process_event", [entityId, eventId, eventTime, eventData])
 
 func server_send_event(entityId, eventId, eventData=null, unreliable = false, saveEvent = false) -> void:
 	print("server sending event...")
+	var eventTime: int = OS.get_ticks_msec()
 	if is_server():
 		if saveEvent:
 			save_event_to_list(entityId, eventId, eventData, unreliable)
 		if unreliable: # When it is not vital to the event to reach the server (not recommended unless necessary)
-			send_rpc_unreliable("client_process_event", [entityId, eventId, eventData])
+			send_rpc_unreliable("client_process_event", [entityId, eventId, eventTime, eventData])
 		else:
-			send_rpc("client_process_event", [entityId, eventId, eventData])
+			send_rpc("client_process_event", [entityId, eventId, eventTime, eventData])
 
-func server_process_event(entityId, eventId, eventData) -> void:
+func server_process_event(entityId, eventId, eventTime, eventData) -> void:
 	if !is_server():
 		return
 	if entityId < netentities.size() && netentities[entityId] && netentities[entityId].is_inside_tree():
 		if netentities[entityId].has_method("server_process_event"):
-			netentities[entityId].server_process_event(eventId, eventData)
+			netentities[entityId].NetBoop.update_event_data({event_id = eventId, event_time = eventTime, event_data = eventData})
+			netentities[entityId].server_process_event(eventId, netentities[entityId].NetBoop.get_event_data(eventId))
 			
-func client_process_event(entityId, eventId, eventData) -> void:
+func client_process_event(entityId, eventId, eventTime, eventData) -> void:
 	if !is_client():
 		return
 	if entityId < netentities.size() && netentities[entityId] && netentities[entityId].is_inside_tree():
 		if netentities[entityId].has_method("client_process_event"):
-			netentities[entityId].client_process_event(eventId, eventData)
+			netentities[entityId].NetBoop.update_event_data({event_id = eventId, event_time = eventTime, event_data = eventData})
+			netentities[entityId].client_process_event(eventId, netentities[entityId].NetBoop.get_event_data(eventId))
 
 #######################
 # NETWORK RPC METHODS #
