@@ -35,6 +35,7 @@ var default_tile: Dictionary = {
 	upcomingTroops = [] #array with all the upcoming troops. DATA: turns to wait, owner, troop_id and amount
 }
 
+var old_tiles_data: Array = []
 var tiles_data: Array = []
 var tile_types_obj = null
 var troop_types_obj = null
@@ -47,11 +48,14 @@ func _init(init_tile_size: Vector2, default_tile_id: int, init_tile_types_obj, i
 	troop_types_obj = init_troop_types_obj
 	building_types_obj = init_building_types_obj
 	tiles_data = []
+	old_tiles_data = []
 	default_tile.tile_id = default_tile_id
 	for x in range(tile_size.x):
 		tiles_data.append([])
 		for y in range(tile_size.y):
 			tiles_data[x].append(default_tile.duplicate(true))
+	
+	old_tiles_data = tiles_data.duplicate(true)
 ################
 #	BOOLEANS   #
 ################
@@ -434,15 +438,89 @@ func buy_building(tile_pos: Vector2, var buildTypeId: int):
 # NETCODE STUFF #
 #################
 
+func arrays_contents_are_equal(arrayA: Array, arrayB: Array) -> bool:
+	var arrayASize: int = arrayA.size()
+	var arrayBSize: int = arrayB.size()
+	if arrayASize != arrayBSize:
+		return false
+	for i in range(arrayASize):
+		if typeof(arrayA[i]) != typeof(arrayA[i]):
+			return false
+		if typeof(arrayA[i]) == TYPE_DICTIONARY:
+			if dicts_are_equal(arrayA[i], arrayB[i]):
+				continue
+			else:
+				return false
+		if typeof(arrayA[i]) == TYPE_ARRAY:
+			if arrays_contents_are_equal(arrayA[i], arrayB[i]):
+				continue
+			else:
+				return false
+		if arrayA[i] != arrayB[i]:
+			return false
+	return true
+
+func dicts_are_equal(dictA: Dictionary, dictB: Dictionary) -> bool:
+	for key in dictA:
+		if !dictB.has(key):
+			return false
+		if typeof(dictA[key]) != typeof(dictB[key]):
+			return false
+		if  typeof(dictA[key]) == TYPE_DICTIONARY:
+			if dicts_are_equal(dictA[key], dictB[key]):
+				continue
+			else:
+				return false
+		if  typeof(dictA[key]) == TYPE_ARRAY:
+			if arrays_contents_are_equal(dictA[key], dictB[key]):
+				continue
+			else:
+				return false
+		if dictB[key] != dictA[key]:
+			return false
+			
+	for key in dictB:
+		if !dictA.has(key):
+			return false
+		if typeof(dictA[key]) != typeof(dictB[key]):
+			return false
+		if  typeof(dictA[key]) == TYPE_DICTIONARY:
+			if dicts_are_equal(dictA[key], dictB[key]):
+				continue
+			else:
+				return false
+		if  typeof(dictA[key]) == TYPE_ARRAY:
+			if arrays_contents_are_equal(dictA[key], dictB[key]):
+				continue
+			else:
+				return false
+		if dictB[key] != dictA[key]:
+			return false
+
+	return true; #they are totally equal
+
 func set_sync_cell_data(cell: Vector2, cell_data: Dictionary) -> void:
 	tiles_data[cell.x][cell.y].troops.clear()
 	tiles_data[cell.x][cell.y].upcomingTroops.clear()
 	tiles_data[cell.x][cell.y] = cell_data.duplicate(true)
 
-func get_sync_data() -> Dictionary: #FIXME: Optimize (try to use delta data changes)
-	return { net_tile_size = tile_size, net_tile_data = tiles_data.duplicate( true ) }
+func get_sync_data() -> Array: #FIXME: Optimize (try to use delta data changes)
+	var cellsToSync: Array = []
+	for x in range(tile_size.x):
+		for y in range(tile_size.y):
+			if old_tiles_data.size() <= x or old_tiles_data[x].size() <= y:
+				continue
+			if !dicts_are_equal(tiles_data[x][y], old_tiles_data[x][y]):
+				cellsToSync.append({ cell_pos = Vector2(x, y), cell_data = tiles_data[x][y].duplicate( true ) })
+	print( cellsToSync.size() )
+	old_tiles_data = tiles_data.duplicate( true )
+	return cellsToSync
 
-func set_sync_data( dictData: Dictionary ) -> void:
-	clear()
-	tile_size = dictData.net_tile_size
-	tiles_data = dictData.net_tile_data.duplicate(true)
+func set_sync_data( dictArray: Array ) -> void:
+	for cellData in dictArray:
+		var cell: Vector2 = cellData.cell_pos
+		var cell_info = cellData.cell_data
+		set_sync_cell_data(cell, cell_info)
+
+#func get_delta( cell: Vector2 ) -> void:
+	

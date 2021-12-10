@@ -28,6 +28,8 @@ enum NET_EVENTS {
 	CLIENT_USE_POINT,
 	CLIENT_USE_ACTION,
 	CLIENT_TURN_END,
+	SERVER_SEND_DELTA_TILES,
+	SERVER_UPDATE_GAME_INFO
 	MAX_EVENTS 
 };
 
@@ -149,6 +151,10 @@ func pre_game_interact():
 		use_selection_point()
 
 func change_game_status(new_status: int) -> void:
+	var status_changed: bool = false
+	if new_status != Game.current_game_status:
+		status_changed = true
+		server_send_game_info()
 	Game.current_game_status = new_status
 	match new_status:
 		Game.STATUS.PRE_GAME:
@@ -157,8 +163,10 @@ func change_game_status(new_status: int) -> void:
 		Game.STATUS.GAME_STARTED:
 			$UI/HUD/PreGameInfo.visible = false
 			$UI/HUD/GameInfo.visible = true
-			process_unused_tiles()
-	print("Game Status changed to value: " + str(new_status))
+			if status_changed:
+				process_unused_tiles()
+	if status_changed:
+		print("Game Status changed to value: " + str(new_status))
 
 func process_unused_tiles() -> void:
 	if Game.Network.is_client():
@@ -167,6 +175,8 @@ func process_unused_tiles() -> void:
 		for y in range(Game.tile_map_size.y):
 			if !Game.tilesObj.is_owned_by_player(Vector2(x, y)):
 				add_tribal_society_to_tile(Vector2(x, y))
+	if Game.Network.is_server():
+		Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = Game.tilesObj.get_sync_data() })
 
 func game_on() -> void:
 	if Game.Network.is_client():
@@ -195,11 +205,14 @@ func move_to_next_player_turn() -> void:
 		if i != Game.current_player_turn and Game.playersData[i].alive:
 			Game.current_player_turn = i
 			update_actions_available()
+			server_send_game_info()
 			print("Player " + str(i) + " turn")
 			return
 		i+=1
 
 	update_actions_available()
+	server_send_game_info()
+
 
 func update_actions_available() -> void:
 	if Game.current_game_status == Game.STATUS.GAME_STARTED:
@@ -221,6 +234,8 @@ func process_tiles_turn_end(playerNumber: int) -> void:
 			process_tile_recruitments(Vector2(x, y), playerNumber)
 			process_tile_battles(Vector2(x, y))
 			update_tile_owner(Vector2(x, y))
+	if Game.Network.is_server():
+		Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = Game.tilesObj.get_sync_data() })
 
 
 func update_tile_owner(cell: Vector2) -> void:
@@ -679,6 +694,7 @@ func action_in_turn_executed():
 		Game.Network.net_send_event(self.node_id, NET_EVENTS.CLIENT_USE_ACTION, null)
 		return
 	actions_available-=1
+	server_send_game_info()
 	if actions_available <= 0:
 		move_to_next_player_turn()
 		
@@ -741,10 +757,11 @@ func execute_add_extra_troops():
 	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = Game.current_tile_selected, cell_data = Game.tilesObj.get_cell(Game.current_tile_selected)})
 
 func use_selection_point():
-	if Game.Network.is_client():
+	if Game.Network.is_client() and Game.playersData[Game.current_player_turn].selectLeft > 0:
 		Game.Network.net_send_event(self.node_id, NET_EVENTS.CLIENT_USE_POINT, null)
 		return
 	Game.playersData[Game.current_player_turn].selectLeft-=1
+	server_send_game_info()
 	if Game.playersData[Game.current_player_turn].selectLeft == 0: 
 		move_to_next_player_turn()
 
@@ -752,8 +769,18 @@ func use_selection_point():
 # NETCODE #
 ###########
 
+func server_send_game_info() -> void:
+	if !Game.Network.is_server():
+		return
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_UPDATE_GAME_INFO, {
+		game_status = Game.current_game_status,
+		player_turn = Game.current_player_turn,
+		select_left = Game.playersData[Game.current_player_turn].selectLeft,
+		actions_left = actions_available
+	})
+	
 #OPTIMIZAR NETCODE, USAR EVENTOS NO SNAPSHOTS!, Y USAR LO MINIMO Y NECESARIO
-
+"""
 func server_send_boop() -> Dictionary:
 	var boopData = { player_turn = Game.current_player_turn, players_data = Game.playersData, game_status = Game.current_game_status, net_actions_available = actions_available, tile_info = Game.tilesObj.get_sync_data() }
 	return boopData
@@ -761,6 +788,7 @@ func server_send_boop() -> Dictionary:
 func client_send_boop() -> Dictionary:
 	var boopData = { }
 	return boopData
+
 
 func client_process_boop(boopData) -> void:
 	actions_available = boopData.net_actions_available
@@ -773,6 +801,7 @@ func client_process_boop(boopData) -> void:
 
 func server_process_boop(boopData) -> void:
 	pass
+"""
 
 func server_process_event(eventId : int, eventData) -> void:
 	match eventId:
@@ -791,7 +820,13 @@ func server_process_event(eventId : int, eventData) -> void:
 func client_process_event(eventId : int, eventData) -> void:
 	match eventId:
 		NET_EVENTS.UPDATE_TILE_DATA:
-			#Game.set_sync_cell_data(eventData.cell, eventData.cell_data)
-			print("Nothing...")
+			Game.tilesObj.set_sync_cell_data(eventData.cell, eventData.cell_data)
+		NET_EVENTS.SERVER_SEND_DELTA_TILES:
+			Game.tilesObj.set_sync_data(eventData.dictArray)
+		NET_EVENTS.SERVER_UPDATE_GAME_INFO:
+			change_game_status(eventData.game_status )
+			Game.current_player_turn = eventData.player_turn
+			Game.playersData[Game.current_player_turn].selectLeft = eventData.select_left
+			actions_available = eventData.actions_left
 		_:
 			print("Warning: Received unkwown event");
