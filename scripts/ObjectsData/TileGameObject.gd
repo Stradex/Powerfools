@@ -563,7 +563,6 @@ func merge_sync_arrays(oldSyncArray: Array, newSyncArray: Array) -> Array:
 	
 	return oldSyncArray
 		
-
 func set_sync_data( dictArray: Array ) -> void:
 	for cellData in dictArray:
 		var cell: Vector2 = cellData.cell_pos

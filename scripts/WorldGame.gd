@@ -217,7 +217,7 @@ func get_next_player_turn() -> int:
 func move_to_next_player_turn() -> void: 
 	if Game.Network.is_client() and is_local_player_turn():
 		Game.Network.net_send_event(self.node_id, NET_EVENTS.CLIENT_TURN_END, {player_turn = Game.current_player_turn})
-	if Game.current_game_status == Game.STATUS.GAME_STARTED:
+	if Game.current_game_status == Game.STATUS.GAME_STARTED and !Game.Network.is_client():
 		process_turn_end(Game.current_player_turn)
 	for i in range(Game.playersData.size()):
 		if i != Game.current_player_turn and Game.playersData[i].alive:
@@ -254,9 +254,15 @@ func process_tiles_turn_end(playerNumber: int) -> void:
 			process_tile_battles(Vector2(x, y))
 			update_tile_owner(Vector2(x, y))
 	if Game.Network.is_server():
-		var sync_arrayA: Array = Game.tilesObj.get_sync_neighbors(get_next_player_turn())
+		var next_player_turn: int = get_next_player_turn()
+		Game.current_player_turn
+		var sync_arrayA: Array = Game.tilesObj.get_sync_neighbors(next_player_turn)
 		var sync_arrayB: Array = Game.tilesObj.get_sync_data()
+
 		var merged_sync_arrays: Array = Game.tilesObj.merge_sync_arrays(sync_arrayA, sync_arrayB)
+		if next_player_turn != Game.current_player_turn:
+			var sync_arrayC: Array = Game.tilesObj.get_sync_neighbors(Game.current_player_turn)
+			merged_sync_arrays = Game.tilesObj.merge_sync_arrays(merged_sync_arrays.duplicate(true), sync_arrayC)
 		Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = merged_sync_arrays })
 	Game.tilesObj.save_sync_data()
 
