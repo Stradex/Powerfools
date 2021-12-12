@@ -235,6 +235,91 @@ __meta__ = {
 "_edit_use_anchors_": false
 }
 
+[node name="InGameMenu" type="Control" parent="UI/ActionsMenu"]
+visible = false
+anchor_right = 1.0
+anchor_bottom = 1.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ColorRect" type="ColorRect" parent="UI/ActionsMenu/InGameMenu"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_right = 1236.0
+margin_bottom = 677.0
+color = Color( 0, 0, 0, 0.435294 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="VBoxContainer" type="VBoxContainer" parent="UI/ActionsMenu/InGameMenu"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 539.0
+margin_top = 308.0
+margin_right = 709.0
+margin_bottom = 390.0
+custom_constants/separation = 12
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Deshacer" type="TextureButton" parent="UI/ActionsMenu/InGameMenu/VBoxContainer"]
+margin_right = 210.0
+margin_bottom = 55.0
+texture_normal = ExtResource( 5 )
+texture_pressed = ExtResource( 6 )
+texture_hover = ExtResource( 7 )
+texture_focused = ExtResource( 7 )
+
+[node name="CenterContainer" type="CenterContainer" parent="UI/ActionsMenu/InGameMenu/VBoxContainer/Deshacer"]
+margin_right = 210.0
+margin_bottom = 56.0
+mouse_filter = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="UI/ActionsMenu/InGameMenu/VBoxContainer/Deshacer/CenterContainer"]
+margin_left = 45.0
+margin_top = 12.0
+margin_right = 165.0
+margin_bottom = 43.0
+custom_fonts/font = SubResource( 1 )
+text = "DESHACER"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Cancelar" type="TextureButton" parent="UI/ActionsMenu/InGameMenu/VBoxContainer"]
+margin_top = 67.0
+margin_right = 210.0
+margin_bottom = 122.0
+texture_normal = ExtResource( 5 )
+texture_pressed = ExtResource( 6 )
+texture_hover = ExtResource( 7 )
+texture_focused = ExtResource( 7 )
+
+[node name="CenterContainer" type="CenterContainer" parent="UI/ActionsMenu/InGameMenu/VBoxContainer/Cancelar"]
+margin_right = 210.0
+margin_bottom = 56.0
+mouse_filter = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="UI/ActionsMenu/InGameMenu/VBoxContainer/Cancelar/CenterContainer"]
+margin_left = 45.0
+margin_top = 12.0
+margin_right = 165.0
+margin_bottom = 43.0
+custom_fonts/font = SubResource( 1 )
+text = "CANCELAR"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
 [node name="BuildingsMenu" type="Control" parent="UI/ActionsMenu"]
 visible = false
 anchor_right = 1.0
@@ -377,9 +462,9 @@ __meta__ = {
 anchor_right = 1.0
 anchor_bottom = 1.0
 margin_left = 539.0
-margin_top = 206.0
-margin_right = -531.0
-margin_bottom = -191.0
+margin_top = 172.0
+margin_right = 709.0
+margin_bottom = 522.0
 custom_constants/separation = 12
 __meta__ = {
 "_edit_use_anchors_": false
@@ -412,10 +497,38 @@ __meta__ = {
 "_edit_use_anchors_": false
 }
 
-[node name="UrbanizarTile" type="TextureButton" parent="UI/ActionsMenu/InGameTileActions/VBoxContainer"]
+[node name="Editar" type="TextureButton" parent="UI/ActionsMenu/InGameTileActions/VBoxContainer"]
 margin_top = 67.0
 margin_right = 210.0
 margin_bottom = 122.0
+texture_normal = ExtResource( 5 )
+texture_pressed = ExtResource( 6 )
+texture_hover = ExtResource( 7 )
+texture_focused = ExtResource( 7 )
+
+[node name="CenterContainer" type="CenterContainer" parent="UI/ActionsMenu/InGameTileActions/VBoxContainer/Editar"]
+margin_right = 210.0
+margin_bottom = 56.0
+mouse_filter = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="UI/ActionsMenu/InGameTileActions/VBoxContainer/Editar/CenterContainer"]
+margin_left = 61.0
+margin_top = 12.0
+margin_right = 148.0
+margin_bottom = 43.0
+custom_fonts/font = SubResource( 1 )
+text = "EDITAR"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="UrbanizarTile" type="TextureButton" parent="UI/ActionsMenu/InGameTileActions/VBoxContainer"]
+margin_top = 134.0
+margin_right = 210.0
+margin_bottom = 189.0
 texture_normal = ExtResource( 5 )
 texture_pressed = ExtResource( 6 )
 texture_hover = ExtResource( 7 )
@@ -441,9 +554,9 @@ __meta__ = {
 }
 
 [node name="Construir" type="TextureButton" parent="UI/ActionsMenu/InGameTileActions/VBoxContainer"]
-margin_top = 134.0
+margin_top = 201.0
 margin_right = 210.0
-margin_bottom = 189.0
+margin_bottom = 256.0
 texture_normal = ExtResource( 5 )
 texture_pressed = ExtResource( 6 )
 texture_hover = ExtResource( 7 )
@@ -469,9 +582,9 @@ __meta__ = {
 }
 
 [node name="Reclutar" type="TextureButton" parent="UI/ActionsMenu/InGameTileActions/VBoxContainer"]
-margin_top = 201.0
+margin_top = 268.0
 margin_right = 210.0
-margin_bottom = 256.0
+margin_bottom = 323.0
 texture_normal = ExtResource( 5 )
 texture_pressed = ExtResource( 6 )
 texture_hover = ExtResource( 7 )
@@ -497,9 +610,9 @@ __meta__ = {
 }
 
 [node name="Cancelar" type="TextureButton" parent="UI/ActionsMenu/InGameTileActions/VBoxContainer"]
-margin_top = 268.0
+margin_top = 335.0
 margin_right = 210.0
-margin_bottom = 323.0
+margin_bottom = 390.0
 texture_normal = ExtResource( 5 )
 texture_pressed = ExtResource( 6 )
 texture_hover = ExtResource( 7 )
@@ -701,6 +814,119 @@ __meta__ = {
 }
 
 [node name="Label" type="Label" parent="UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer/Cancelar/CenterContainer"]
+margin_left = 45.0
+margin_top = 12.0
+margin_right = 165.0
+margin_bottom = 43.0
+custom_fonts/font = SubResource( 1 )
+text = "CANCELAR"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="EditTile" type="Control" parent="UI/ActionsMenu"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ColorRect" type="ColorRect" parent="UI/ActionsMenu/EditTile"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_right = 1235.0
+margin_bottom = 676.0
+color = Color( 0, 0, 0, 0.435294 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="VBoxContainer" type="VBoxContainer" parent="UI/ActionsMenu/EditTile"]
+margin_left = 424.836
+margin_top = 280.767
+margin_right = 856.836
+margin_bottom = 469.767
+custom_constants/separation = 12
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="UI/ActionsMenu/EditTile/VBoxContainer"]
+margin_right = 432.0
+margin_bottom = 32.0
+rect_min_size = Vector2( 0, 32 )
+custom_constants/separation = 12
+
+[node name="Label" type="Label" parent="UI/ActionsMenu/EditTile/VBoxContainer/HBoxContainer2"]
+margin_top = 3.0
+margin_right = 95.0
+margin_bottom = 29.0
+custom_fonts/font = SubResource( 3 )
+text = "Nombre: "
+
+[node name="NombreTextEdit" type="TextEdit" parent="UI/ActionsMenu/EditTile/VBoxContainer/HBoxContainer2"]
+margin_left = 107.0
+margin_right = 407.0
+margin_bottom = 32.0
+rect_min_size = Vector2( 300, 30 )
+custom_fonts/font = SubResource( 4 )
+text = "Nombre"
+context_menu_enabled = false
+shortcut_keys_enabled = false
+virtual_keyboard_enabled = false
+selecting_enabled = false
+
+[node name="HBoxContainer" type="HBoxContainer" parent="UI/ActionsMenu/EditTile/VBoxContainer"]
+margin_top = 44.0
+margin_right = 432.0
+margin_bottom = 99.0
+custom_constants/separation = 12
+
+[node name="Aceptar" type="TextureButton" parent="UI/ActionsMenu/EditTile/VBoxContainer/HBoxContainer"]
+margin_right = 210.0
+margin_bottom = 55.0
+texture_normal = ExtResource( 5 )
+texture_pressed = ExtResource( 6 )
+texture_hover = ExtResource( 7 )
+texture_focused = ExtResource( 7 )
+
+[node name="CenterContainer" type="CenterContainer" parent="UI/ActionsMenu/EditTile/VBoxContainer/HBoxContainer/Aceptar"]
+margin_right = 210.0
+margin_bottom = 56.0
+mouse_filter = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="UI/ActionsMenu/EditTile/VBoxContainer/HBoxContainer/Aceptar/CenterContainer"]
+margin_left = 52.0
+margin_top = 12.0
+margin_right = 157.0
+margin_bottom = 43.0
+custom_fonts/font = SubResource( 1 )
+text = "ACEPTAR"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Cancelar" type="TextureButton" parent="UI/ActionsMenu/EditTile/VBoxContainer/HBoxContainer"]
+margin_left = 222.0
+margin_right = 432.0
+margin_bottom = 55.0
+texture_normal = ExtResource( 5 )
+texture_pressed = ExtResource( 6 )
+texture_hover = ExtResource( 7 )
+texture_focused = ExtResource( 7 )
+
+[node name="CenterContainer" type="CenterContainer" parent="UI/ActionsMenu/EditTile/VBoxContainer/HBoxContainer/Cancelar"]
+margin_right = 210.0
+margin_bottom = 56.0
+mouse_filter = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="UI/ActionsMenu/EditTile/VBoxContainer/HBoxContainer/Cancelar/CenterContainer"]
 margin_left = 45.0
 margin_top = 12.0
 margin_right = 165.0

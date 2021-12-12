@@ -32,14 +32,14 @@ func update_building_tiles() -> void:
 			var buildingImgToSet = -1
 			if Game.tilesObj.is_cell_in_battle(Vector2(x, y)):
 				$ConstructionTiles.set_cellv(Vector2(x, y), id_tile_battle)
-			elif Game.tilesObj.is_upgrading(Vector2(x, y)):
+			elif tile_cell_data.owner == player_mask and Game.tilesObj.is_upgrading(Vector2(x, y)):
 				$ConstructionTiles.set_cellv(Vector2(x, y), id_tile_upgrading)
 			else:
 				$ConstructionTiles.set_cellv(Vector2(x, y), -1)
 			
-			if Game.tilesObj.is_building(Vector2(x, y)):
+			if tile_cell_data.owner == player_mask and Game.tilesObj.is_building(Vector2(x, y)):
 				$BuildingTypesTiles.set_cellv(Vector2(x, y), id_tile_building_in_progress)
-			elif tile_cell_data.building_id >= 0:
+			elif tile_cell_data.owner == player_mask and tile_cell_data.building_id >= 0:
 				buildingImgToSet = $BuildingTypesTiles.tile_set.find_tile_by_name(Game.buildingTypes.getImg(tile_cell_data.building_id))
 				$BuildingTypesTiles.set_cellv(Vector2(x, y), buildingImgToSet)
 			else:
@@ -52,7 +52,10 @@ func update_building_tiles() -> void:
 			
 			$CivilianTiles.set_cellv(Vector2(x, y), get_civilians_tile_id(Vector2(x, y), player_mask))
 			$BuildingsTiles.set_cellv(Vector2(x, y), tileImgToSet)
-			$TroopsTiles.set_cellv(Vector2(x, y), get_troops_tile_id(Vector2(x, y), player_mask))
+			if tile_cell_data.owner == player_mask:
+				$TroopsTiles.set_cellv(Vector2(x, y), get_troops_tile_id(Vector2(x, y), player_mask))
+			else:
+				$TroopsTiles.set_cellv(Vector2(x, y), -1)
 
 func get_civilians_tile_id(tile_pos: Vector2, playerNumber: int) -> int:
 	var civilianCountInTile: int = Game.tilesObj.get_civilian_count(tile_pos, playerNumber)

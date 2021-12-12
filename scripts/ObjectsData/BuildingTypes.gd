@@ -1,6 +1,8 @@
 class_name BuildingTypesObject
 extends Object
 
+const BUILDINGS_FILES_NAME: String = "buildings.json"
+
 var BuildingTypes: Array
 
 var InvalidBuilding: Dictionary = {
@@ -52,3 +54,19 @@ func getByID(buildingID: int) -> Dictionary:
 
 func getList() -> Array:
 	return BuildingTypes.duplicate(true) #gives a copy so no one can fuck up the original list
+
+func load_from_file(folder: String, fileSystemObj: Object, troops_types_obj: Object) -> void:
+	var troopsImportedData: Dictionary = fileSystemObj.get_data_from_json(folder + "/" + BUILDINGS_FILES_NAME)
+	assert(troopsImportedData.has('buildings'))
+	for troopDict in troopsImportedData['buildings']:
+		add({
+			name = troopDict["name"],
+			buy_prize = troopDict["buy_prize"],
+			sell_prize = troopDict["sell_prize"],
+			deploy_prize = troopDict["deploy_prize"],
+			turns_to_build = troopDict["turns_to_build"],
+			id_troop_generate = troops_types_obj.getIDByName(troopDict["troop_to_generate"]),
+			building_img = troopDict["building_img"],
+			turns_to_deploy_troops = troopDict["turns_to_deploy_troops"], 
+			deploy_amount= troopDict["deploy_amount"] 
+		})

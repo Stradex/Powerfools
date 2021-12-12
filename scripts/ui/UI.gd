@@ -7,9 +7,14 @@ func init_gui(gameNode: Node):
 	init_menu_graphics()
 
 func init_button_signals():
+	$ActionsMenu/InGameTileActions/VBoxContainer/Editar.connect("pressed", self, "gui_open_edit_tile_window")
 	$ActionsMenu/InGameTileActions/VBoxContainer/Reclutar.connect("pressed", self, "gui_recruit_troops")
+	$ActionsMenu/EditTile/VBoxContainer/HBoxContainer/Aceptar.connect("pressed", self, "gui_change_tile_name")
+	$ActionsMenu/EditTile/VBoxContainer/HBoxContainer/Cancelar.connect("pressed", self, "gui_close_edit_tile_window")
 	$ActionsMenu/BuildingsMenu/VBoxContainer/Comprar.connect("pressed", self, "gui_buy_building")
 	$ActionsMenu/BuildingsMenu/VBoxContainer/Cancelar.connect("pressed", self, "gui_exit_build_window")
+	$ActionsMenu/InGameMenu/VBoxContainer/Cancelar.connect("pressed", self, "gui_exit_ingame_menu_window")
+	$ActionsMenu/InGameMenu/VBoxContainer/Deshacer.connect("pressed", self, "gui_undo_actions")
 	$ActionsMenu/InGameTileActions/VBoxContainer/Construir.connect("pressed", self, "gui_open_build_window")
 	$ActionsMenu/InGameTileActions/VBoxContainer/VenderTile.connect("pressed", self, "gui_vender_tile")
 	$ActionsMenu/InGameTileActions/VBoxContainer/UrbanizarTile.connect("pressed", world_game_node, "gui_urbanizar_tile")
@@ -25,16 +30,41 @@ func init_button_signals():
 	$ActionsMenu/TilesActions/VBoxContainer/HBoxContainer/Aceptar.connect("pressed", self, "accept_tiles_actions")
 
 func init_menu_graphics():
-	$ActionsMenu/InGameTileActions.visible = false
-	$ActionsMenu/ExtrasMenu.visible = false
-	$ActionsMenu/TilesActions.visible = false
-	$ActionsMenu/BuildingsMenu.visible = false
+	close_all_windows()
 	$HUD/GameInfo/Waiting.visible = false
 
 
 ###################################
 #	BUTTONS & SIGNALS
 ###################################
+
+func close_all_windows() -> void:
+	$ActionsMenu/InGameTileActions.visible = false
+	$ActionsMenu/ExtrasMenu.visible = false
+	$ActionsMenu/TilesActions.visible = false
+	$ActionsMenu/BuildingsMenu.visible = false
+	$ActionsMenu/InGameMenu.visible = false
+	$ActionsMenu/EditTile.visible = false
+
+func gui_open_edit_tile_window() -> void:
+	if !world_game_node.can_interact_with_menu():
+		return
+	close_all_windows()
+	$ActionsMenu/EditTile/VBoxContainer/HBoxContainer2/NombreTextEdit.text = str(Game.tilesObj.get_name(Game.current_tile_selected))
+	$ActionsMenu/EditTile.visible = true
+
+func gui_close_edit_tile_window() -> void:
+	close_all_windows()
+
+func gui_change_tile_name() -> void:
+	gui_close_edit_tile_window()
+	world_game_node.change_tile_name(Game.current_tile_selected, $ActionsMenu/EditTile/VBoxContainer/HBoxContainer2/NombreTextEdit.text)
+	
+
+func gui_undo_actions() -> void:
+	world_game_node.undo_actions()
+	gui_exit_ingame_menu_window()
+	
 
 func show_wait_for_player() -> void:
 	$HUD/GameInfo/Waiting.visible = true
@@ -45,7 +75,7 @@ func hide_wait_for_player() -> void:
 	$HUD/GameInfo/HBoxContainer3/FinishTurn.visible = true
 
 func is_a_menu_open() -> bool:
-	return $ActionsMenu/ExtrasMenu.visible or $ActionsMenu/InGameTileActions.visible or $ActionsMenu/TilesActions.visible or $ActionsMenu/BuildingsMenu.visible
+	return $ActionsMenu/EditTile.visible or $ActionsMenu/ExtrasMenu.visible or $ActionsMenu/InGameTileActions.visible or $ActionsMenu/TilesActions.visible or $ActionsMenu/BuildingsMenu.visible or $ActionsMenu/InGameMenu.visible
 
 func gui_recruit_troops():
 	world_game_node.execute_recruit_troops()
@@ -60,20 +90,25 @@ func gui_buy_building():
 	$ActionsMenu/BuildingsMenu.visible = false
 
 func gui_exit_build_window():
+	close_all_windows()
 	$ActionsMenu/ExtrasMenu.visible = true
-	$ActionsMenu/BuildingsMenu.visible = false
+
+func gui_exit_ingame_menu_window():
+	close_all_windows()
+
+func gui_open_ingame_menu_window():
+	close_all_windows()
+	$ActionsMenu/InGameMenu.visible = true
 
 func gui_open_build_window():
+	close_all_windows()
 	$ActionsMenu/BuildingsMenu.visible = true
-	$ActionsMenu/ExtrasMenu.visible = false
-	$ActionsMenu/InGameTileActions.visible = false
-	$ActionsMenu/TilesActions.visible = false
 	world_game_node.execute_open_build_window()
 
 func hide_tiles_actions():
 	if !world_game_node.can_interact_with_menu():
 		return
-	$ActionsMenu/TilesActions.visible = false
+	close_all_windows()
 
 func accept_tiles_actions():
 	if !world_game_node.can_interact_with_menu():

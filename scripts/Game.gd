@@ -10,12 +10,13 @@ const SCREEN_WIDTH: int = 1280
 const SCREEN_HEIGHT: int = 720
 const TILE_SIZE: int = 80
 const GAME_FPS: int = 4 # we really don't need to much higher FPS, this is mostly for game logic, not graphic stuff
-
+const DATA_FILES_FOLDER: String = "data";
 var current_turn: int = 0
 onready var troopTypes: TroopTypesObject = TroopTypesObject.new()
 onready var buildingTypes: BuildingTypesObject = BuildingTypesObject.new()
 onready var tileTypes: TilesTypesObject = TilesTypesObject.new()
 onready var Network: NetworkBase = NetworkBase.new()
+onready var FileSystem: FileSystemBase = FileSystemBase.new();
 var Boop_Object = preload("res://scripts/Netcode/Boop.gd");
 
 var tilesObj: TileGameObject
@@ -46,6 +47,7 @@ func _ready():
 	init_buildings_types()
 	Network.ready()
 	clear_players_data()
+	
 
 func init_players():
 	playersData.clear()
@@ -131,7 +133,9 @@ func init_tiles_types():
 
 func init_buildings_types():
 	buildingTypes.clearList()
+	buildingTypes.load_from_file(DATA_FILES_FOLDER, FileSystem, troopTypes)
 	#Adding buildings START
+	"""
 	buildingTypes.add({
 		name = "Campo Militar",
 		buy_prize = 50,
@@ -143,39 +147,12 @@ func init_buildings_types():
 		turns_to_deploy_troops = 3,
 		deploy_amount = 500
 	})
+	"""
 	#Adding builinds END
 
 func init_troops_types():
 	troopTypes.clearList()
-	
-	#Adding troops start
-	troopTypes.add({
-		name = "civil",
-		no_building = true,
-		can_be_bought = false,
-		is_warrior = false,
-		cost_to_make = 0,
-		damage = Vector2(0.2, 0.5),
-		idle_cost_per_turn = 0,
-		moving_cost_per_turn = 1,
-		battle_cost_per_turn = 1,
-		health = 1
-	})
-	
-	#Tropa recluta default
-	troopTypes.add({
-		name = "recluta",
-		no_building = false,
-		can_be_bought = true,
-		is_warrior = true,
-		cost_to_make = 5,
-		damage = Vector2(1, 3),
-		idle_cost_per_turn = 1,
-		moving_cost_per_turn = 1.5,
-		battle_cost_per_turn = 2,
-		health = 3
-	})
-	#Adding troops ends
+	troopTypes.load_from_file(DATA_FILES_FOLDER, FileSystem)
 
 func clear_players_data():
 	for i in range(playersData.size()):

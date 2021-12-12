@@ -1,0 +1,43 @@
+{
+	"troops": [
+		{
+			"name":"civil",
+			"no_building":true,
+			"can_be_bought":false,
+			"is_warrior":false,
+			"cost_to_make":0,
+			"damage_min":0.2,
+			"damage_max":0.5,
+			"idle_cost_per_turn":0,
+			"moving_cost_per_turn":1,
+			"battle_cost_per_turn":1,
+			"health":1
+		},
+		{
+			"name":"recluta",
+			"no_building":false,
+			"can_be_bought":true,
+			"is_warrior":true,
+			"cost_to_make":5,
+			"damage_min":1.0,
+			"damage_max":3.0,
+			"idle_cost_per_turn":1,
+			"moving_cost_per_turn":1.5,
+			"battle_cost_per_turn":2,
+			"health":3
+		},
+		{
+			"name":"elite",
+			"no_building":false,
+			"can_be_bought":true,
+			"is_warrior":true,
+			"cost_to_make":15,
+			"damage_min":5.0,
+			"damage_max":9.0,
+			"idle_cost_per_turn":3,
+			"moving_cost_per_turn":4.5,
+			"battle_cost_per_turn":6,
+			"health":7
+		}
+	]
+}

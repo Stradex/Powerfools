@@ -1,6 +1,14 @@
 class_name WorldGameNode
 extends Node2D
 
+# Civiles no tienen que poder invadir!, solo defender.
+# Tropas se pueden mover maximo 5 casilleros solamente, no más.
+# Implementar los costos de guerra (tratar de evitar que sea caro invadir)
+# A la hora de mover de mover tropas, que los civiles aparezcan al final
+# No mostrar tropas a mover si la cantidad es 0
+# Sincronizar los nombres de las ciudades de los clientes
+# Guardar y cargar partida el multiplayer
+
 const MIN_ACTIONS_PER_TURN: int = 3
 const MAX_DEPLOYEMENTS_PER_TILE: int = 1
 const MININUM_TROOPS_TO_FIGHT: int = 5
@@ -13,10 +21,16 @@ var player_can_interact: bool = true
 var actions_available: int = MIN_ACTIONS_PER_TURN
 var rng: RandomNumberGenerator = RandomNumberGenerator.new();
 var node_id: int = -1
+var undo_available: bool = true
 
 onready var tween: Tween
 onready var net_sync_timer: Timer
 var NetBoop = Game.Boop_Object.new(self);
+
+var saved_player_info: Dictionary = {
+	points_to_select_left = 0,
+	actions_left = 0
+}
 
 var actionTileToDo: Dictionary = {
 	goldToSend = 0,
@@ -29,7 +43,8 @@ enum NET_EVENTS {
 	CLIENT_USE_ACTION,
 	CLIENT_TURN_END,
 	SERVER_SEND_DELTA_TILES,
-	SERVER_UPDATE_GAME_INFO
+	SERVER_UPDATE_GAME_INFO,
+	CLIENT_SEND_GAME_INFO,
 	MAX_EVENTS 
 }
 
@@ -93,9 +108,7 @@ func _input(event):
 	if Input.is_action_just_pressed("toggle_civ_info"):
 		$UI/HUD/CivilizationInfo.visible = !$UI/HUD/CivilizationInfo.visible
 	
-	if !is_local_player_turn():
-		return
-	
+
 	if player_in_menu or !player_can_interact:
 		return
 		
@@ -105,12 +118,18 @@ func _input(event):
 				pass
 			Game.STATUS.GAME_STARTED:
 				game_tile_show_info()
+
+	if !is_local_player_turn():
+		return
+
 	if Input.is_action_just_pressed("interact"):
 		match Game.current_game_status:
 			Game.STATUS.PRE_GAME:
 				pre_game_interact()
 			Game.STATUS.GAME_STARTED:
 				game_interact()
+	if Input.is_action_just_pressed("toggle_ingame_menu"):
+		$UI.gui_open_ingame_menu_window()
 
 ###################################
 #	INIT FUNCTIONS
@@ -187,6 +206,7 @@ func process_unused_tiles() -> void:
 		for y in range(Game.tile_map_size.y):
 			if !Game.tilesObj.is_owned_by_player(Vector2(x, y)):
 				add_tribal_society_to_tile(Vector2(x, y))
+	save_player_info() #Avoid weird bug
 	Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = Game.tilesObj.get_sync_neighbors(Game.current_player_turn) })
 	#Game.tilesObj.save_sync_data()
 
@@ -222,12 +242,14 @@ func move_to_next_player_turn() -> void:
 	for i in range(Game.playersData.size()):
 		if i != Game.current_player_turn and Game.playersData[i].alive:
 			Game.current_player_turn = i
+			save_player_info()
 			update_actions_available()
 			server_send_game_info()
 			print("Player " + str(i) + " turn")
 			return
 		i+=1
 
+	save_player_info()
 	update_actions_available()
 	server_send_game_info()
 
@@ -255,7 +277,6 @@ func process_tiles_turn_end(playerNumber: int) -> void:
 			update_tile_owner(Vector2(x, y))
 	if Game.Network.is_server():
 		var next_player_turn: int = get_next_player_turn()
-		Game.current_player_turn
 		var sync_arrayA: Array = Game.tilesObj.get_sync_neighbors(next_player_turn)
 		var sync_arrayB: Array = Game.tilesObj.get_sync_data()
 
@@ -323,6 +344,8 @@ func process_tile_battles(tile_pos: Vector2) -> void:
 			var percentOfDamageToApply: float = float(enemiesWarriorStrength[i]/enemiesTotalStrength)
 			var damageToApplyToThisTroop: float = initial_damage_to_do*percentOfDamageToApply
 			var troopsToKill: int = round(damageToApplyToThisTroop/individualTroopHealth)
+			if troopsToKill > troopDict.amount:
+				 troopsToKill = troopDict.amount
 			Game.tilesObj.set_troops_amount_in_cell(tile_pos, troopDict.owner, troopDict.troop_id, troopDict.amount-troopsToKill)
 			
 			if !Game.troopTypes.getByID(troopDict.troop_id).is_warrior: #adding to the Civilians Killed array for future slaves in case of battle is finished this round
@@ -513,6 +536,7 @@ func allow_player_interact():
 
 func give_player_capital(playerNumber: int, tile_pos: Vector2) ->void:
 	Game.tilesObj.update_sync_data()
+	save_player_info()
 	var starting_population: Dictionary = {
 		owner = playerNumber,
 		troop_id = Game.troopTypes.getIDByName("civil"),
@@ -525,6 +549,7 @@ func give_player_capital(playerNumber: int, tile_pos: Vector2) ->void:
 
 func give_player_rural(playerNumber: int, tile_pos: Vector2) ->void:
 	Game.tilesObj.update_sync_data()
+	save_player_info()
 	var starting_population: Dictionary = {
 		owner = playerNumber,
 		troop_id = Game.troopTypes.getIDByName("civil"),
@@ -556,6 +581,15 @@ func destroy_player(playerNumber: int):
 				Game.tilesObj.clear_cell(Vector2(x, y))
 	Game.playersData[playerNumber].alive = false
 	print("PLAYER " + str(playerNumber) + " LOST!")
+
+func change_tile_name(tile_pos: Vector2, new_name: String) -> void:
+	var player_mask: int = Game.current_player_turn
+	if Game.Network.is_multiplayer():
+		player_mask = Game.get_local_player_number()
+	if !Game.tilesObj.belongs_to_player(Vector2(tile_pos.x, tile_pos.y), player_mask):
+		return
+	Game.tilesObj.set_name(Vector2(tile_pos.x, tile_pos.y), new_name)
+	# EDIT Sincronizar online
 
 ###################################
 #	UI 
@@ -625,6 +659,9 @@ func game_tile_show_info():
 	if !Game.tilesObj.belongs_to_player(Game.current_tile_selected, Game.current_player_turn):
 		return
 	
+	if !is_local_player_turn():
+		$UI/ActionsMenu/InGameTileActions.visible = true
+		return
 	var cell_data: Dictionary = Game.tilesObj.get_cell(Game.current_tile_selected)
 	
 	$UI/ActionsMenu/InGameTileActions/VBoxContainer/VenderTile.visible = Game.tileTypes.canBeSold(cell_data.tile_id)
@@ -666,6 +703,7 @@ func execute_recruit_troops():
 		amount = currentBuildingTypeSelected.deploy_amount,
 		turns_left = currentBuildingTypeSelected.turns_to_deploy_troops
 	}
+	save_player_info()
 	Game.tilesObj.update_sync_data()
 	Game.tilesObj.take_cell_gold(Game.current_tile_selected, currentBuildingTypeSelected.deploy_prize)
 	Game.tilesObj.append_upcoming_troops(Game.current_tile_selected, upcomingTroopsDict)
@@ -676,6 +714,7 @@ func execute_recruit_troops():
 func execute_buy_building(var selectedBuildTypeId: int):
 	if !is_local_player_turn() or !can_execute_action():
 		return
+	save_player_info()
 	Game.tilesObj.update_sync_data()
 	Game.tilesObj.buy_building(Game.current_tile_selected, selectedBuildTypeId)
 	action_in_turn_executed()
@@ -698,6 +737,7 @@ func gui_urbanizar_tile():
 	if tileTypeData.improve_prize > Game.tilesObj.get_total_gold(Game.current_player_turn):
 		print("Not enough money to improve!")
 		return
+	save_player_info()
 	Game.tilesObj.update_sync_data()
 	Game.tilesObj.upgrade_tile(Game.current_tile_selected)
 	action_in_turn_executed()
@@ -726,6 +766,7 @@ func update_troops_move_data( var index: int ):
 func execute_accept_tiles_actions():
 	if !is_local_player_turn() or !can_execute_action():
 		return
+	save_player_info()
 	Game.tilesObj.update_sync_data()
 	execute_tile_action()
 	action_in_turn_executed()
@@ -739,6 +780,8 @@ func action_in_turn_executed():
 	actions_available-=1
 	if Game.Network.is_client() and is_local_player_turn():
 		Game.Network.net_send_event(self.node_id, NET_EVENTS.CLIENT_USE_ACTION, null)
+		if actions_available <= 0:
+			save_player_info() #Avoid weird stuff in multiplayer
 		return
 	server_send_game_info()
 	if actions_available <= 0:
@@ -786,6 +829,7 @@ func execute_btn_finish_turn():
 func execute_give_extra_gold():
 	if !is_local_player_turn() or !have_selection_points_left():
 		return
+	save_player_info()
 	Game.tilesObj.update_sync_data()
 	Game.tilesObj.add_cell_gold(Game.current_tile_selected, 10)
 	use_selection_point()
@@ -795,6 +839,7 @@ func execute_give_extra_gold():
 func execute_add_extra_troops():
 	if !is_local_player_turn() or !have_selection_points_left():
 		return
+	save_player_info()
 	Game.tilesObj.update_sync_data()
 	var extraRecruits: Dictionary = {
 		owner = Game.current_player_turn,
@@ -815,6 +860,30 @@ func use_selection_point():
 	if Game.playersData[Game.current_player_turn].selectLeft == 0: 
 		move_to_next_player_turn()
 
+func save_player_info():
+	if !is_local_player_turn():
+		return
+	saved_player_info.points_to_select_left = Game.playersData[Game.current_player_turn].selectLeft
+	saved_player_info.actions_left = actions_available
+	Game.tilesObj.save_tiles_data()
+	
+func undo_actions():
+	if !is_local_player_turn():
+		return
+	Game.tilesObj.update_sync_data()
+	Game.playersData[Game.current_player_turn].selectLeft = saved_player_info.points_to_select_left
+	actions_available = saved_player_info.actions_left
+	Game.tilesObj.restore_previous_tiles_data()
+	var dictArrayToSync: Array = Game.tilesObj.get_sync_data()
+	if dictArrayToSync.size() > 2:
+		print("[WARNING] UNDO ACTIONS MODIFIED MORE THAN 2 TILES!")
+	if dictArrayToSync.size() > 0: #Avoid useless syncs
+		Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = dictArrayToSync })
+	if Game.Network.is_server():
+		server_send_game_info()
+	elif Game.Network.is_client():
+		client_send_game_info()
+
 ###########
 # NETCODE #
 ###########
@@ -828,29 +897,28 @@ func server_send_game_info(unreliable: bool = false) -> void:
 		select_left = Game.playersData[Game.current_player_turn].selectLeft,
 		actions_left = actions_available
 	}, unreliable)
+
+func client_send_game_info(unreliable: bool = false) -> void:
+	if !Game.Network.is_client():
+		return
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.CLIENT_SEND_GAME_INFO, {
+		player_turn = Game.current_player_turn,
+		select_left = Game.playersData[Game.current_player_turn].selectLeft,
+		actions_left = actions_available
+	}, unreliable)
 	
 #OPTIMIZAR NETCODE, USAR EVENTOS NO SNAPSHOTS!, Y USAR LO MINIMO Y NECESARIO
 """
 func server_send_boop() -> Dictionary:
-	var boopData = { player_turn = Game.current_player_turn, players_data = Game.playersData, game_status = Game.current_game_status, net_actions_available = actions_available, tile_info = Game.tilesObj.get_sync_data() }
+	var boopData = { }
 	return boopData
 
 func client_send_boop() -> Dictionary:
 	var boopData = { }
 	return boopData
-
-
 func client_process_boop(boopData) -> void:
-	actions_available = boopData.net_actions_available
-	if boopData.game_status != Game.current_game_status:
-		change_game_status(boopData.game_status)
-	Game.current_player_turn = boopData.player_turn
-	Game.playersData.clear()
-	Game.playersData = boopData.players_data
-	Game.tilesObj.set_sync_data(boopData.tile_info)
 
 func server_process_boop(boopData) -> void:
-	pass
 """
 
 func server_process_event(eventId : int, eventData) -> void:
@@ -865,6 +933,10 @@ func server_process_event(eventId : int, eventData) -> void:
 		NET_EVENTS.CLIENT_TURN_END:
 			if eventData.player_turn == Game.current_player_turn:
 				move_to_next_player_turn()
+		NET_EVENTS.CLIENT_SEND_GAME_INFO:
+			if	Game.current_player_turn == eventData.player_turn:
+				Game.playersData[Game.current_player_turn].selectLeft = eventData.select_left
+				actions_available = eventData.actions_left
 		_:
 			print("Warning: Received unkwown event");
 			
@@ -872,7 +944,6 @@ func client_process_event(eventId : int, eventData) -> void:
 	match eventId:
 		NET_EVENTS.UPDATE_TILE_DATA:
 			Game.tilesObj.set_sync_data(eventData.dictArray)
-			#Game.tilesObj.set_sync_cell_data(eventData.cell, eventData.cell_data)
 		NET_EVENTS.SERVER_SEND_DELTA_TILES:
 			Game.tilesObj.set_sync_data(eventData.dictArray)
 		NET_EVENTS.SERVER_UPDATE_GAME_INFO:
@@ -884,7 +955,8 @@ func client_process_event(eventId : int, eventData) -> void:
 					return
 				if actions_available > 0 and eventData.actions_left > actions_available:
 					return
-			
+			if is_local_player_turn() and old_player_turn !=  Game.current_player_turn:
+				save_player_info()
 			Game.playersData[Game.current_player_turn].selectLeft = eventData.select_left
 			actions_available = eventData.actions_left
 		_:

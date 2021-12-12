@@ -1,6 +1,8 @@
 class_name TroopTypesObject
 extends Object
 
+const TROOPS_FILES_NAME: String = "troops.json"
+
 var TroopsTypes: Array
 
 var InvalidTroop: Dictionary = {
@@ -65,3 +67,20 @@ func getByID(troopID: int) -> Dictionary:
 
 func getList() -> Array:
 	return TroopsTypes.duplicate(true) #gives a copy so no one can fuck up the original list
+
+func load_from_file(folder: String, fileSystemObj: Object) -> void:
+	var troopsImportedData: Dictionary = fileSystemObj.get_data_from_json(folder + "/" + TROOPS_FILES_NAME)
+	assert(troopsImportedData.has('troops'))
+	for troopDict in troopsImportedData['troops']:
+		add({
+			name = troopDict["name"],
+			no_building = troopDict["no_building"],
+			can_be_bought = troopDict["can_be_bought"],
+			is_warrior = troopDict["is_warrior"],
+			cost_to_make = troopDict["cost_to_make"],
+			damage = Vector2(troopDict["damage_min"], troopDict["damage_max"]),
+			idle_cost_per_turn = troopDict["idle_cost_per_turn"],
+			moving_cost_per_turn = troopDict["moving_cost_per_turn"],
+			battle_cost_per_turn = troopDict["battle_cost_per_turn"], 
+			health= troopDict["health"] 
+		})

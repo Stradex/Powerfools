@@ -36,6 +36,7 @@ var default_tile: Dictionary = {
 }
 
 var saved_tiles_data: Array = []
+var previous_action_tiles_data: Array = []
 var old_tiles_data: Array = []
 var tiles_data: Array = []
 var tile_types_obj = null
@@ -49,6 +50,7 @@ func _init(init_tile_size: Vector2, default_tile_id: int, init_tile_types_obj, i
 	troop_types_obj = init_troop_types_obj
 	building_types_obj = init_building_types_obj
 	tiles_data = []
+	previous_action_tiles_data = []
 	old_tiles_data = []
 	default_tile.tile_id = default_tile_id
 	for x in range(tile_size.x):
@@ -56,6 +58,7 @@ func _init(init_tile_size: Vector2, default_tile_id: int, init_tile_types_obj, i
 		for y in range(tile_size.y):
 			tiles_data[x].append(default_tile.duplicate(true))
 	
+	previous_action_tiles_data = tiles_data.duplicate(true)
 	old_tiles_data = tiles_data.duplicate(true)
 ################
 #	BOOLEANS   #
@@ -357,6 +360,12 @@ func set_troops_amount_in_cell(tile_pos: Vector2, troops_owner: int, troop_id: i
 func set_cell_owner(tile_pos: Vector2, playerNumber: int) -> void:
 	tiles_data[tile_pos.x][tile_pos.y].owner = playerNumber
 
+################
+#	GETTERS    #
+################
+func get_name(tile_pos: Vector2) -> String:
+	return tiles_data[tile_pos.x][tile_pos.y].name
+
 ##################
 #	UTIL & TOOLS #
 ##################
@@ -442,6 +451,24 @@ func buy_building(tile_pos: Vector2, var buildTypeId: int):
 	tiles_data[tile_pos.x][tile_pos.y].turns_to_build = currentBuildingTypeSelected.turns_to_build
 	tiles_data[tile_pos.x][tile_pos.y].building_id = buildTypeId
 
+func save_tiles_data() ->void:
+	for x in range(tile_size.x):
+		for y in range(tile_size.y):
+			previous_action_tiles_data[x][y].troops.clear()
+			previous_action_tiles_data[x][y].upcomingTroops.clear()
+			previous_action_tiles_data[x][y].clear()
+	
+	previous_action_tiles_data.clear()
+	previous_action_tiles_data = tiles_data.duplicate(true)
+
+func restore_previous_tiles_data() ->void:
+	for x in range(tile_size.x):
+		for y in range(tile_size.y):
+			tiles_data[x][y].troops.clear()
+			tiles_data[x][y].upcomingTroops.clear()
+			tiles_data[x][y].clear()
+	tiles_data.clear()
+	tiles_data = previous_action_tiles_data.duplicate(true)
 #################
 # NETCODE STUFF #
 #################
@@ -531,7 +558,7 @@ func get_sync_data() -> Array: #FIXME: Optimize (try to use delta data changes)
 				continue
 			if !dicts_are_equal(tiles_data[x][y], old_tiles_data[x][y]):
 				cellsToSync.append({ cell_pos = Vector2(x, y), cell_data = tiles_data[x][y].duplicate( true ) })
-	print( "get_sync_data" + str(cellsToSync.size()) )
+	print( "get_sync_data: " + str(cellsToSync.size()) )
 	old_tiles_data = tiles_data.duplicate( true )
 	
 	for x in range(tile_size.x):
@@ -546,7 +573,7 @@ func get_sync_neighbors (playerNumber: int) -> Array:
 		for y in range(tile_size.y):
 			if tiles_data[x][y].owner != playerNumber and is_next_to_player_territory(Vector2(x, y), playerNumber):
 				cellsToSync.append({ cell_pos = Vector2(x, y), cell_data = tiles_data[x][y].duplicate( true ) })
-	print( "get_sync_neighbors" + str(cellsToSync.size()) )
+	print( "get_sync_neighbors: " + str(cellsToSync.size()) )
 	return cellsToSync
 
 func merge_sync_arrays(oldSyncArray: Array, newSyncArray: Array) -> Array:
