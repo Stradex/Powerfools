@@ -6,10 +6,11 @@ extends Node2D
 # Implementar los costos de guerra (tratar de evitar que sea caro invadir)
 # A la hora de mover de mover tropas, que los civiles aparezcan al final
 # No mostrar tropas a mover si la cantidad es 0
-# Sincronizar los nombres de las ciudades de los clientes
 # Guardar y cargar partida el multiplayer
 # Poder quemar tierra
 # mapas que se generen solos, montañas ( bloquea )
+# Estadisticas batallas ganadas y perdidas, soldados perdidos, etc...
+# Facciones: Germanos, Galos, Persas, Esparta, Tebas, Macedonios, Griegos, Romanos, Cartago, Egipto, Escitas 
 
 const MIN_ACTIONS_PER_TURN: int = 3
 const MAX_DEPLOYEMENTS_PER_TILE: int = 1
@@ -258,7 +259,7 @@ func move_to_next_player_turn() -> void:
 
 func update_actions_available() -> void:
 	if Game.current_game_status == Game.STATUS.GAME_STARTED:
-		actions_available = int(round(Game.tilesObj.get_number_of_productive_territories(Game.current_player_turn)/3.0 + 0.5))
+		actions_available = int(round(Game.tilesObj.get_number_of_productive_territories(Game.current_player_turn)/5.0 + 0.5))
 		if actions_available < MIN_ACTIONS_PER_TURN:
 			actions_available = MIN_ACTIONS_PER_TURN
 
@@ -597,7 +598,7 @@ func change_tile_name(tile_pos: Vector2, new_name: String) -> void:
 	Game.tilesObj.set_name(Vector2(tile_pos.x, tile_pos.y), new_name)
 	
 	if Game.Network.is_client(): # No need of server to send this, it will be send at the next turn
-		Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
+		Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data(player_mask) })
 
 ###################################
 #	UI 
@@ -660,6 +661,8 @@ func update_tiles_actions_data():
 	var troops_array: Array = Game.tilesObj.get_troops(Game.interactTileSelected)
 	for troopDict in troops_array:
 		if troopDict.owner != Game.current_player_turn:
+			continue
+		if troopDict.amount <= 0:
 			continue
 		$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.add_item(Game.troopTypes.getByID(troopDict.troop_id).name, troopDict.troop_id)
 	update_troops_move_data($UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.selected)

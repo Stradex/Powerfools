@@ -565,10 +565,12 @@ func recover_sync_data() -> void:
 func update_sync_data() -> void:
 	old_tiles_data = tiles_data.duplicate( true )
 
-func get_sync_data() -> Array: #FIXME: Optimize (try to use delta data changes)
+func get_sync_data(playerNumber: int = -1) -> Array: #if playerNumber != -1 then only sync ties from that player, useful for secure changes
 	var cellsToSync: Array = []
 	for x in range(tile_size.x):
 		for y in range(tile_size.y):
+			if playerNumber != -1 and tiles_data[x][y].owner != playerNumber:
+				continue
 			if tiles_data[x][y].owner == -1 and !is_next_to_any_player_territory(Vector2(x, y)):
 				continue
 			if old_tiles_data.size() <= x or old_tiles_data[x].size() <= y:
