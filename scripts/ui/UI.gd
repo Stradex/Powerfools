@@ -7,6 +7,9 @@ func init_gui(gameNode: Node):
 	init_menu_graphics()
 
 func init_button_signals():
+	$ActionsMenu/InGameMenu/VBoxContainer/GuardarPartida.connect("pressed", self, "gui_save_game")
+	$ActionsMenu/WaitingPlayers/VBoxContainer/HBoxContainer/LoadGame.connect("pressed", self, "gui_load_game")
+	$ActionsMenu/WaitingPlayers/VBoxContainer/HBoxContainer/StartGame.connect("pressed", self, "gui_start_online_game")
 	$ActionsMenu/BuildingsMenu/VBoxContainer/BuildingsList.connect("item_selected", world_game_node, "update_build_menu_price")
 	$ActionsMenu/InGameTileActions/VBoxContainer/Editar.connect("pressed", self, "gui_open_edit_tile_window")
 	$ActionsMenu/InGameTileActions/VBoxContainer/Reclutar.connect("pressed", self, "gui_recruit_troops")
@@ -34,7 +37,6 @@ func init_menu_graphics():
 	close_all_windows()
 	$HUD/GameInfo/Waiting.visible = false
 
-
 ###################################
 #	BUTTONS & SIGNALS
 ###################################
@@ -46,6 +48,7 @@ func close_all_windows() -> void:
 	$ActionsMenu/BuildingsMenu.visible = false
 	$ActionsMenu/InGameMenu.visible = false
 	$ActionsMenu/EditTile.visible = false
+	$ActionsMenu/WaitingPlayers.visible = false
 
 func gui_open_edit_tile_window() -> void:
 	if !world_game_node.can_interact_with_menu():
@@ -53,6 +56,26 @@ func gui_open_edit_tile_window() -> void:
 	close_all_windows()
 	$ActionsMenu/EditTile/VBoxContainer/HBoxContainer2/NombreTextEdit.text = str(Game.tilesObj.get_name(Game.current_tile_selected))
 	$ActionsMenu/EditTile.visible = true
+
+func gui_load_game() -> void:
+	assert(!Game.Network.is_multiplayer() or Game.Network.is_server())
+	world_game_node.load_game_from("partida.json")
+
+func gui_save_game() -> void:
+	assert(!Game.Network.is_multiplayer() or Game.Network.is_server())
+	world_game_node.save_game_as("partida.json")
+	close_all_windows()
+
+func gui_start_online_game() -> void:
+	close_all_windows()
+	world_game_node.start_online_game()
+
+func update_lobby_info() -> void:
+	$ActionsMenu/WaitingPlayers/VBoxContainer/LobbyText.text = "Players:\n"
+	for i in range(Game.playersData.size()):
+		if !Game.playersData[i].alive:
+			continue
+		$ActionsMenu/WaitingPlayers/VBoxContainer/LobbyText.text += "\t" + Game.playersData[i].name + "\n"
 
 func gui_close_edit_tile_window() -> void:
 	close_all_windows()

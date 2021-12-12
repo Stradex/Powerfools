@@ -62,13 +62,13 @@ func _on_server_shutdown():
 func _on_player_joined_ok():
 	print("player connected")
 	if !Game.is_network_master():
-		Game.rpc_id(SERVER_NETID, "game_process_rpc", "server_process_client_question", [Game.get_tree().get_network_unique_id()])
+		Game.rpc_id(SERVER_NETID, "game_process_rpc", "server_process_client_question", [Game.get_tree().get_network_unique_id(), Game.local_name, Game.local_pin])
 
 func _on_player_connected(id):
 	print("player connected...")
 	if is_server():
 		var client_index:int = add_client(id)
-		var player_number: int = Game.add_player(id)
+		var player_number: int = Game.add_player(id, "client", 666)
 		clients_connected[client_index].player_num = player_number
 
 func _on_player_disconnect(id):
@@ -102,15 +102,18 @@ func find_player_number_by_netid(netid: int):
 			return i
 	return -1
 
-func server_process_client_question(id_client: int):
+func server_process_client_question(id_client: int, client_name: String, client_pin: int):
 	var player_num: int = find_player_number_by_netid(id_client)
+	Game.playersData[player_num].name = client_name
+	Game.playersData[player_num].pin_code = client_pin
+	print("Update player %s (%d) with netid %d" % [client_name, player_num, id_client])
 	send_rpc("new_client_connected", [clients_connected])
 	Game.rpc_id(id_client, "game_process_rpc", "client_receive_answer", [{player_number = player_num}])
 
 func client_receive_answer(receive_data: Dictionary):
 	print("player number: %d, uniqueid: %d" % [receive_data.player_number, Game.get_tree().get_network_unique_id()])
 	local_player_id = receive_data.player_number
-	Game.add_player(Game.get_tree().get_network_unique_id(), receive_data.player_number)
+	Game.add_player(Game.get_tree().get_network_unique_id(), Game.local_name, Game.local_pin, receive_data.player_number)
 
 func new_client_connected(new_clients_list: Array):
 	clients_connected.clear()
@@ -142,19 +145,23 @@ remote func client_receive_ping():
 		sum_pings+=ping
 	client_latency = sum_pings / float(pings.size())
 
-func host_server(maxPlayers: int, serverPort: int = SERVER_PORT):
+func host_server(maxPlayers: int, client_name: String, client_pin: int, serverPort: int = SERVER_PORT):
 	Game.get_tree().set_network_peer(null) #Destoy any previous networking session
 	var host = NetworkedMultiplayerENet.new()
 	print(host.create_server(serverPort, maxPlayers))
 	Game.clear_players_data()
+	Game.local_name = client_name
+	Game.local_pin = client_pin
 	Game.get_tree().set_network_peer(host)
 	add_client(SERVER_NETID); #adding server as friend client always
-	Game.add_player(SERVER_NETID)
+	Game.add_player(SERVER_NETID, client_name, client_pin)
 	Game.start_new_game(true)
 	print("Hosting server...")
 
-func join_server(ip: String):
+func join_server(ip: String, client_name: String, client_pin: int):
 	Game.clear_players_data()
+	Game.local_name = client_name
+	Game.local_pin = client_pin
 	ip = ip.replace(" ", "")
 	Game.get_tree().set_network_peer(null) #Destoy any previous networking session
 	var host = NetworkedMultiplayerENet.new()

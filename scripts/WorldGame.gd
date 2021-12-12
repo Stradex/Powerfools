@@ -2,7 +2,6 @@ class_name WorldGameNode
 extends Node2D
 
 # Tropas se pueden mover maximo 5 casilleros solamente, no más (no estoy seguro todavia)
-# Implementar los costos de guerra (tratar de evitar que sea caro invadir)
 # Guardar y cargar partida el multiplayer
 # Poder quemar tierra
 # mapas que se generen solos, montañas ( bloquea )
@@ -64,9 +63,51 @@ func _ready():
 	if Game.tilesObj:
 		Game.tilesObj.clear()
 	Game.tilesObj = TileGameObject.new(Game.tile_map_size, Game.tileTypes.getIDByName('vacio'), Game.tileTypes, Game.troopTypes, Game.buildingTypes)
-	change_game_status(Game.STATUS.PRE_GAME)
-	move_to_next_player_turn()
+	if Game.Network.is_multiplayer():
+		change_game_status(Game.STATUS.LOBBY_WAIT)
+	else:
+		change_game_status(Game.STATUS.PRE_GAME)
+		move_to_next_player_turn()
+		Game.tilesObj.save_sync_data()
 	Game.Network.register_synced_node(self, WORLD_GAME_NODE_ID);
+	
+
+func save_game_as(file_name: String):
+	var data_to_save: Dictionary = {
+		game_actions_available = actions_available,
+		game_current_player_turn = Game.current_player_turn,
+		game_current_status = Game.current_game_status,
+		game_points_to_select_left = Game.playersData[Game.current_player_turn].selectLeft,
+		players_data = Game.playersData.duplicate(true),
+		tiles_data = Game.tilesObj.get_all(true),
+		tile_size = Game.tilesObj.get_size()
+	}
+	Game.FileSystem.save_as_json(file_name, data_to_save)
+
+func start_online_game():
+	print("staring game...")
+	change_game_status(Game.STATUS.PRE_GAME)
+	for i in range(Game.playersData.size()):
+		if Game.playersData[i].alive:
+			Game.current_player_turn = i
+			save_player_info()
+			update_actions_available()
+			server_send_game_info()
+			print("Player " + str(i) + " turn")
+			break
+	Game.tilesObj.save_sync_data()
+
+func load_game_from(file_name: String):
+	Game.tilesObj.update_sync_data()
+	var data_to_load: Dictionary = Game.FileSystem.load_as_dict(file_name)
+	#TODO: Sync player data CORRECTLY, RIGHT NOW IT ONLY WORKS FOR 2 PLAYERS AND NOTHING MORE!
+	Game.tilesObj.set_all(data_to_load.tiles_data, data_to_load.tile_size)
+	Game.current_player_turn = data_to_load.game_current_player_turn
+	Game.playersData[Game.current_player_turn].selectLeft = data_to_load.game_points_to_select_left
+	actions_available = data_to_load.game_actions_available
+	change_game_status(data_to_load.game_current_status)
+	server_send_game_info()
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = Game.tilesObj.get_sync_data() })
 	Game.tilesObj.save_sync_data()
 
 func on_net_sync_timeout():
@@ -90,6 +131,7 @@ func _process(delta):
 	if (time_offset > 1.0/Game.GAME_FPS):
 		time_offset = 0.0
 		game_on()
+		$UI.update_lobby_info()
 		$UI.update_server_info()
 		$Tiles.update_building_tiles()
 		$UI.gui_update_tile_info(Game.current_tile_selected)
@@ -196,16 +238,29 @@ func change_game_status(new_status: int) -> void:
 		server_send_game_info()
 	Game.current_game_status = new_status
 	match new_status:
+		Game.STATUS.LOBBY_WAIT:
+			$UI/HUD/GameInfo.visible = false
+			$UI/HUD/PreGameInfo.visible = false
+			open_lobby_window()
 		Game.STATUS.PRE_GAME:
 			$UI/HUD/GameInfo.visible = false
 			$UI/HUD/PreGameInfo.visible = true
+			$UI/ActionsMenu/WaitingPlayers.visible = false
 		Game.STATUS.GAME_STARTED:
 			$UI/HUD/PreGameInfo.visible = false
 			$UI/HUD/GameInfo.visible = true
+			$UI/ActionsMenu/WaitingPlayers.visible = false
 			if status_changed:
 				process_unused_tiles()
 	if status_changed:
 		print("Game Status changed to value: " + str(new_status))
+
+func open_lobby_window() -> void:
+	$UI/ActionsMenu/WaitingPlayers.visible = true
+	if Game.Network.is_client():
+		$UI/ActionsMenu/WaitingPlayers/VBoxContainer/HBoxContainer.visible = false
+	else:
+		$UI/ActionsMenu/WaitingPlayers/VBoxContainer/HBoxContainer.visible = true
 
 func process_unused_tiles() -> void:
 	if Game.Network.is_client():
@@ -256,7 +311,6 @@ func move_to_next_player_turn() -> void:
 			server_send_game_info()
 			print("Player " + str(i) + " turn")
 			return
-		i+=1
 
 	save_player_info()
 	update_actions_available()

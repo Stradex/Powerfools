@@ -99,6 +99,7 @@ __meta__ = {
 }
 
 [node name="MultiplayerMenu" type="VBoxContainer" parent="."]
+visible = false
 margin_left = 558.0
 margin_top = 285.0
 margin_right = 768.0
@@ -169,6 +170,95 @@ margin_right = 207.0
 margin_bottom = 55.0
 custom_fonts/font = SubResource( 1 )
 text = "Back"
+align = 1
+valign = 1
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="PlayerSettingsMenu" type="VBoxContainer" parent="."]
+margin_left = 558.0
+margin_top = 285.0
+margin_right = 768.0
+margin_bottom = 593.0
+custom_constants/separation = 12
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="JoinServerLabel" type="Label" parent="PlayerSettingsMenu"]
+margin_right = 210.0
+margin_bottom = 37.0
+custom_fonts/font = SubResource( 1 )
+text = "PLAYER NAME"
+align = 1
+valign = 1
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="PlayerNameTextBox" type="TextEdit" parent="PlayerSettingsMenu"]
+margin_top = 49.0
+margin_right = 210.0
+margin_bottom = 79.0
+rect_min_size = Vector2( 0, 30 )
+custom_fonts/font = SubResource( 2 )
+text = "Flumfis"
+
+[node name="PlayerPinLabel" type="Label" parent="PlayerSettingsMenu"]
+margin_top = 91.0
+margin_right = 210.0
+margin_bottom = 128.0
+custom_fonts/font = SubResource( 1 )
+text = "PLAYER PIN"
+align = 1
+valign = 1
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="PlayerPinTextBox" type="TextEdit" parent="PlayerSettingsMenu"]
+margin_top = 140.0
+margin_right = 210.0
+margin_bottom = 170.0
+rect_min_size = Vector2( 0, 30 )
+custom_fonts/font = SubResource( 2 )
+text = "666"
+
+[node name="Start" type="TextureButton" parent="PlayerSettingsMenu"]
+margin_top = 182.0
+margin_right = 210.0
+margin_bottom = 237.0
+texture_normal = ExtResource( 3 )
+texture_pressed = ExtResource( 4 )
+texture_hover = ExtResource( 5 )
+texture_disabled = ExtResource( 5 )
+
+[node name="StartLabel" type="Label" parent="PlayerSettingsMenu/Start"]
+margin_right = 207.0
+margin_bottom = 55.0
+custom_fonts/font = SubResource( 1 )
+text = "START"
+align = 1
+valign = 1
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Cancel" type="TextureButton" parent="PlayerSettingsMenu"]
+margin_top = 249.0
+margin_right = 210.0
+margin_bottom = 304.0
+texture_normal = ExtResource( 3 )
+texture_pressed = ExtResource( 4 )
+texture_hover = ExtResource( 5 )
+texture_disabled = ExtResource( 5 )
+
+[node name="CancelLabel" type="Label" parent="PlayerSettingsMenu/Cancel"]
+margin_right = 207.0
+margin_bottom = 55.0
+custom_fonts/font = SubResource( 1 )
+text = "CANCEL"
 align = 1
 valign = 1
 __meta__ = {

@@ -317,6 +317,11 @@ func get_all(read_only: bool = false) -> Array:
 		return tiles_data.duplicate(true)
 	return tiles_data
 
+func set_all(new_tiles_data: Array, new_tile_size: Vector2) -> void:
+	clear()
+	tiles_data = new_tiles_data.duplicate(true)
+	tile_size = new_tile_size
+
 func get_cell_gold(cell: Vector2) -> float:
 	return tiles_data[cell.x][cell.y].gold
 

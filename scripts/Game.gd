@@ -28,7 +28,11 @@ var current_player_turn: int = -1
 var interactTileSelected: Vector2 = Vector2(-1, -1)
 var nextInteractTileSelected: Vector2 = Vector2(-1, -1)
 
+var local_name: String = "player"
+var local_pin: int = 0
+
 enum STATUS {
+	LOBBY_WAIT, #Server just started and waiting for players to start
 	PRE_GAME, #Select capital and territories for each players
 	GAME_STARTED #game is going on
 }
@@ -54,6 +58,7 @@ func init_players():
 	for i in range (MAX_PLAYERS):
 		playersData.append({
 			name = 'Player ' + str(i+1),
+			pin_code = 000,
 			civilizationName = defaultCivilizationNames[i],
 			alive = false,
 			isBot = false,
@@ -163,15 +168,17 @@ func start_new_game(is_mp_game: bool = false):
 	current_player_turn = 0
 	if !is_mp_game:
 		init_player(0, Game.Network.SERVER_NETID) #human
-		init_player(1, Game.Network.SERVER_NETID, true) #bot
+		init_player(1, Game.Network.SERVER_NETID, "bot", 1, true) #bot
 	change_to_map(START_MAP)
 
-func init_player(player_id: int, net_id: int, is_bot:bool = false):
+func init_player(player_id: int, net_id: int, player_name: String = "player", player_pin: int = 0, is_bot:bool = false):
 	playersData[player_id].alive = true
 	playersData[player_id].isBot = is_bot
 	playersData[player_id].selectLeft = 10
 	playersData[player_id].netid = net_id
-	print("Adding player %d with netid %d" % [player_id, net_id])
+	playersData[player_id].name = player_name
+	playersData[player_id].pin_code = player_pin
+	print("Adding player %s (%d) with netid %d" % [player_name, player_id, net_id])
 
 func get_player_count() -> int:
 	var player_count: int = 0
@@ -194,12 +201,14 @@ func get_local_player_number() -> int:
 			return i
 	return -1
 
-func add_player(netid: int, forceid: int = -1) -> int:
+func add_player(netid: int, player_name: String, player_pin: int, forceid: int = -1) -> int:
 	var free_player_index: int = 0
 	for i in range(playersData.size()):
 		if playersData[i].netid != -1:
 			free_player_index += 1
 			if playersData[i].netid == netid: #already exists this player
+				playersData[i].name = player_name
+				playersData[i].pin_code = player_pin
 				print("The player %d with netid %d was already in the list!!" % [i, netid])
 				return i
 			continue
@@ -208,7 +217,7 @@ func add_player(netid: int, forceid: int = -1) -> int:
 	if forceid != -1:
 		free_player_index = forceid
 	
-	init_player(free_player_index, netid)
+	init_player(free_player_index, netid, player_name, player_pin)
 	return free_player_index
 
 remote func change_to_map(map_name: String):
