@@ -152,10 +152,10 @@ func gui_update_civilization_info() -> void:
 		player_mask = Game.get_local_player_number()
 
 	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer5/CivilizationText.text = str(Game.playersData[player_mask].civilizationName)
-	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer/TotTalentosText.text = str(Game.tilesObj.get_total_gold(player_mask))
+	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer/TotTalentosText.text = str(stepify(Game.tilesObj.get_total_gold(player_mask), 0.1))
 	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer2/StrengthText.text = str(Game.tilesObj.get_total_strength(player_mask))
-	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer6/GainText.text = str(Game.tilesObj.get_total_gold_gain_and_losses(player_mask))
-	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer7/WarCostsText.text = str(Game.tilesObj.get_all_war_costs(player_mask))
+	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer6/GainText.text = str(stepify(Game.tilesObj.get_total_gold_gain_and_losses(player_mask), 0.1))
+	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer7/WarCostsText.text = str(stepify(Game.tilesObj.get_all_war_costs(player_mask), 0.1))
 
 	var civilizationTroopsInfo: Array = Game.tilesObj.get_civ_population_info(player_mask)
 	var populationStr: String = ""
@@ -173,7 +173,6 @@ func gui_update_tile_info(tile_pos: Vector2) -> void:
 		player_mask = Game.get_local_player_number()
 	
 	var cell_data: Dictionary = Game.tilesObj.get_cell(tile_pos)
-
 	if Game.current_game_status == Game.STATUS.PRE_GAME:
 		$HUD/GameInfo/HBoxContainer2/TurnText.text = "PRE-GAME: " + str(Game.playersData[Game.current_player_turn].civilizationName)
 	elif Game.current_game_status == Game.STATUS.GAME_STARTED:
@@ -197,7 +196,7 @@ func gui_update_tile_info(tile_pos: Vector2) -> void:
 	$HUD/TileInfo/VBoxContainer/HBoxContainer2/Amount.text = str(floor(cell_data.gold))
 	
 	$HUD/TileInfo/VBoxContainer/HBoxContainer6/StrengthText.text = str(Game.tilesObj.get_strength(tile_pos, player_mask))
-	$HUD/TileInfo/VBoxContainer/HBoxContainer7/GainsText.text = str(Game.tilesObj.get_gold_gain_and_losses(tile_pos, player_mask))
+	$HUD/TileInfo/VBoxContainer/HBoxContainer7/GainsText.text = str(stepify(Game.tilesObj.get_cell_gold_gain_and_losses(tile_pos, player_mask), 0.1))
 	
 	var populationStr: String = ""
 	var isEnemyPopulation: bool = false

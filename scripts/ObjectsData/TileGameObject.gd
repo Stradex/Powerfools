@@ -160,11 +160,11 @@ func get_total_gold_gain_and_losses(playerNumber: int) -> float:
 	var goldGains: float = 0
 	for x in range(tile_size.x):
 		for y in range(tile_size.y):
-			goldGains += get_gold_gain_and_losses(Vector2(x, y), playerNumber)
-	
-	return goldGains
+			goldGains += get_cell_gold_gain_and_losses(Vector2(x, y), playerNumber)
+	goldGains-= get_all_war_costs(playerNumber)
+	return goldGains 
 
-func get_gold_gain_and_losses(tile_pos: Vector2, playerNumber: int) -> float:
+func get_cell_gold_gain_and_losses(tile_pos: Vector2, playerNumber: int) -> float:
 	if tiles_data[tile_pos.x][tile_pos.y].owner != playerNumber: #fixme: calculate battle stuff here later
 		return 0.0
 	var goldGains: float = 0
@@ -443,7 +443,7 @@ func give_to_a_player(playerNumber: int, tile_pos: Vector2, tile_type_id: int, a
 	add_troops(tile_pos, add_troops)
 
 func update_gold_stats(tile_pos: Vector2, playerNumber: int) ->  void:
-	add_cell_gold(tile_pos, get_gold_gain_and_losses(tile_pos, playerNumber))
+	add_cell_gold(tile_pos, get_cell_gold_gain_and_losses(tile_pos, playerNumber))
 
 func upgrade_tile(cell: Vector2) -> void:
 	var tileTypeData = Game.tileTypes.getByID(tiles_data[cell.x][cell.y].tile_id)

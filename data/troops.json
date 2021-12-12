@@ -49,7 +49,7 @@
 			"damage_max":18.0,
 			"idle_cost_per_turn":5,
 			"moving_cost_per_turn":5,
-			"battle_cost_per_turn":6,
+			"battle_cost_per_turn":7,
 			"health":16
 		}
 	]

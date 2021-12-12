@@ -1,11 +1,8 @@
 class_name WorldGameNode
 extends Node2D
 
-# Civiles no tienen que poder invadir!, solo defender.
-# Tropas se pueden mover maximo 5 casilleros solamente, no más.
+# Tropas se pueden mover maximo 5 casilleros solamente, no más (no estoy seguro todavia)
 # Implementar los costos de guerra (tratar de evitar que sea caro invadir)
-# A la hora de mover de mover tropas, que los civiles aparezcan al final
-# No mostrar tropas a mover si la cantidad es 0
 # Guardar y cargar partida el multiplayer
 # Poder quemar tierra
 # mapas que se generen solos, montañas ( bloquea )
@@ -437,10 +434,16 @@ func update_gold_stats(playerNumber: int) -> void:
 	var positiveBalanceTerritories: Array = []
 	var negativeBalanceTerritories: Array = []
 	var totalAmountOfGold: int = 0
+	var player_capital_pos: Vector2 = Game.tilesObj.get_player_capital_vec2(playerNumber)
+	var all_war_costs: float = Game.tilesObj.get_all_war_costs(playerNumber)
 	#Step 1, update all gold in all the tiles
 	for x in range(Game.tile_map_size.x):
 		for y in range(Game.tile_map_size.y):
 			if Game.tilesObj.belongs_to_player(Vector2(x, y), playerNumber):
+				
+				if Vector2(x, y) == player_capital_pos:
+					Game.tilesObj.take_cell_gold(Vector2(x, y), all_war_costs) # war costs implemented
+	
 				Game.tilesObj.update_gold_stats(Vector2(x, y), playerNumber)
 				var cellGold: float = Game.tilesObj.get_cell_gold(Vector2(x, y))
 				totalAmountOfGold+= cellGold
@@ -678,7 +681,7 @@ func update_tiles_actions_data():
 		if Game.troopTypes.getByID(troopDict.troop_id).is_warrior:
 			troops_to_show_array.push_front({ name = Game.troopTypes.getByID(troopDict.troop_id).name, id = troopDict.troop_id})
 		elif Game.tilesObj.belongs_to_player(Game.nextInteractTileSelected, Game.current_player_turn):
-			troops_to_show_array.push_front({ name = Game.troopTypes.getByID(troopDict.troop_id).name, id = troopDict.troop_id})
+			troops_to_show_array.push_back({ name = Game.troopTypes.getByID(troopDict.troop_id).name, id = troopDict.troop_id})
 	
 	for troopData in troops_to_show_array:
 		$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.add_item(troopData.name, troopData.id)
