@@ -84,7 +84,7 @@ func has_minimum_civilization(tile_pos: Vector2,  playerNumber: int) -> bool:
 	return civilianCountInTile >= tileTypeDict.min_civil_to_produce_gold
 
 func has_troops_or_citizen(tile_pos: Vector2,  playerNumber: int) -> bool:
-	var allEntitiesCountInTile: int = get_civilian_count(tile_pos, playerNumber) + get_troops_count(tile_pos, playerNumber)
+	var allEntitiesCountInTile: int = get_civilian_count(tile_pos, playerNumber) + get_warriors_count(tile_pos, playerNumber)
 	return allEntitiesCountInTile > 0
 
 func is_a_valid_tile(cell: Vector2) -> bool:
@@ -176,14 +176,13 @@ func get_gold_gain_and_losses(tile_pos: Vector2, playerNumber: int) -> float:
 		goldGains -= float(troop_types_obj.getByID(troopDict.troop_id).idle_cost_per_turn*troopDict.amount)/1000.0
 	return goldGains
 
-func get_troops_count(tile_pos: Vector2, playerNumber: int) -> int:
+func get_warriors_count(tile_pos: Vector2, playerNumber: int) -> int:
 	var tropsCount: int = 0
 	for troopDict in tiles_data[tile_pos.x][tile_pos.y].troops:
 		if troopDict.owner != playerNumber:
 			continue
 		if troop_types_obj.getByID(troopDict.troop_id).is_warrior:
 			tropsCount+=troopDict.amount
-
 	return tropsCount
 
 func get_civilian_count(tile_pos: Vector2, playerNumber: int) -> int:

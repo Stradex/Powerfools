@@ -70,7 +70,7 @@ func get_civilians_tile_id(tile_pos: Vector2, playerNumber: int) -> int:
 	return id_tile_overpopulation
 
 func get_troops_tile_id(tile_pos: Vector2, playerNumber: int) -> int:
-	var troopsCountInTile: int = Game.tilesObj.get_troops_count(tile_pos, playerNumber)
+	var troopsCountInTile: int = Game.tilesObj.get_warriors_count(tile_pos, playerNumber)
 	var upcoming_troops_data: Array = Game.tilesObj.get_upcoming_troops(tile_pos)
 	if upcoming_troops_data.size() > 0:
 		return id_tile_deploying_troops

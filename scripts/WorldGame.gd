@@ -162,11 +162,20 @@ func game_interact():
 			Game.interactTileSelected = Game.current_tile_selected
 		Game.nextInteractTileSelected = Vector2(-1, -1)
 	elif Game.nextInteractTileSelected == Vector2(-1, -1):
-		if Game.tilesObj.is_next_to_tile(Game.interactTileSelected, Game.current_tile_selected):
+		if can_do_tiles_actions(Game.interactTileSelected, Game.current_tile_selected, Game.current_player_turn):
 			Game.nextInteractTileSelected = Game.current_tile_selected
 			popup_tiles_actions()
 		else:
 			Game.interactTileSelected = Vector2(-1, -1)
+
+func can_do_tiles_actions(startTile: Vector2, endTile: Vector2, playerNumber: int):
+	if !Game.tilesObj.belongs_to_player(startTile, playerNumber):
+		return false
+	if !Game.tilesObj.is_next_to_tile(startTile,endTile):
+		return false
+	if !Game.tilesObj.belongs_to_player(endTile, playerNumber) and Game.tilesObj.get_warriors_count(startTile, playerNumber) <= 0: #don't allow civilians to invade
+		return false
+	return true
 
 func pre_game_interact():
 	if !is_local_player_turn():
@@ -666,9 +675,9 @@ func update_tiles_actions_data():
 			continue
 		if troopDict.amount <= 0:
 			continue
-		if troopDict.is_warrior:
+		if Game.troopTypes.getByID(troopDict.troop_id).is_warrior:
 			troops_to_show_array.push_front({ name = Game.troopTypes.getByID(troopDict.troop_id).name, id = troopDict.troop_id})
-		else:
+		elif Game.tilesObj.belongs_to_player(Game.nextInteractTileSelected, Game.current_player_turn):
 			troops_to_show_array.push_front({ name = Game.troopTypes.getByID(troopDict.troop_id).name, id = troopDict.troop_id})
 	
 	for troopData in troops_to_show_array:
