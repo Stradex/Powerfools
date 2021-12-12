@@ -142,6 +142,16 @@ func can_be_upgraded(tile_pos: Vector2, playerNumber: int) -> bool:
 func is_cell_in_battle(tile_pos: Vector2) -> bool:
 	return get_number_of_players_in_cell(tile_pos) > 1
 
+func can_buy_building_at_cell(tile_pos: Vector2, buildTypeId: int, goldAvailable: int, playerNumber: int):
+	if tiles_data[tile_pos.x][tile_pos.y].building_id == buildTypeId:
+		return false
+	var currentBuildingTypeSelected = building_types_obj.getByID(buildTypeId)
+	if goldAvailable < currentBuildingTypeSelected.buy_prize:
+		return false
+	if currentBuildingTypeSelected.max_amount > 0 and get_amount_of_buildings(buildTypeId, playerNumber) >= currentBuildingTypeSelected.max_amount:
+		return false
+	return true
+
 ################
 #	GETTERS    #
 ################
@@ -366,6 +376,13 @@ func set_cell_owner(tile_pos: Vector2, playerNumber: int) -> void:
 func get_name(tile_pos: Vector2) -> String:
 	return tiles_data[tile_pos.x][tile_pos.y].name
 
+func get_amount_of_buildings(building_id: int, playerNumber: int) -> int:
+	var count: int = 0
+	for x in range(tile_size.x):
+		for y in range(tile_size.y):
+			if tiles_data[x][y].owner == playerNumber and tiles_data[x][y].building_id == building_id:
+				count+=1
+	return count
 ##################
 #	UTIL & TOOLS #
 ##################

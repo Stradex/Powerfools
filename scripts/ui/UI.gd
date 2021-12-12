@@ -7,6 +7,7 @@ func init_gui(gameNode: Node):
 	init_menu_graphics()
 
 func init_button_signals():
+	$ActionsMenu/BuildingsMenu/VBoxContainer/BuildingsList.connect("item_selected", world_game_node, "update_build_menu_price")
 	$ActionsMenu/InGameTileActions/VBoxContainer/Editar.connect("pressed", self, "gui_open_edit_tile_window")
 	$ActionsMenu/InGameTileActions/VBoxContainer/Reclutar.connect("pressed", self, "gui_recruit_troops")
 	$ActionsMenu/EditTile/VBoxContainer/HBoxContainer/Aceptar.connect("pressed", self, "gui_change_tile_name")

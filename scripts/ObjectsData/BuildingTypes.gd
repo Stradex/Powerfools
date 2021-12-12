@@ -14,7 +14,8 @@ var InvalidBuilding: Dictionary = {
 	id_troop_generate = -1,
 	building_img='no_building',
 	turns_to_deploy_troops = 0,
-	deploy_amount = 0
+	deploy_amount = 0,
+	max_amount = 0 #if zero, you can have unlimited amount of this
 }
 
 func _init():
@@ -68,5 +69,6 @@ func load_from_file(folder: String, fileSystemObj: Object, troops_types_obj: Obj
 			id_troop_generate = troops_types_obj.getIDByName(troopDict["troop_to_generate"]),
 			building_img = troopDict["building_img"],
 			turns_to_deploy_troops = troopDict["turns_to_deploy_troops"], 
-			deploy_amount= troopDict["deploy_amount"] 
+			deploy_amount= troopDict["deploy_amount"],
+			max_amount= troopDict["max_amount"] 
 		})

@@ -8,6 +8,8 @@ extends Node2D
 # No mostrar tropas a mover si la cantidad es 0
 # Sincronizar los nombres de las ciudades de los clientes
 # Guardar y cargar partida el multiplayer
+# Poder quemar tierra
+# mapas que se generen solos, montañas ( bloquea )
 
 const MIN_ACTIONS_PER_TURN: int = 3
 const MAX_DEPLOYEMENTS_PER_TILE: int = 1
@@ -511,11 +513,12 @@ func is_recruiting_possible(tile_pos: Vector2, playerNumber: int) -> bool:
 		return false
 	return true
 
-func check_if_player_can_buy_buildings(playerNumber: int) -> bool:
+func check_if_player_can_buy_buildings(tile_pos: Vector2, playerNumber: int) -> bool:
 	var getTotalGoldAvailable: int = Game.tilesObj.get_total_gold(playerNumber)
+	var cellData: Dictionary = Game.tilesObj.get_cell(tile_pos)
 	var buildingTypesList: Array = Game.buildingTypes.getList()
 	for i in range(buildingTypesList.size()):
-		if getTotalGoldAvailable >= buildingTypesList[i].buy_prize:
+		if Game.tilesObj.can_buy_building_at_cell(tile_pos, i, getTotalGoldAvailable, playerNumber):
 			return true
 	return false
 
@@ -600,13 +603,14 @@ func update_build_menu():
 	$UI/ActionsMenu/BuildingsMenu/VBoxContainer/BuildingsList.clear()
 	var buildingTypesList: Array = Game.buildingTypes.getList() #Gives a copy, not the original list edit is safe
 	for i in range(buildingTypesList.size()):
-		if getTotalGoldAvailable >= buildingTypesList[i].buy_prize:
+		if Game.tilesObj.can_buy_building_at_cell(Game.current_tile_selected, i, getTotalGoldAvailable, Game.current_player_turn):
 			$UI/ActionsMenu/BuildingsMenu/VBoxContainer/BuildingsList.add_item(buildingTypesList[i].name, i)
 	
 	update_build_menu_price($UI/ActionsMenu/BuildingsMenu/VBoxContainer/BuildingsList.selected)
 
 func update_build_menu_price(index: int):
-	var currentBuildingTypeSelected = Game.buildingTypes.getByID(index)
+	var building_type_id: int = $UI/ActionsMenu/BuildingsMenu/VBoxContainer/BuildingsList.get_item_id(index)
+	var currentBuildingTypeSelected = Game.buildingTypes.getByID(building_type_id)
 	$UI/ActionsMenu/BuildingsMenu/VBoxContainer/HBoxContainer/BuilidngPriceText.text = str(currentBuildingTypeSelected.buy_prize)
 
 func gold_to_move_text_changed():
@@ -667,7 +671,7 @@ func game_tile_show_info():
 	$UI/ActionsMenu/InGameTileActions/VBoxContainer/VenderTile.visible = Game.tileTypes.canBeSold(cell_data.tile_id)
 	#if tiles_data[current_tile_selected.x][current_tile_selected.y].tile_id ==  Game.tileTypes.getIDByName("capital"):
 	$UI/ActionsMenu/InGameTileActions/VBoxContainer/UrbanizarTile.visible = Game.tilesObj.can_be_upgraded(Game.current_tile_selected, Game.current_player_turn)
-	$UI/ActionsMenu/InGameTileActions/VBoxContainer/Construir.visible = check_if_player_can_buy_buildings(Game.current_player_turn)
+	$UI/ActionsMenu/InGameTileActions/VBoxContainer/Construir.visible = check_if_player_can_buy_buildings(Game.current_tile_selected, Game.current_player_turn)
 	$UI/ActionsMenu/InGameTileActions/VBoxContainer/Reclutar.visible = is_recruiting_possible(Game.current_tile_selected, Game.current_player_turn)
 	$UI/ActionsMenu/InGameTileActions.visible = true
 
@@ -712,7 +716,8 @@ func execute_recruit_troops():
 	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 	
 func execute_buy_building(var selectedBuildTypeId: int):
-	if !is_local_player_turn() or !can_execute_action():
+	var getTotalGoldAvailable: int = Game.tilesObj.get_total_gold(Game.current_player_turn)
+	if !is_local_player_turn() or !can_execute_action() or !Game.tilesObj.can_buy_building_at_cell(Game.current_tile_selected, selectedBuildTypeId, getTotalGoldAvailable, Game.current_player_turn): 
 		return
 	save_player_info()
 	Game.tilesObj.update_sync_data()
@@ -720,6 +725,7 @@ func execute_buy_building(var selectedBuildTypeId: int):
 	action_in_turn_executed()
 	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = Game.current_tile_selected, cell_data = Game.tilesObj.get_cell(Game.current_tile_selected)})
 	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
+
 func execute_open_build_window():
 	update_build_menu()
 
