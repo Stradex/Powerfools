@@ -659,12 +659,21 @@ func update_tiles_actions_data():
 	
 	$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.clear()
 	var troops_array: Array = Game.tilesObj.get_troops(Game.interactTileSelected)
+	var troops_to_show_array: Array = []
+	# Add always warriors first
 	for troopDict in troops_array:
 		if troopDict.owner != Game.current_player_turn:
 			continue
 		if troopDict.amount <= 0:
 			continue
-		$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.add_item(Game.troopTypes.getByID(troopDict.troop_id).name, troopDict.troop_id)
+		if troopDict.is_warrior:
+			troops_to_show_array.push_front({ name = Game.troopTypes.getByID(troopDict.troop_id).name, id = troopDict.troop_id})
+		else:
+			troops_to_show_array.push_front({ name = Game.troopTypes.getByID(troopDict.troop_id).name, id = troopDict.troop_id})
+	
+	for troopData in troops_to_show_array:
+		$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.add_item(troopData.name, troopData.id)
+
 	update_troops_move_data($UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.selected)
 
 func game_tile_show_info():
