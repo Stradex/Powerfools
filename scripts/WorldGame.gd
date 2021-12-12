@@ -591,8 +591,13 @@ func change_tile_name(tile_pos: Vector2, new_name: String) -> void:
 		player_mask = Game.get_local_player_number()
 	if !Game.tilesObj.belongs_to_player(Vector2(tile_pos.x, tile_pos.y), player_mask):
 		return
+	if Game.Network.is_client(): # No need of server to send this, it will be send at the next turn
+		Game.tilesObj.update_sync_data()
+
 	Game.tilesObj.set_name(Vector2(tile_pos.x, tile_pos.y), new_name)
-	# EDIT Sincronizar online
+	
+	if Game.Network.is_client(): # No need of server to send this, it will be send at the next turn
+		Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 
 ###################################
 #	UI 
