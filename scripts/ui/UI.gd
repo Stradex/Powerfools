@@ -128,6 +128,13 @@ func gui_open_ingame_menu_window():
 		$ActionsMenu/InGameMenu/VBoxContainer/GuardarPartida.visible = true
 	$ActionsMenu/InGameMenu.visible = true
 
+func open_lobby_window():
+	$ActionsMenu/WaitingPlayers.visible = true
+	if Game.Network.is_client():
+		$ActionsMenu/WaitingPlayers/VBoxContainer/HBoxContainer.visible = false
+	else:
+		$ActionsMenu/WaitingPlayers/VBoxContainer/HBoxContainer.visible = true
+
 func gui_open_build_window():
 	close_all_windows()
 	$ActionsMenu/BuildingsMenu.visible = true

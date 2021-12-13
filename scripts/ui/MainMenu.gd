@@ -60,4 +60,4 @@ func ui_start_online_game():
 	if joining_server:
 		Game.Network.join_server(ip_to_join, player_name_str, player_pin)
 	else:
-		Game.Network.host_server(2, player_name_str, player_pin)
+		Game.Network.host_server(Game.MAX_PLAYERS, player_name_str, player_pin)

@@ -44,7 +44,6 @@ func getIDByName(buildingName: String) -> int:
 func getImg(buildingID: int) -> String:
 	return getByID(buildingID).building_img
 
-
 func getByID(buildingID: int) -> Dictionary:
 	var i: int = 0
 	for buildDict in BuildingTypes:

@@ -220,6 +220,12 @@ func add_player(netid: int, player_name: String, player_pin: int, forceid: int =
 	init_player(free_player_index, netid, player_name, player_pin)
 	return free_player_index
 
+func get_next_player_turn() -> int:
+	for i in range(playersData.size()):
+		if i != current_player_turn and playersData[i].alive:
+			return i
+	return current_player_turn
+
 remote func change_to_map(map_name: String):
 	var full_map_path: String = self.MAPS_FOLDER + map_name;
 	get_tree().call_deferred("change_scene", full_map_path);

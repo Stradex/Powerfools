@@ -89,64 +89,6 @@ func _ready():
 		move_to_next_player_turn()
 		Game.tilesObj.save_sync_data()
 	Game.Network.register_synced_node(self, WORLD_GAME_NODE_ID);
-	
-
-func save_game_as(file_name: String):
-	if Game.Network.is_client():
-		return
-	var data_to_save: Dictionary = {
-		game_actions_available = actions_available,
-		game_current_player_turn = Game.current_player_turn,
-		game_current_status = Game.current_game_status,
-		game_points_to_select_left = Game.playersData[Game.current_player_turn].selectLeft,
-		players_data = Game.playersData.duplicate(true),
-		tiles_data = Game.tilesObj.get_all(true),
-		tile_size = Game.tilesObj.get_size()
-	}
-	Game.FileSystem.save_as_json(file_name, data_to_save)
-
-func start_online_game():
-	print("staring game...")
-	change_game_status(Game.STATUS.PRE_GAME)
-	for i in range(Game.playersData.size()):
-		if Game.playersData[i].alive:
-			Game.current_player_turn = i
-			save_player_info()
-			update_actions_available()
-			server_send_game_info()
-			print("Player " + str(i) + " turn")
-			break
-	Game.tilesObj.save_sync_data()
-
-func load_game_from(file_name: String):
-	if Game.Network.is_client():
-		return
-	Game.tilesObj.update_sync_data()
-	var data_to_load: Dictionary = Game.FileSystem.load_as_dict(file_name)
-	#TODO: Sync player data CORRECTLY, RIGHT NOW IT ONLY WORKS FOR 2 PLAYERS AND NOTHING MORE!
-	Game.tilesObj.set_all(data_to_load.tiles_data, data_to_load.tile_size)
-	Game.current_player_turn = data_to_load.game_current_player_turn
-	Game.playersData[Game.current_player_turn].selectLeft = data_to_load.game_points_to_select_left
-	actions_available = data_to_load.game_actions_available
-	change_game_status(data_to_load.game_current_status)
-	server_send_game_info()
-	Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = Game.tilesObj.get_sync_data() })
-	Game.tilesObj.save_sync_data()
-
-func on_autosave_timeout():
-	if Game.Network.is_client():
-		return
-	save_game_as("autosave.json")
-
-func on_net_sync_timeout():
-	if Game.Network.is_client():
-		return
-	server_send_game_info()
-
-func on_playerdata_sync_timeout():
-	if Game.Network.is_client():
-		return
-	Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_PLAYERS_DATA, {playerDataArray = Game.playersData.duplicate(true) }, true) #Unreliable, to avoid overflow of netcode
 
 func _process(delta):
 	var player_was_in_menu: bool = player_in_menu
@@ -203,7 +145,59 @@ func _input(event):
 			Game.STATUS.GAME_STARTED:
 				game_interact()
 	if Input.is_action_just_pressed("toggle_ingame_menu"):
-		$UI.gui_open_ingame_menu_window()
+		$UI.gui_open_ingame_menu_window()	
+
+###################################################
+# SAVE & LOAD GAMES SYSTEM
+###################################################
+
+func save_game_as(file_name: String):
+	if Game.Network.is_client():
+		return
+	var data_to_save: Dictionary = {
+		game_actions_available = actions_available,
+		game_current_player_turn = Game.current_player_turn,
+		game_current_status = Game.current_game_status,
+		game_points_to_select_left = Game.playersData[Game.current_player_turn].selectLeft,
+		players_data = Game.playersData.duplicate(true),
+		tiles_data = Game.tilesObj.get_all(true),
+		tile_size = Game.tilesObj.get_size()
+	}
+	Game.FileSystem.save_as_json(file_name, data_to_save)
+
+func load_game_from(file_name: String):
+	if Game.Network.is_client():
+		return
+	Game.tilesObj.update_sync_data()
+	var data_to_load: Dictionary = Game.FileSystem.load_as_dict(file_name)
+	#TODO: Sync player data CORRECTLY, RIGHT NOW IT ONLY WORKS FOR 2 PLAYERS AND NOTHING MORE!
+	Game.tilesObj.set_all(data_to_load.tiles_data, data_to_load.tile_size)
+	Game.current_player_turn = data_to_load.game_current_player_turn
+	Game.playersData[Game.current_player_turn].selectLeft = data_to_load.game_points_to_select_left
+	actions_available = data_to_load.game_actions_available
+	change_game_status(data_to_load.game_current_status)
+	server_send_game_info()
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = Game.tilesObj.get_sync_data() })
+	Game.tilesObj.save_sync_data()
+
+###################################
+#	TIMERS
+###################################
+
+func on_autosave_timeout():
+	if Game.Network.is_client():
+		return
+	save_game_as("autosave.json")
+
+func on_net_sync_timeout():
+	if Game.Network.is_client():
+		return
+	server_send_game_info()
+
+func on_playerdata_sync_timeout():
+	if Game.Network.is_client():
+		return
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_PLAYERS_DATA, {playerDataArray = Game.playersData.duplicate(true) }, true) #Unreliable, to avoid overflow of netcode
 
 ###################################
 #	INIT FUNCTIONS
@@ -214,11 +208,18 @@ func _input(event):
 #	GAME LOGIC
 ###################################
 
-func is_local_player_turn() -> bool:
-	return !Game.Network.is_multiplayer() or (Game.current_player_turn == Game.get_local_player_number())
-
-func waiting_other_player():
-	print("waiting other player....")
+func start_online_game():
+	print("staring game...")
+	change_game_status(Game.STATUS.PRE_GAME)
+	for i in range(Game.playersData.size()):
+		if Game.playersData[i].alive:
+			Game.current_player_turn = i
+			save_player_info()
+			update_actions_available()
+			server_send_game_info()
+			print("Player " + str(i) + " turn")
+			break
+	Game.tilesObj.save_sync_data()
 
 func game_interact():
 	if !is_local_player_turn():
@@ -238,15 +239,6 @@ func game_interact():
 			popup_tiles_actions()
 		else:
 			Game.interactTileSelected = Vector2(-1, -1)
-
-func can_do_tiles_actions(startTile: Vector2, endTile: Vector2, playerNumber: int):
-	if !Game.tilesObj.belongs_to_player(startTile, playerNumber):
-		return false
-	if !Game.tilesObj.is_next_to_tile(startTile,endTile):
-		return false
-	if !Game.tilesObj.belongs_to_player(endTile, playerNumber) and Game.tilesObj.get_warriors_count(startTile, playerNumber) <= 0: #don't allow civilians to invade
-		return false
-	return true
 
 func pre_game_interact():
 	if !is_local_player_turn():
@@ -273,7 +265,7 @@ func change_game_status(new_status: int) -> void:
 		Game.STATUS.LOBBY_WAIT:
 			$UI/HUD/GameInfo.visible = false
 			$UI/HUD/PreGameInfo.visible = false
-			open_lobby_window()
+			$UI.open_lobby_window()
 		Game.STATUS.PRE_GAME:
 			$UI/HUD/GameInfo.visible = false
 			$UI/HUD/PreGameInfo.visible = true
@@ -286,13 +278,6 @@ func change_game_status(new_status: int) -> void:
 				process_unused_tiles()
 	if status_changed:
 		print("Game Status changed to value: " + str(new_status))
-
-func open_lobby_window() -> void:
-	$UI/ActionsMenu/WaitingPlayers.visible = true
-	if Game.Network.is_client():
-		$UI/ActionsMenu/WaitingPlayers/VBoxContainer/HBoxContainer.visible = false
-	else:
-		$UI/ActionsMenu/WaitingPlayers/VBoxContainer/HBoxContainer.visible = true
 
 func process_unused_tiles() -> void:
 	if Game.Network.is_client():
@@ -321,33 +306,34 @@ func pre_game() -> void:
 			continue
 		if !player_has_capital(i) or Game.playersData[i].selectLeft > 0:
 			return
-	
 	change_game_status(Game.STATUS.GAME_STARTED)
-
-func get_next_player_turn() -> int:
-	for i in range(Game.playersData.size()):
-		if i != Game.current_player_turn and Game.playersData[i].alive:
-			return i
-	return Game.current_player_turn
 
 func move_to_next_player_turn() -> void: 
 	if Game.Network.is_client() and is_local_player_turn():
 		Game.Network.net_send_event(self.node_id, NET_EVENTS.CLIENT_TURN_END, {player_turn = Game.current_player_turn})
 	if Game.current_game_status == Game.STATUS.GAME_STARTED and !Game.Network.is_client():
 		process_turn_end(Game.current_player_turn)
-	for i in range(Game.playersData.size()):
+	elif Game.current_game_status == Game.STATUS.PRE_GAME and !Game.Network.is_client():
+		Game.tilesObj.recover_sync_data()
+		Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = Game.tilesObj.get_sync_data() })
+		Game.tilesObj.save_sync_data()
+	var new_player_turn: int = -1
+	for i in range(Game.current_player_turn, Game.playersData.size()):
 		if i != Game.current_player_turn and Game.playersData[i].alive:
-			Game.current_player_turn = i
-			save_player_info()
-			update_actions_available()
-			server_send_game_info()
-			print("Player " + str(i) + " turn")
-			return
-
+			new_player_turn = i
+			break
+	if new_player_turn == -1:
+		for i in range(Game.playersData.size()):
+			if i != Game.current_player_turn and Game.playersData[i].alive:
+				new_player_turn = i
+				break
+	if new_player_turn == -1:
+		new_player_turn = Game.current_player_turn
+	Game.current_player_turn = new_player_turn
 	save_player_info()
 	update_actions_available()
 	server_send_game_info()
-
+	print("Player " + str(new_player_turn) + " turn")
 
 func update_actions_available() -> void:
 	if Game.current_game_status == Game.STATUS.GAME_STARTED:
@@ -371,7 +357,7 @@ func process_tiles_turn_end(playerNumber: int) -> void:
 			process_tile_battles(Vector2(x, y))
 			update_tile_owner(Vector2(x, y))
 	if Game.Network.is_server():
-		var next_player_turn: int = get_next_player_turn()
+		var next_player_turn: int = Game.get_next_player_turn()
 		var sync_arrayA: Array = Game.tilesObj.get_sync_neighbors(next_player_turn)
 		var sync_arrayB: Array = Game.tilesObj.get_sync_data()
 
@@ -381,7 +367,6 @@ func process_tiles_turn_end(playerNumber: int) -> void:
 			merged_sync_arrays = Game.tilesObj.merge_sync_arrays(merged_sync_arrays.duplicate(true), sync_arrayC)
 		Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = merged_sync_arrays })
 	Game.tilesObj.save_sync_data()
-
 
 func update_tile_owner(cell: Vector2) -> void:
 	var playersInTile: int = Game.tilesObj.get_number_of_players_in_cell(cell)
@@ -586,8 +571,20 @@ func update_gold_stats(playerNumber: int) -> void:
 #	BOOLEANS FUNCTIONS
 ###################################
 
+func is_local_player_turn() -> bool:
+	return !Game.Network.is_multiplayer() or (Game.current_player_turn == Game.get_local_player_number())
+
 func is_player_menu_open() -> bool:
 	return $UI.is_a_menu_open()
+
+func can_do_tiles_actions(startTile: Vector2, endTile: Vector2, playerNumber: int):
+	if !Game.tilesObj.belongs_to_player(startTile, playerNumber):
+		return false
+	if !Game.tilesObj.is_next_to_tile(startTile,endTile):
+		return false
+	if !Game.tilesObj.belongs_to_player(endTile, playerNumber) and Game.tilesObj.get_warriors_count(startTile, playerNumber) <= 0: #don't allow civilians to invade
+		return false
+	return true
 
 func did_player_lost(playerNumber: int) -> bool:
 	return !player_has_capital(playerNumber)
