@@ -2,7 +2,6 @@ class_name WorldGameNode
 extends Node2D
 
 # Tropas se pueden mover maximo 5 casilleros solamente, no más (no estoy seguro todavia)
-# Guardar y cargar partida el multiplayer
 # Poder quemar tierra
 # mapas que se generen solos, montañas ( bloquea )
 # Estadisticas batallas ganadas y perdidas, soldados perdidos, etc...
@@ -13,6 +12,8 @@ const MAX_DEPLOYEMENTS_PER_TILE: int = 1
 const MININUM_TROOPS_TO_FIGHT: int = 5
 const EXTRA_CIVILIANS_TO_GAIN_CONQUER: int = 500
 const WORLD_GAME_NODE_ID: int = 666 #NODE ID unique
+const AUTOSAVE_INTERVAL: float = 600.0 #Every 10 minutes
+const PLAYER_DATA_SYNC_INTERVAL: float = 2.0
 
 var time_offset: float = 0.0
 var player_in_menu: bool = false
@@ -24,6 +25,8 @@ var undo_available: bool = true
 
 onready var tween: Tween
 onready var net_sync_timer: Timer
+onready var autosave_timer: Timer
+onready var playerdata_sync_timer: Timer
 var NetBoop = Game.Boop_Object.new(self);
 
 var saved_player_info: Dictionary = {
@@ -44,6 +47,7 @@ enum NET_EVENTS {
 	SERVER_SEND_DELTA_TILES,
 	SERVER_UPDATE_GAME_INFO,
 	CLIENT_SEND_GAME_INFO,
+	SERVER_SEND_PLAYERS_DATA,
 	MAX_EVENTS 
 }
 
@@ -56,9 +60,24 @@ func _ready():
 	net_sync_timer = Timer.new()
 	net_sync_timer.set_wait_time(10.0)
 	net_sync_timer.connect("timeout", self, "on_net_sync_timeout")
+	playerdata_sync_timer = Timer.new()
+	playerdata_sync_timer.set_wait_time(PLAYER_DATA_SYNC_INTERVAL)
+	playerdata_sync_timer.connect("timeout", self, "on_playerdata_sync_timeout")
+	
 	add_child(tween)
 	add_child(net_sync_timer)
+	add_child(playerdata_sync_timer)
 	net_sync_timer.start()
+	playerdata_sync_timer.start()
+	
+	
+	if !Game.Network.is_multiplayer() or Game.Network.is_server():
+		autosave_timer = Timer.new()
+		autosave_timer.set_wait_time(AUTOSAVE_INTERVAL)
+		autosave_timer.connect("timeout", self, "on_autosave_timeout")
+		add_child(autosave_timer)
+		autosave_timer.start()
+		
 	$UI.init_gui(self)
 	if Game.tilesObj:
 		Game.tilesObj.clear()
@@ -73,6 +92,8 @@ func _ready():
 	
 
 func save_game_as(file_name: String):
+	if Game.Network.is_client():
+		return
 	var data_to_save: Dictionary = {
 		game_actions_available = actions_available,
 		game_current_player_turn = Game.current_player_turn,
@@ -98,6 +119,8 @@ func start_online_game():
 	Game.tilesObj.save_sync_data()
 
 func load_game_from(file_name: String):
+	if Game.Network.is_client():
+		return
 	Game.tilesObj.update_sync_data()
 	var data_to_load: Dictionary = Game.FileSystem.load_as_dict(file_name)
 	#TODO: Sync player data CORRECTLY, RIGHT NOW IT ONLY WORKS FOR 2 PLAYERS AND NOTHING MORE!
@@ -110,11 +133,20 @@ func load_game_from(file_name: String):
 	Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = Game.tilesObj.get_sync_data() })
 	Game.tilesObj.save_sync_data()
 
+func on_autosave_timeout():
+	if Game.Network.is_client():
+		return
+	save_game_as("autosave.json")
+
 func on_net_sync_timeout():
 	if Game.Network.is_client():
 		return
 	server_send_game_info()
 
+func on_playerdata_sync_timeout():
+	if Game.Network.is_client():
+		return
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_PLAYERS_DATA, {playerDataArray = Game.playersData.duplicate(true) }, true) #Unreliable, to avoid overflow of netcode
 
 func _process(delta):
 	var player_was_in_menu: bool = player_in_menu
@@ -1031,6 +1063,16 @@ func server_process_event(eventId : int, eventData) -> void:
 			
 func client_process_event(eventId : int, eventData) -> void:
 	match eventId:
+		NET_EVENTS.SERVER_SEND_PLAYERS_DATA:
+			var net_local_player_number: int = Game.get_local_player_number()
+			for i in range(Game.playersData.size()):
+				if eventData.playerDataArray.size() <= i:
+					return
+				if i == net_local_player_number:
+					continue
+				Game.playersData[i].clear()
+				Game.playersData[i] = eventData.playerDataArray[i].duplicate(true)
+		
 		NET_EVENTS.UPDATE_TILE_DATA:
 			Game.tilesObj.set_sync_data(eventData.dictArray)
 		NET_EVENTS.SERVER_SEND_DELTA_TILES:

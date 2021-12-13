@@ -122,6 +122,10 @@ func gui_exit_ingame_menu_window():
 
 func gui_open_ingame_menu_window():
 	close_all_windows()
+	if Game.Network.is_client():
+		$ActionsMenu/InGameMenu/VBoxContainer/GuardarPartida.visible = false
+	else:
+		$ActionsMenu/InGameMenu/VBoxContainer/GuardarPartida.visible = true
 	$ActionsMenu/InGameMenu.visible = true
 
 func gui_open_build_window():
