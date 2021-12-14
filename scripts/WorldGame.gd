@@ -6,14 +6,15 @@ extends Node2D
 # mapas que se generen solos, montañas ( bloquea )
 # Estadisticas batallas ganadas y perdidas, soldados perdidos, etc...
 # Facciones: Germanos, Galos, Persas, Esparta, Tebas, Macedonios, Griegos, Romanos, Cartago, Egipto, Escitas 
+# Programar bot
 
 const MIN_ACTIONS_PER_TURN: int = 3
-const MAX_DEPLOYEMENTS_PER_TILE: int = 1
 const MININUM_TROOPS_TO_FIGHT: int = 5
 const EXTRA_CIVILIANS_TO_GAIN_CONQUER: int = 500
 const WORLD_GAME_NODE_ID: int = 666 #NODE ID unique
 const AUTOSAVE_INTERVAL: float = 600.0 #Every 10 minutes
 const PLAYER_DATA_SYNC_INTERVAL: float = 2.0
+const BOT_SECS_TO_EXEC_ACTION: float = 2.0 #seconds for a bot to execute each action (not turn but every single action)
 
 var time_offset: float = 0.0
 var player_in_menu: bool = false
@@ -27,6 +28,7 @@ onready var tween: Tween
 onready var net_sync_timer: Timer
 onready var autosave_timer: Timer
 onready var playerdata_sync_timer: Timer
+onready var bot_actions_timer: Timer # to emulate that the bot takes time to execute actions
 var NetBoop = Game.Boop_Object.new(self);
 
 var saved_player_info: Dictionary = {
@@ -51,6 +53,12 @@ enum NET_EVENTS {
 	MAX_EVENTS 
 }
 
+enum BOT_ACTIONS {
+	DEFENSIVE,
+	OFFENSIVE,
+	GREEDY
+}
+
 ###################################################
 # GODOT _READY, _PROCESS & FUNDAMENTAL FUNCTIONS
 ###################################################
@@ -63,12 +71,16 @@ func _ready():
 	playerdata_sync_timer = Timer.new()
 	playerdata_sync_timer.set_wait_time(PLAYER_DATA_SYNC_INTERVAL)
 	playerdata_sync_timer.connect("timeout", self, "on_playerdata_sync_timeout")
-	
+	bot_actions_timer = Timer.new()
+	bot_actions_timer.set_wait_time(BOT_SECS_TO_EXEC_ACTION)
+	bot_actions_timer.connect("timeout", self, "on_bot_actions_timeout")
 	add_child(tween)
 	add_child(net_sync_timer)
 	add_child(playerdata_sync_timer)
+	add_child(bot_actions_timer)
 	net_sync_timer.start()
 	playerdata_sync_timer.start()
+	bot_actions_timer.start()
 	
 	
 	if !Game.Network.is_multiplayer() or Game.Network.is_server():
@@ -81,12 +93,12 @@ func _ready():
 	$UI.init_gui(self)
 	if Game.tilesObj:
 		Game.tilesObj.clear()
-	Game.tilesObj = TileGameObject.new(Game.tile_map_size, Game.tileTypes.getIDByName('vacio'), Game.tileTypes, Game.troopTypes, Game.buildingTypes)
+	Game.tilesObj = TileGameObject.new(Game.tile_map_size, Game.tileTypes.getIDByName('vacio'), Game.tileTypes, Game.troopTypes, Game.buildingTypes, Game.rng)
 	if Game.Network.is_multiplayer():
 		change_game_status(Game.STATUS.LOBBY_WAIT)
 	else:
 		change_game_status(Game.STATUS.PRE_GAME)
-		move_to_next_player_turn()
+		start_player_turn(0)
 		Game.tilesObj.save_sync_data()
 	Game.Network.register_synced_node(self, WORLD_GAME_NODE_ID);
 
@@ -199,6 +211,365 @@ func on_playerdata_sync_timeout():
 		return
 	Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_PLAYERS_DATA, {playerDataArray = Game.playersData.duplicate(true) }, true) #Unreliable, to avoid overflow of netcode
 
+##################
+#	BOT STUFF	 #
+##################
+
+func on_bot_actions_timeout():
+	if !Game.is_current_player_a_bot():
+		return
+
+	match Game.current_game_status:
+		Game.STATUS.PRE_GAME:
+			bot_process_pre_game(Game.current_player_turn)
+		Game.STATUS.GAME_STARTED:
+			bot_process_game(Game.current_player_turn)
+
+func bot_process_game(bot_number: int):
+	if !Game.is_current_player_a_bot():
+		return
+
+	check_bot_plan_status(bot_number)
+
+	if is_bot_plan_empty(bot_number):
+		bot_make_new_plan(bot_number)
+
+	var player_capital_pos: Vector2 = Game.tilesObj.get_player_capital_vec2(bot_number)
+	var type_of_action_to_make: int = bot_get_type_of_action_to_make(bot_number)
+	var plan_to_achieve: Dictionary = Game.playersData[bot_number].bot_stats.next_plan
+	var action_executed: bool = false
+	var bot_is_being_attacked: bool = Game.tilesObj.ai_is_being_attacked(bot_number)
+	#var is_bot_being_attacked: bool = Game.tilesObj.is_player_being_attacked(bot_number)
+	#var is_bot_having_battles: bool = Game.tilesObj.is_player_having_battles(bot_number)
+	
+	#attack plan: first group the amount of troops necessary to win close to the enemy pos, then move that whole force to attack
+	if bot_is_being_attacked:
+		bot_make_new_plan(bot_number) #force new plans
+
+	if plan_to_achieve.territories_to_defend.size() > 0: #being attacked
+		action_executed = bot_move_troops_towards_pos(plan_to_achieve.territories_to_defend[0], bot_number)
+		
+	if !action_executed and plan_to_achieve.territories_to_conquer.size() > 0:
+		if Game.tilesObj.ai_have_strength_to_conquer(plan_to_achieve.territories_to_conquer[0], bot_number):
+			action_executed = bot_move_troops_towards_pos(plan_to_achieve.territories_to_conquer[0], bot_number)
+		else:
+			plan_to_achieve.territories_to_conquer.clear()
+	
+	if !action_executed and plan_to_achieve.troops.size() > 0:
+		action_executed = bot_recruit_troops(bot_number)
+	if !action_executed and plan_to_achieve.to_upgrade.size() > 0:
+		if bot_upgrade_territory(plan_to_achieve.to_upgrade[0], bot_number): #upgrade sucessful
+			action_executed = true
+			plan_to_achieve.to_upgrade.clear()
+	if !action_executed:
+		bot_free_action(bot_number)
+		
+	"""
+	match type_of_action_to_make:
+		BOT_ACTIONS.DEFENSIVE:
+			bot_game_defensive_action(bot_number)
+		BOT_ACTIONS.OFFENSIVE:
+			bot_game_offensive_action(bot_number)
+		BOT_ACTIONS.GREEDY:
+			bot_game_greedy_action(bot_number)
+	"""
+	action_in_turn_executed()
+
+func bot_free_action(bot_number: int) -> bool:
+	var minimum_gold_needed: float = gold_needed_by_plans(bot_number)
+	print (minimum_gold_needed)
+	if Game.tilesObj.get_total_gold(bot_number) <= minimum_gold_needed:
+		return false
+	#See if it can make some places productive
+	var unproductive_territories: Array = Game.tilesObj.ai_get_cells_not_being_productive(bot_number)
+	for cell in unproductive_territories:
+		if Game.tilesObj.can_be_upgraded(cell, bot_number):
+			if bot_upgrade_territory(cell, bot_number): #upgraded
+				return true
+	#See if it can build something
+	var cells_without_buildings: Array = Game.tilesObj.ai_get_all_cells_without_buildings(bot_number)
+	if bot_buy_building_at_cell(cells_without_buildings[rng.randi_range(0, cells_without_buildings.size()-1)], bot_number):
+		return true
+	
+	#See if it can recruit something
+	var cells_that_can_recruit: Array = Game.tilesObj.ai_get_all_cells_available_to_recruit(bot_number)
+	if cells_that_can_recruit.size() > 0 and bot_make_new_troops(cells_that_can_recruit[rng.randi_range(0, cells_that_can_recruit.size()-1)], bot_number):
+		return true
+	return false
+func bot_upgrade_territory(cell_to_upgrade: Vector2, bot_number: int) -> bool:
+	var cell_data: Dictionary = Game.tilesObj.get_cell(cell_to_upgrade)
+	
+	var tile_type_id: int = cell_data.tile_id
+	if  Game.tilesObj.is_upgrading(cell_to_upgrade):
+		return false
+	var tileTypeData = Game.tileTypes.getByID(tile_type_id)
+	assert(Game.tileTypes.canBeUpgraded(tile_type_id))
+	if tileTypeData.improve_prize > Game.tilesObj.get_total_gold(bot_number):
+		return false
+	save_player_info()
+	Game.tilesObj.update_sync_data()
+	Game.tilesObj.upgrade_tile(cell_to_upgrade)
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
+	return true
+
+func bot_recruit_troops(bot_number: int) -> bool:
+	var cells_that_can_recruit: Array = Game.tilesObj.ai_get_all_cells_available_to_recruit(bot_number)
+	if cells_that_can_recruit.size() <= 0: #try to build a building
+		var cells_without_buildings: Array = Game.tilesObj.ai_get_all_cells_without_buildings(bot_number)
+		if cells_without_buildings.size() > 0:
+			return bot_buy_building_at_cell(cells_without_buildings[rng.randi_range(0, cells_without_buildings.size()-1)], bot_number)
+		else:
+			return false
+	else:
+		return bot_make_new_troops(cells_that_can_recruit[rng.randi_range(0, cells_that_can_recruit.size()-1)], bot_number)
+
+func bot_buy_building_at_cell(cell_pos: Vector2, bot_number: int) -> bool:
+	if !check_if_player_can_buy_buildings(cell_pos, bot_number):
+		return false
+	
+	var available_buildings_to_build: Array = []
+	var getTotalGoldAvailable: int = Game.tilesObj.get_total_gold(bot_number)
+	var buildingTypesList: Array = Game.buildingTypes.getList() #Gives a copy, not the original list edit is safe
+	for i in range(buildingTypesList.size()):
+		if Game.tilesObj.can_buy_building_at_cell(cell_pos, i, getTotalGoldAvailable, bot_number):
+			available_buildings_to_build.append(i)
+	Game.tilesObj.update_sync_data()
+	Game.tilesObj.buy_building(cell_pos, available_buildings_to_build[rng.randi_range(0, available_buildings_to_build.size()-1)])
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
+	return true
+
+func gold_needed_by_plans(bot_number: int) -> float:
+	var bot_next_plan: Dictionary = Game.playersData[bot_number].bot_stats.next_plan
+	var gold_needed: float = 10.0 #start with 10 to avoid doing any action with less than 10 of gold
+	for cell_to_upgrade in bot_next_plan.to_upgrade:
+		gold_needed += Game.tilesObj.gold_needed_to_upgrade(cell_to_upgrade)
+	for troopToRecruit in bot_next_plan.troops:
+		var buildingTypeDict: Dictionary = Game.buildingTypes.getByRecruitTroopType(troopToRecruit.troop_id)
+		var deployements_needed: int = round(troopToRecruit.amount/buildingTypeDict.deploy_amount+0.5)
+		gold_needed += buildingTypeDict.deploy_prize*deployements_needed
+	return gold_needed
+
+func bot_make_new_plan(bot_number: int) -> void:
+	if !Game.is_current_player_a_bot():
+		return
+	#Stupid bot AI: Just conquer the weakest tiles and do nothing more than that
+	var defensive_points:float = Game.playersData[bot_number].bot_stats.defensiveness*Game.rng.randf_range(0.0, 100.0)
+	var ofensive_points:float = Game.playersData[bot_number].bot_stats.aggressiveness*Game.rng.randf_range(0.0, 100.0)
+	var greedy_points:float = Game.playersData[bot_number].bot_stats.avarice*Game.rng.randf_range(0.0, 100.0)
+	var sum_values: float = defensive_points+ofensive_points+greedy_points #chances of action
+	var defensive_action_chances: float = (defensive_points/sum_values)*100.0
+	var ofensive_action_chances: float = (ofensive_points/sum_values)*100.0
+	var greedy_action_chances: float = (greedy_points/sum_values)*100.0
+	var bot_next_plan: Dictionary = Game.playersData[bot_number].bot_stats.next_plan
+	
+	var territories_attacked: Array = Game.tilesObj.ai_all_cells_being_attacked(bot_number)
+	for cell in territories_attacked:
+		bot_next_plan.territories_to_defend.append(cell)
+	
+	if bot_next_plan.to_upgrade.size() > 0:
+		Game.playersData[bot_number].bot_stats.next_plan = bot_next_plan
+		return
+	var unproductive_territories: Array = Game.tilesObj.ai_get_cells_not_being_productive(bot_number)
+	for cell in unproductive_territories:
+		if Game.tilesObj.can_be_upgraded(cell, bot_number):
+				bot_next_plan.to_upgrade.append(cell)
+				break
+	
+	if bot_next_plan.territories_to_conquer.size() > 0:
+		Game.playersData[bot_number].bot_stats.next_plan = bot_next_plan
+		return
+	var wekeast_enemy_cell: Vector2 = Game.tilesObj.ai_get_weakest_enemy_cell(bot_number)
+	#var richest_enemy_cell: Vector2 = Game.tilesObj.ai_get_richest_enemy_cell(bot_number)
+	if Game.tilesObj.ai_have_strength_to_conquer(wekeast_enemy_cell, bot_number):
+		bot_next_plan.territories_to_conquer.append(wekeast_enemy_cell)
+	else:
+		var strength_necessary: float = Game.tilesObj.get_enemies_troops_health(wekeast_enemy_cell, bot_number)
+		var troop_id_to_recluit: int = Game.troopTypes.getIDByName("recluta")
+		var troops_to_recluit: int = strength_necessary/Game.troopTypes.getAverageDamage(troop_id_to_recluit)
+		bot_next_plan.troops.append({
+			troop_id = Game.troopTypes.getIDByName("recluta"),
+			amount = troops_to_recluit
+		})
+
+func bot_make_new_troops(cell_pos: Vector2, bot_number: int) -> bool:
+	if !is_recruiting_possible(cell_pos, bot_number):
+		return false
+	var plan_to_achieve: Dictionary = Game.playersData[bot_number].bot_stats.next_plan
+	var cell_data: Dictionary = Game.tilesObj.get_cell(cell_pos)
+	var currentBuildingType = Game.buildingTypes.getByID(cell_data.building_id)
+	var idTroopsToRecruit: int = currentBuildingType.id_troop_generate
+	var ammountOfTroopsToRecruit: int = 0
+	var upcomingTroopsDict: Dictionary = {
+		owner = bot_number,
+		troop_id= currentBuildingType.id_troop_generate,
+		amount = currentBuildingType.deploy_amount,
+		turns_left = currentBuildingType.turns_to_deploy_troops
+	}
+	save_player_info()
+	Game.tilesObj.update_sync_data()
+	Game.tilesObj.take_cell_gold(cell_pos, currentBuildingType.deploy_prize)
+	Game.tilesObj.append_upcoming_troops(cell_pos, upcomingTroopsDict)
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
+	return true
+
+func bot_move_troops_towards_pos(pos_to_move: Vector2, bot_number: int) -> bool:
+	var cell_with_troops: Vector2 =  Game.tilesObj.ai_get_closest_troop_force_pos_to(pos_to_move, bot_number)
+	if cell_with_troops == Vector2(-1, -1) or cell_with_troops == pos_to_move:
+		return false
+	var path_to_use: Array = Game.tilesObj.ai_get_path_to_from(cell_with_troops, pos_to_move, bot_number)
+	var index_to_remove: int = path_to_use.find(cell_with_troops)
+	if index_to_remove != -1:
+		path_to_use.remove(index_to_remove)
+	if path_to_use.size() > 0:
+		Game.tilesObj.ai_move_all_warriors_from_to(cell_with_troops, path_to_use[0], bot_number)
+	else:
+		return false
+	return true
+
+func bot_game_defensive_action(bot_number: int):
+	pass
+
+func bot_game_offensive_action(bot_number: int):
+	pass
+
+func bot_game_greedy_action(bot_number: int):
+	pass
+
+func bot_process_pre_game(bot_number: int):
+	if !Game.is_current_player_a_bot():
+		return
+	if !player_has_capital(bot_number):
+		give_bot_a_capital(bot_number)
+		return
+		
+	var player_capital_pos: Vector2 = Game.tilesObj.get_player_capital_vec2(bot_number)
+	var all_player_cells: Array = Game.tilesObj.get_all_player_tiles(bot_number)
+	var get_extra_troops_action: bool = false #if true, it will get troops, if not, it will get a territory
+	
+	if Game.tilesObj.get_total_gold(bot_number) <= 0:
+		bot_execute_give_extra_gold(bot_number, player_capital_pos)
+		return
+		
+	if Game.tilesObj.get_total_gold_gain_and_losses(bot_number) <= 0:
+		get_extra_troops_action = false
+	else:
+		get_extra_troops_action = rng.randi_range(0, 100) >= 50
+	
+	#print(Game.tilesObj.ai_get_farthest_player_cell_from(player_capital_pos, bot_number))
+	var type_of_action_to_make: int = bot_get_type_of_action_to_make(bot_number)
+	match type_of_action_to_make:
+		BOT_ACTIONS.DEFENSIVE:
+			if get_extra_troops_action:
+				bot_execute_add_extra_troops(bot_number, player_capital_pos)
+			else:
+				var available_cells_to_get: Array = Game.tilesObj.ai_get_closest_available_to_buy_free_cell_to(player_capital_pos, bot_number)
+				give_player_rural(bot_number, available_cells_to_get[rng.randi_range(0, available_cells_to_get.size()-1)])
+				
+		BOT_ACTIONS.OFFENSIVE:
+			var bot_cells_farthest_from_capital: Array = Game.tilesObj.ai_get_farthest_player_cell_from(player_capital_pos, bot_number)
+			var cell_to_use_picked: Vector2 = bot_cells_farthest_from_capital[rng.randi_range(0, bot_cells_farthest_from_capital.size()-1)]
+			if get_extra_troops_action:
+				bot_execute_add_extra_troops(bot_number, cell_to_use_picked)
+			else:
+				var available_cells_to_get: Array = Game.tilesObj.ai_get_closest_available_to_buy_free_cell_to(cell_to_use_picked, bot_number)
+				give_player_rural(bot_number, available_cells_to_get[rng.randi_range(0, available_cells_to_get.size()-1)])
+		BOT_ACTIONS.GREEDY:
+			bot_execute_give_extra_gold(bot_number, all_player_cells[rng.randi_range(0, all_player_cells.size()-1)])
+			
+	Game.playersData[bot_number].selectLeft -= 1
+	server_send_game_info()
+	if Game.playersData[bot_number].selectLeft == 0: 
+		move_to_next_player_turn()
+
+func bot_get_type_of_action_to_make(bot_number: int) -> int:
+	var defensive_points:float = Game.playersData[bot_number].bot_stats.defensiveness*Game.rng.randf_range(0.0, 100.0)
+	var ofensive_points:float = Game.playersData[bot_number].bot_stats.aggressiveness*Game.rng.randf_range(0.0, 100.0)
+	var greedy_points:float = Game.playersData[bot_number].bot_stats.avarice*Game.rng.randf_range(0.0, 100.0)
+	
+	if defensive_points >= ofensive_points and defensive_points >= greedy_points:
+		return BOT_ACTIONS.DEFENSIVE
+		
+	if ofensive_points >= defensive_points and ofensive_points >= greedy_points:
+		return BOT_ACTIONS.OFFENSIVE
+		
+	return BOT_ACTIONS.GREEDY
+	
+func give_bot_a_capital(bot_number: int):
+	if !Game.is_current_player_a_bot():
+		return
+	give_player_capital(bot_number, Game.tilesObj.ai_pick_random_free_cell())
+
+
+func bot_execute_give_extra_gold(bot_number: int, cell: Vector2):
+	if !Game.is_current_player_a_bot():
+		return
+	save_player_info()
+	Game.tilesObj.update_sync_data()
+	Game.tilesObj.add_cell_gold(cell, 10)
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
+
+func bot_execute_add_extra_troops(bot_number: int, cell: Vector2):
+	if !Game.is_current_player_a_bot():
+		return
+	save_player_info()
+	Game.tilesObj.update_sync_data()
+	var extraRecruits: Dictionary = {
+		owner = bot_number,
+		troop_id = Game.troopTypes.getIDByName("recluta"),
+		amount = 1000
+	}
+	Game.tilesObj.add_troops(cell, extraRecruits)
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
+
+func check_bot_plan_status(bot_number: int) -> void:
+	var bot_next_plan: Dictionary = Game.playersData[bot_number].bot_stats.next_plan
+	
+	#Check territories to conquer battle status!
+	var to_remove: bool = true
+	while to_remove:
+		to_remove = false
+		for i in range(bot_next_plan.territories_to_conquer.size()):
+			if Game.tilesObj.belongs_to_player(bot_next_plan.territories_to_conquer[i], bot_number): #already conquered!
+				to_remove = true
+				bot_next_plan.territories_to_conquer.remove(i)
+				break
+	#Check troops to be deployed status!
+	var warriors_count: int = Game.tilesObj.get_all_warriors_count(bot_number)
+	print("Warriors: " + str(warriors_count))
+	if bot_next_plan.troops.size() > 0:
+		if warriors_count >= bot_next_plan.troops[0].amount:
+			bot_next_plan.troops.clear()
+			
+	if bot_next_plan.to_upgrade.size() > 0:
+		if !Game.tilesObj.belongs_to_player(bot_next_plan.to_upgrade[0], bot_number):
+			bot_next_plan.to_upgrade.clear() #in case the territory was conquered
+			
+	#Check defend battles status
+	var territories_attacked: Array = Game.tilesObj.ai_all_cells_being_attacked(bot_number)
+	var value_removed: bool = true
+	while value_removed:
+		value_removed = false
+		for i in range(bot_next_plan.territories_to_defend.size()):
+			var index_to_remove: int = territories_attacked.find(bot_next_plan.territories_to_defend[i])
+			if index_to_remove == -1:
+				bot_next_plan.territories_to_defend.remove(i)
+				value_removed = true
+				break
+	
+func is_bot_plan_empty(bot_number: int) -> bool:
+	var bot_next_plan: Dictionary = Game.playersData[bot_number].bot_stats.next_plan
+	if bot_next_plan.territories_to_conquer.size() > 0:
+		return false
+	if bot_next_plan.troops.size() > 0:
+		return false
+	if bot_next_plan.to_upgrade.size() > 0:
+		return false
+	if bot_next_plan.territories_to_defend.size() > 0:
+		return false
+	if bot_next_plan.gold > 0:
+		return false
+	return true
+
 ###################################
 #	INIT FUNCTIONS
 ###################################
@@ -308,6 +679,14 @@ func pre_game() -> void:
 			return
 	change_game_status(Game.STATUS.GAME_STARTED)
 
+func start_player_turn(player_number: int):
+	Game.tilesObj.save_sync_data()
+	Game.current_player_turn = player_number
+	save_player_info()
+	update_actions_available()
+	server_send_game_info()
+	print("Player " + str(player_number) + " turn")
+	
 func move_to_next_player_turn() -> void: 
 	if Game.Network.is_client() and is_local_player_turn():
 		Game.Network.net_send_event(self.node_id, NET_EVENTS.CLIENT_TURN_END, {player_turn = Game.current_player_turn})
@@ -316,7 +695,6 @@ func move_to_next_player_turn() -> void:
 	elif Game.current_game_status == Game.STATUS.PRE_GAME and !Game.Network.is_client():
 		Game.tilesObj.recover_sync_data()
 		Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = Game.tilesObj.get_sync_data() })
-		Game.tilesObj.save_sync_data()
 	var new_player_turn: int = -1
 	for i in range(Game.current_player_turn, Game.playersData.size()):
 		if i != Game.current_player_turn and Game.playersData[i].alive:
@@ -329,11 +707,7 @@ func move_to_next_player_turn() -> void:
 				break
 	if new_player_turn == -1:
 		new_player_turn = Game.current_player_turn
-	Game.current_player_turn = new_player_turn
-	save_player_info()
-	update_actions_available()
-	server_send_game_info()
-	print("Player " + str(new_player_turn) + " turn")
+	start_player_turn(new_player_turn)
 
 func update_actions_available() -> void:
 	if Game.current_game_status == Game.STATUS.GAME_STARTED:
@@ -382,7 +756,7 @@ func update_tile_owner(cell: Vector2) -> void:
 func process_tile_battles(tile_pos: Vector2) -> void:
 	if !Game.tilesObj.is_cell_in_battle(tile_pos):
 		return
-	var damageMultiplier: float = rand_range(0.25, 1.0) #some battles can last more than others
+	var damageMultiplier: float = Game.rng.randf_range(0.25, 1.0) #some battles can last more than others
 	#Step 1: calculate Damage to do by each army
 	var damageToDoArray: Array = []
 	var civiliansKilledBy: Array = []
@@ -451,7 +825,7 @@ func process_tile_battles(tile_pos: Vector2) -> void:
 		var slaves_to_gain: int = 0
 		for civiliansKilledDictionary in civiliansKilledBy:
 			if civiliansKilledDictionary.attacker == playerWhoWonId:
-				slaves_to_gain = int(rand_range(civiliansKilledDictionary.amount*0.25, civiliansKilledDictionary.amount*0.75))
+				slaves_to_gain = int(Game.rng.randf_range(civiliansKilledDictionary.amount*0.25, civiliansKilledDictionary.amount*0.75))
 				break
 				
 		var extra_population: Dictionary = {
@@ -572,7 +946,11 @@ func update_gold_stats(playerNumber: int) -> void:
 ###################################
 
 func is_local_player_turn() -> bool:
-	return !Game.Network.is_multiplayer() or (Game.current_player_turn == Game.get_local_player_number())
+	if !Game.Network.is_multiplayer() or Game.Network.is_server() and Game.is_current_player_a_bot():
+		return true
+	if Game.current_player_turn == Game.get_local_player_number():
+		return true
+	return false
 
 func is_player_menu_open() -> bool:
 	return $UI.is_a_menu_open()
@@ -605,7 +983,7 @@ func is_recruiting_possible(tile_pos: Vector2, playerNumber: int) -> bool:
 	var currentBuildingType = Game.buildingTypes.getByID(tile_cell_data.building_id)
 	if currentBuildingType.deploy_prize > Game.tilesObj.get_total_gold(playerNumber):
 		return false
-	if tile_cell_data.upcomingTroops.size() >= MAX_DEPLOYEMENTS_PER_TILE: 
+	if tile_cell_data.upcomingTroops.size() >= 1: 
 		return false
 	return true
 
@@ -659,16 +1037,16 @@ func give_player_rural(playerNumber: int, tile_pos: Vector2) ->void:
 	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 
 func add_tribal_society_to_tile(cell: Vector2) -> void:
-	Game.tilesObj.set_cell_gold(cell, round(rand_range(5.0, 20.0)))
+	Game.tilesObj.set_cell_gold(cell, round(Game.rng.randf_range(5.0, 20.0)))
 	var troopsToAdd: Dictionary = {
 		owner = -1,
 		troop_id = Game.troopTypes.getIDByName("recluta"),
-		amount = int(rand_range(250.0, 2000.0))
+		amount = int(Game.rng.randf_range(250.0, 2000.0))
 	}
 	var civiliansToAdd: Dictionary = {
 		owner = -1,
 		troop_id = Game.troopTypes.getIDByName("civil"),
-		amount = int(rand_range(500.0, 5000.0))
+		amount = int(Game.rng.randf_range(500.0, 5000.0))
 	}
 	Game.tilesObj.add_troops(cell, troopsToAdd)
 	Game.tilesObj.add_troops(cell, civiliansToAdd)

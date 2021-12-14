@@ -57,6 +57,13 @@ func calculateTroopDamage(troopID: int) -> float:
 		i+=1
 	return 0.0
 
+func getAverageDamage(troopID: int) -> float:
+	var i: int = 0
+	for troopDict in TroopsTypes:
+		if i == troopID:
+			return (troopDict.damage.x + troopDict.damage.y)/2.0
+		i+=1
+	return 0.0
 func getByID(troopID: int) -> Dictionary:
 	var i: int = 0
 	for troopDict in TroopsTypes:

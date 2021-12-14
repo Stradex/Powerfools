@@ -43,8 +43,10 @@ var defaultCivilizationNames: Array = [
 	"Persia",
 	"Sparta"
 ]
+var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready():
+	rng.randomize()
 	init_players()
 	init_tiles_types()
 	init_troops_types()
@@ -63,7 +65,8 @@ func init_players():
 			alive = false,
 			isBot = false,
 			selectLeft = 0,
-			netid = -1
+			netid = -1,
+			bot_stats = {}
 		})
 
 func init_tiles_types():
@@ -178,6 +181,24 @@ func init_player(player_id: int, net_id: int, player_name: String = "player", pl
 	playersData[player_id].netid = net_id
 	playersData[player_id].name = player_name
 	playersData[player_id].pin_code = player_pin
+	
+	if is_bot:
+		playersData[player_id].bot_stats = {
+			aggressiveness =  rng.randf_range(0.1, 1.0), #the bigger, the most willing to start expanding and looking for other players the bot will be
+			defensiveness  =  rng.randf_range(0.1, 1.0), #the bigger, the most willing to make a strong defense the bot will be willing to
+			avarice = rng.randf_range(0.1, 1.0),  #the bigger, the most amount of gains and gold the bot will wish to have
+			troops_quality = rng.randf_range(0.1, 1.0), #the bigger, the best kind of troops the bot will want to have
+			next_plan = {
+				territories_to_conquer = [], #array with data (Vec2 pos) of territories the bot wish to conquer
+				troops = [], #array with data of troops bot wish to have
+				to_upgrade = [],#array with data of territories (Vec2 pos) the bot wish to upgrade
+				gold = 0, #gold bot wish to collect
+				territories_to_defend = []
+			} #array with data for the plan the bot wishes to achieve
+		}
+	else:
+		playersData[player_id].bot_stats.clear()
+	
 	print("Adding player %s (%d) with netid %d" % [player_name, player_id, net_id])
 
 func get_player_count() -> int:
@@ -226,6 +247,9 @@ func get_next_player_turn() -> int:
 			return i
 	return current_player_turn
 
+func is_current_player_a_bot() -> bool:
+	return playersData[current_player_turn].isBot
+
 remote func change_to_map(map_name: String):
 	var full_map_path: String = self.MAPS_FOLDER + map_name;
 	get_tree().call_deferred("change_scene", full_map_path);
@@ -235,6 +259,16 @@ func pause() -> void:
 	
 func unpause() -> void:
 	get_tree().paused = false
+
+func get_max_float(numbers_array: Array) -> float:
+	var new_array: Array = numbers_array.duplicate(true)
+	new_array.sort()
+	return max(new_array[0], new_array[new_array.size()-1])
+
+func get_min_float(numbers_array: Array) -> float:
+	var new_array: Array = numbers_array.duplicate(true)
+	new_array.sort()
+	return min(new_array[0], new_array[new_array.size()-1])
 
 remote func game_process_rpc(method_name: String, data: Array): 
 	Network.callv(method_name, data);

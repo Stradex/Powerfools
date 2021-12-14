@@ -44,6 +44,19 @@ func getIDByName(buildingName: String) -> int:
 func getImg(buildingID: int) -> String:
 	return getByID(buildingID).building_img
 
+func getByRecruitTroopType(troop_id: int) -> Dictionary:
+	for buildDict in BuildingTypes:
+		if buildDict.id_troop_generate == troop_id:
+			return buildDict
+	return InvalidBuilding
+func getIDByRecruitTroopType(troop_id: int) -> int:
+	var i: int = 0
+	for buildDict in BuildingTypes:
+		if buildDict.id_troop_generate == troop_id:
+			return i
+		i+=1
+	return -1
+
 func getByID(buildingID: int) -> Dictionary:
 	var i: int = 0
 	for buildDict in BuildingTypes:

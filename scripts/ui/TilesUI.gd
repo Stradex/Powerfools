@@ -22,7 +22,7 @@ const MINIMUM_TROOPS_ICON_COUNT: int = 10
 func update_building_tiles() -> void:
 	
 	var player_mask: int = Game.current_player_turn
-	if Game.Network.is_multiplayer():
+	if Game.Network.is_multiplayer() or Game.is_current_player_a_bot():
 		player_mask = Game.get_local_player_number()
 	
 	for x in range(Game.tile_map_size.x):
@@ -81,7 +81,7 @@ func get_troops_tile_id(tile_pos: Vector2, playerNumber: int) -> int:
 func update_selection_tiles() -> void:
 	
 	var player_mask: int = Game.current_player_turn
-	if Game.Network.is_multiplayer():
+	if Game.Network.is_multiplayer() or Game.is_current_player_a_bot():
 		player_mask = Game.get_local_player_number()
 		
 	var mouse_pos: Vector2 = get_global_mouse_position()
@@ -118,7 +118,7 @@ func get_tile_selected_img_id(tile_pos: Vector2, playerNumber: int) -> int:
 func update_visibility_tiles() -> void:
 	
 	var player_mask: int = Game.current_player_turn
-	if Game.Network.is_multiplayer():
+	if Game.Network.is_multiplayer() or Game.is_current_player_a_bot():
 		player_mask = Game.get_local_player_number()
 		
 	for x in range(Game.tile_map_size.x):

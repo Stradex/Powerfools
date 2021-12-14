@@ -182,7 +182,7 @@ func update_server_info():
 func gui_update_civilization_info() -> void:
 	
 	var player_mask: int = Game.current_player_turn
-	if Game.Network.is_multiplayer():
+	if Game.Network.is_multiplayer() or Game.is_current_player_a_bot():
 		player_mask = Game.get_local_player_number()
 
 	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer5/CivilizationText.text = str(Game.playersData[player_mask].civilizationName)
@@ -203,7 +203,7 @@ func gui_update_civilization_info() -> void:
 func gui_update_tile_info(tile_pos: Vector2) -> void:
 	
 	var player_mask: int = Game.current_player_turn
-	if Game.Network.is_multiplayer():
+	if Game.Network.is_multiplayer() or Game.is_current_player_a_bot():
 		player_mask = Game.get_local_player_number()
 	
 	var cell_data: Dictionary = Game.tilesObj.get_cell(tile_pos)
