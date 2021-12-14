@@ -24,7 +24,7 @@ func update_building_tiles() -> void:
 	var player_mask: int = Game.current_player_turn
 	if Game.Network.is_multiplayer() or Game.is_current_player_a_bot():
 		player_mask = Game.get_local_player_number()
-	
+
 	for x in range(Game.tile_map_size.x):
 		for y in range(Game.tile_map_size.y):
 			var tile_cell_data: Dictionary = Game.tilesObj.get_cell(Vector2(x, y))
@@ -83,7 +83,6 @@ func update_selection_tiles() -> void:
 	var player_mask: int = Game.current_player_turn
 	if Game.Network.is_multiplayer() or Game.is_current_player_a_bot():
 		player_mask = Game.get_local_player_number()
-		
 	var mouse_pos: Vector2 = get_global_mouse_position()
 	var tile_selected: Vector2 = $SelectionTiles.world_to_map(mouse_pos)
 	if Game.current_tile_selected == tile_selected:

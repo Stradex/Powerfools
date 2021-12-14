@@ -172,6 +172,8 @@ func start_new_game(is_mp_game: bool = false):
 	if !is_mp_game:
 		init_player(0, Game.Network.SERVER_NETID) #human
 		init_player(1, Game.Network.SERVER_NETID, "bot", 1, true) #bot
+		init_player(2, Game.Network.SERVER_NETID, "bot", 2, true) #bot
+		init_player(3, Game.Network.SERVER_NETID, "bot", 3, true) #bot
 	change_to_map(START_MAP)
 
 func init_player(player_id: int, net_id: int, player_name: String = "player", player_pin: int = 0, is_bot:bool = false):

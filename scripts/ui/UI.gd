@@ -184,7 +184,6 @@ func gui_update_civilization_info() -> void:
 	var player_mask: int = Game.current_player_turn
 	if Game.Network.is_multiplayer() or Game.is_current_player_a_bot():
 		player_mask = Game.get_local_player_number()
-
 	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer5/CivilizationText.text = str(Game.playersData[player_mask].civilizationName)
 	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer/TotTalentosText.text = str(stepify(Game.tilesObj.get_total_gold(player_mask), 0.1))
 	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer2/StrengthText.text = str(Game.tilesObj.get_total_strength(player_mask))
@@ -205,7 +204,6 @@ func gui_update_tile_info(tile_pos: Vector2) -> void:
 	var player_mask: int = Game.current_player_turn
 	if Game.Network.is_multiplayer() or Game.is_current_player_a_bot():
 		player_mask = Game.get_local_player_number()
-	
 	var cell_data: Dictionary = Game.tilesObj.get_cell(tile_pos)
 	if Game.current_game_status == Game.STATUS.PRE_GAME:
 		$HUD/GameInfo/HBoxContainer2/TurnText.text = "PRE-GAME: " + str(Game.playersData[Game.current_player_turn].civilizationName)

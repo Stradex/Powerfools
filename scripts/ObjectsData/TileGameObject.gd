@@ -199,12 +199,20 @@ func get_cell_gold_gain_and_losses(tile_pos: Vector2, playerNumber: int) -> floa
 		goldGains -= float(troop_types_obj.getByID(troopDict.troop_id).idle_cost_per_turn*troopDict.amount)/1000.0
 	return goldGains
 
+func get_all_civilians_count(playerNumber: int) -> int:
+	var player_cells: Array = get_all_player_tiles(playerNumber)
+	var civilians_count: int = 0
+	for cell in player_cells:
+		civilians_count+= get_civilian_count(cell, playerNumber)
+	return civilians_count
+
 func get_all_warriors_count(playerNumber: int) -> int:
 	var cells_with_warriors: Array = get_all_tiles_with_warriors_from_player(playerNumber)
 	var warriors_count: int = 0
 	for cell in cells_with_warriors:
 		warriors_count+= get_warriors_count(cell, playerNumber)
 	return warriors_count
+	
 func get_warriors_count(tile_pos: Vector2, playerNumber: int) -> int:
 	var tropsCount: int = 0
 	for troopDict in tiles_data[tile_pos.x][tile_pos.y].troops:
@@ -903,14 +911,13 @@ func ai_get_weakest_enemy_cell(player_number: int) -> Vector2:
 			#print(get_strength(cell, cell_owner))
 	return weakest_cell
 
-func ai_get_closest_troop_force_pos_to(enemy_cell_pos: Vector2, player_number: int) -> Vector2:
+func ai_get_closest_troop_force_pos_to(enemy_cell_pos: Vector2, player_number: int, minimum_amount: int = 0) -> Vector2:
 	var cells_with_troops: Array = get_all_tiles_with_warriors_from_player(player_number)
 	var cells_to_use: Array = []
 	#Remove tiles that are in battle
 	for cell in cells_with_troops:
-		if !is_cell_in_battle(cell):
+		if !is_cell_in_battle(cell) and get_warriors_count(cell, player_number) > minimum_amount:
 			cells_to_use.append(cell)
-
 	if cells_to_use.size() > 0:
 		return ai_get_closest_cell_to_from_array(cells_to_use, enemy_cell_pos, player_number)
 	return Vector2(-1, -1)
@@ -946,7 +953,7 @@ func ai_get_path_to_from(start_pos: Vector2, end_pos: Vector2, player_number: in
 			path_completed = true
 	return path_array
 
-func ai_move_all_warriors_from_to(start_pos: Vector2, end_pos: Vector2, player_number: int) -> void:
+func ai_move_warriors_from_to(start_pos: Vector2, end_pos: Vector2, player_number: int, percent_to_move: float = 1.0) -> void:
 	var startTroopsArray: Array = tiles_data[start_pos.x][start_pos.y].troops
 	var endTroopsArray: Array = tiles_data[end_pos.x][end_pos.y].troops
 	for troopDict in startTroopsArray:
@@ -956,12 +963,15 @@ func ai_move_all_warriors_from_to(start_pos: Vector2, end_pos: Vector2, player_n
 			continue
 		if !troop_types_obj.getByID(troopDict.troop_id).is_warrior:
 			continue
+		var troops_to_move: int = int(floor(troopDict.amount*percent_to_move))
+		if troops_to_move > troopDict.amount:
+			troops_to_move = troopDict.amount
 		add_troops(end_pos, {
 			owner = player_number,
 			troop_id = troopDict.troop_id,
-			amount = troopDict.amount
+			amount = troops_to_move
 		})
-		troopDict.amount = 0
+		troopDict.amount -= troops_to_move
 
 func ai_get_all_cells_without_buildings(playerNumber: int) -> Array:
 	var cells_with_builidngs: Array = get_all_buildings(playerNumber)
