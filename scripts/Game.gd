@@ -66,6 +66,7 @@ func init_players():
 			isBot = false,
 			selectLeft = 0,
 			netid = -1,
+			team = -1, #-1 equals no team, so enemy with everyone 
 			bot_stats = {}
 		})
 
@@ -171,19 +172,31 @@ func start_new_game(is_mp_game: bool = false):
 	current_player_turn = 0
 	if !is_mp_game:
 		init_player(0, Game.Network.SERVER_NETID) #human
-		init_player(1, Game.Network.SERVER_NETID, "bot", 1, true) #bot
-		init_player(2, Game.Network.SERVER_NETID, "bot", 2, true) #bot
-		init_player(3, Game.Network.SERVER_NETID, "bot", 3, true) #bot
+		init_player(1, Game.Network.SERVER_NETID, "bot", 1, true, 1) #bot - team 1
+		init_player(2, Game.Network.SERVER_NETID, "bot", 2, true, 1) #bot - team 1
+		init_player(3, Game.Network.SERVER_NETID, "bot", 3, true, 1) #bot - team 1
+	else:
+		init_player(2, Game.Network.SERVER_NETID, "bot", 2, true, 1) #Just for testing only
+		init_player(3, Game.Network.SERVER_NETID, "bot", 3, true, 1) #Just for testing only
 	change_to_map(START_MAP)
 
-func init_player(player_id: int, net_id: int, player_name: String = "player", player_pin: int = 0, is_bot:bool = false):
+func are_player_allies(playerA: int, playerB: int) -> bool:
+	if playerA == playerB:
+		return true
+	if playerA < 0 or playerB < 0:
+		return false
+	if playersData[playerA].team == -1 or playersData[playerB].team == -1:
+		return false
+	return playersData[playerA].team == playersData[playerB].team
+
+func init_player(player_id: int, net_id: int, player_name: String = "player", player_pin: int = 0, is_bot:bool = false, team:int = -1):
 	playersData[player_id].alive = true
 	playersData[player_id].isBot = is_bot
 	playersData[player_id].selectLeft = 10
 	playersData[player_id].netid = net_id
 	playersData[player_id].name = player_name
 	playersData[player_id].pin_code = player_pin
-	
+	playersData[player_id].team = team
 	if is_bot:
 		playersData[player_id].bot_stats = {
 			aggressiveness =  rng.randf_range(0.1, 1.0), #the bigger, the most willing to start expanding and looking for other players the bot will be
@@ -195,7 +208,8 @@ func init_player(player_id: int, net_id: int, player_name: String = "player", pl
 				troops = [], #array with data of troops bot wish to have
 				to_upgrade = [],#array with data of territories (Vec2 pos) the bot wish to upgrade
 				gold = 0, #gold bot wish to collect
-				territories_to_defend = []
+				territories_to_defend = [],
+				plan_turns_executed=0
 			} #array with data for the plan the bot wishes to achieve
 		}
 	else:

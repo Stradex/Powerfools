@@ -15,7 +15,8 @@ const EXTRA_CIVILIANS_TO_GAIN_CONQUER: int = 500
 const WORLD_GAME_NODE_ID: int = 666 #NODE ID unique
 const AUTOSAVE_INTERVAL: float = 600.0 #Every 10 minutes
 const PLAYER_DATA_SYNC_INTERVAL: float = 2.0
-const BOT_SECS_TO_EXEC_ACTION: float = 0.5 #seconds for a bot to execute each action (not turn but every single action)
+const BOT_SECS_TO_EXEC_ACTION: float = 1.0 #seconds for a bot to execute each action (not turn but every single action)
+const BOT_MAX_TURNS_FOR_PLAN: int = 3 #bot can be using same plan as maximum as 3 turns, to avoid bots getting stuck with old plans
 
 var time_offset: float = 0.0
 var player_in_menu: bool = false
@@ -231,9 +232,10 @@ func on_playerdata_sync_timeout():
 ##################
 
 func on_bot_actions_timeout():
+	if Game.Network.is_client(): #only server executes game logic
+		return
 	if !Game.is_current_player_a_bot():
 		return
-
 	match Game.current_game_status:
 		Game.STATUS.PRE_GAME:
 			bot_process_pre_game(Game.current_player_turn)
@@ -250,11 +252,16 @@ func bot_process_game(bot_number: int):
 		bot_make_new_plan(bot_number)
 
 	var player_capital_pos: Vector2 = Game.tilesObj.get_player_capital_vec2(bot_number)
+	if	player_capital_pos == Vector2(-1, -1): #player lost
+		action_in_turn_executed()
+		return
+
 	var type_of_action_to_make: int = bot_get_type_of_action_to_make(bot_number)
 	var plan_to_achieve: Dictionary = Game.playersData[bot_number].bot_stats.next_plan
 	var action_executed: bool = false
 	var bot_is_being_attacked: bool = Game.tilesObj.ai_is_being_attacked(bot_number)
 	var bot_is_having_debt: bool = Game.tilesObj.get_total_gold_gain_and_losses(bot_number) <= 0
+	var enemy_reachable_capital: Vector2 = Game.tilesObj.ai_get_reachable_player_capital(bot_number)
 	#var is_bot_being_attacked: bool = Game.tilesObj.is_player_being_attacked(bot_number)
 	#var is_bot_having_battles: bool = Game.tilesObj.is_player_having_battles(bot_number)
 	
@@ -269,6 +276,11 @@ func bot_process_game(bot_number: int):
 	if enemies_close_to_capital_force.damage >= capital_damage or enemies_close_to_capital_force.health >= capital_health: #Capital under danger of attack!
 		action_executed = bot_move_troops_towards_pos(player_capital_pos, bot_number, true) #Force to move!
 		print("[BOT] trying to defend capital!")
+
+	if enemy_reachable_capital != Vector2(-1, -1):
+		if Game.tilesObj.ai_have_strength_to_conquer(enemy_reachable_capital, bot_number):
+			print("[BOT] Storming enemy capital")
+			action_executed = bot_move_troops_towards_pos(enemy_reachable_capital, bot_number)
 
 	if !action_executed and plan_to_achieve.territories_to_defend.size() > 0: #being attacked
 		action_executed = bot_move_troops_towards_pos(plan_to_achieve.territories_to_defend[0], bot_number)
@@ -410,14 +422,19 @@ func bot_make_new_plan(bot_number: int) -> void:
 	var wekeast_enemy_cell: Vector2 = Game.tilesObj.ai_get_weakest_enemy_cell(bot_number)
 	
 	var cell_to_attack: Vector2 
-	if weakest_player_enemy_cell == Vector2(-1, -1) and strongest_player_enemy_cell == Vector2(-1, -1): # no playr enemies nearby
+	if weakest_player_enemy_cell != Vector2(-1, -1) and strongest_player_enemy_cell != Vector2(-1, -1): # no playr enemies nearby
 		if ofensive_points > defensive_points:
 			cell_to_attack = weakest_player_enemy_cell
 		else:
 			cell_to_attack = strongest_player_enemy_cell
 		print("[BOT] focus to attack player")
 	else:
-		cell_to_attack = weakest_player_enemy_cell
+		cell_to_attack = wekeast_enemy_cell
+	
+	if cell_to_attack == Vector2(-1, -1):
+		print("[BOT] bot is surrounded by ally troops, it is too stupid to know what to do :)")
+		Game.playersData[bot_number].bot_stats.next_plan = bot_next_plan #There are no available cells to work with, probably bot is surounded by ally cells, bad luck : P
+		return
 	
 	#var richest_enemy_cell: Vector2 = Game.tilesObj.ai_get_richest_enemy_cell(bot_number)
 	if Game.tilesObj.ai_have_strength_to_conquer(cell_to_attack, bot_number) or bot_is_having_debt: #always attack in case of debt!, better to get a territory fast
@@ -454,16 +471,15 @@ func bot_make_new_troops(cell_pos: Vector2, bot_number: int) -> bool:
 	return true
 
 func bot_move_troops_towards_pos(pos_to_move: Vector2, bot_number: int, force_to_move: bool = false) -> bool:
-	
 	var percent_troops_to_move: float = 1.0
-	var cell_with_troops: Vector2 
+	var cell_with_troops: Vector2
 	
 	if force_to_move:
 		percent_troops_to_move = 1.0
 		cell_with_troops = Game.tilesObj.ai_get_closest_troop_force_pos_to(pos_to_move, bot_number, BOT_MIN_WARRIORS_TO_MOVE)
 	else:
 		percent_troops_to_move = 1.0-Game.playersData[bot_number].bot_stats.defensiveness*0.5
-		cell_with_troops = Game.tilesObj.ai_get_closest_troop_capable_of_conquer(pos_to_move, bot_number, BOT_MIN_WARRIORS_TO_MOVE)
+		cell_with_troops = Game.tilesObj.ai_get_closest_troop_capable_of_conquer(pos_to_move, bot_number, BOT_MIN_WARRIORS_TO_MOVE, 1.0/percent_troops_to_move)
 		
 	if cell_with_troops == Vector2(-1, -1) or cell_with_troops == pos_to_move:
 		return false
@@ -526,12 +542,13 @@ func bot_process_pre_game(bot_number: int):
 				give_player_rural(bot_number, available_cells_to_get[rng.randi_range(0, available_cells_to_get.size()-1)])
 		BOT_ACTIONS.GREEDY:
 			bot_execute_give_extra_gold(bot_number, all_player_cells[rng.randi_range(0, all_player_cells.size()-1)])
-			
+	
+	#use_selection_point()
 	Game.playersData[bot_number].selectLeft -= 1
 	server_send_game_info()
 	if Game.playersData[bot_number].selectLeft == 0: 
 		move_to_next_player_turn()
-
+	
 func bot_get_type_of_action_to_make(bot_number: int) -> int:
 	var defensive_points:float = Game.playersData[bot_number].bot_stats.defensiveness*Game.rng.randf_range(0.0, 100.0)
 	var ofensive_points:float = Game.playersData[bot_number].bot_stats.aggressiveness*Game.rng.randf_range(0.0, 100.0)
@@ -573,8 +590,12 @@ func bot_execute_add_extra_troops(bot_number: int, cell: Vector2):
 	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 
 func check_bot_plan_status(bot_number: int) -> void:
+
 	var bot_next_plan: Dictionary = Game.playersData[bot_number].bot_stats.next_plan
-	
+	if bot_next_plan.plan_turns_executed >= BOT_MAX_TURNS_FOR_PLAN:
+		clear_bot_plans(bot_number)
+		bot_next_plan.plan_turns_executed = 0
+		return
 	#Check territories to conquer battle status!
 	var to_remove: bool = true
 	while to_remove:
@@ -586,7 +607,6 @@ func check_bot_plan_status(bot_number: int) -> void:
 				break
 	#Check troops to be deployed status!
 	var warriors_count: int = Game.tilesObj.get_all_warriors_count(bot_number)
-	print("Warriors: " + str(warriors_count))
 	if bot_next_plan.troops.size() > 0:
 		if warriors_count >= bot_next_plan.troops[0].amount:
 			bot_next_plan.troops.clear()
@@ -606,7 +626,7 @@ func check_bot_plan_status(bot_number: int) -> void:
 				bot_next_plan.territories_to_defend.remove(i)
 				value_removed = true
 				break
-	
+
 func is_bot_plan_empty(bot_number: int) -> bool:
 	var bot_next_plan: Dictionary = Game.playersData[bot_number].bot_stats.next_plan
 	if bot_next_plan.territories_to_conquer.size() > 0:
@@ -621,6 +641,13 @@ func is_bot_plan_empty(bot_number: int) -> bool:
 		return false
 	return true
 
+func clear_bot_plans(bot_number: int) -> void:
+	var bot_next_plan: Dictionary = Game.playersData[bot_number].bot_stats.next_plan
+	bot_next_plan.territories_to_conquer.clear()
+	bot_next_plan.troops.clear()
+	bot_next_plan.to_upgrade.clear()
+	bot_next_plan.territories_to_defend.clear()
+	bot_next_plan.gold = 0
 ###################################
 #	INIT FUNCTIONS
 ###################################
@@ -643,6 +670,13 @@ func start_online_game():
 			break
 	Game.tilesObj.save_sync_data()
 
+func player_can_select_tile_as_first_interaction(tile_pos: Vector2, player_number: int) -> bool:
+	if Game.tilesObj.belongs_to_player(tile_pos, player_number):
+		return true
+	if Game.tilesObj.belongs_to_allies(tile_pos, player_number) and Game.tilesObj.player_has_troops_in_cell(tile_pos, player_number):
+		return true
+	return false
+
 func game_interact():
 	if !is_local_player_turn():
 		return
@@ -650,7 +684,7 @@ func game_interact():
 		return
 	
 	if Game.interactTileSelected == Vector2(-1, -1) or (Game.interactTileSelected != Vector2(-1, -1) and Game.nextInteractTileSelected != Vector2(-1, -1)):
-		if !Game.tilesObj.belongs_to_player(Game.current_tile_selected, Game.current_player_turn):
+		if !player_can_select_tile_as_first_interaction(Game.current_tile_selected, Game.current_player_turn):
 			Game.interactTileSelected = Vector2(-1, -1)
 		else:
 			Game.interactTileSelected = Game.current_tile_selected
@@ -704,10 +738,14 @@ func change_game_status(new_status: int) -> void:
 func process_unused_tiles() -> void:
 	if Game.Network.is_client():
 		return
+	
+	#add rocks first
+	#Game.tilesObj.pcg_generate_rocks(rng.randf_range(0.05, 0.75))
+	Game.tilesObj.pcg_generate_rocks(1.0)
 	#Game.tilesObj.recover_sync_data()
 	for x in range(Game.tile_map_size.x):
 		for y in range(Game.tile_map_size.y):
-			if !Game.tilesObj.is_owned_by_player(Vector2(x, y)):
+			if !Game.tilesObj.is_owned_by_player(Vector2(x, y)) and Game.tilesObj.is_tile_walkeable(Vector2(x, y)):
 				add_tribal_society_to_tile(Vector2(x, y))
 	save_player_info() #Avoid weird bug
 	Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = Game.tilesObj.get_sync_neighbors(Game.current_player_turn) })
@@ -736,6 +774,10 @@ func start_player_turn(player_number: int):
 	save_player_info()
 	update_actions_available()
 	server_send_game_info()
+	
+	if Game.is_current_player_a_bot():
+		Game.playersData[player_number].bot_stats.next_plan.plan_turns_executed+=1
+		
 	print("Player " + str(player_number) + " turn")
 	
 func move_to_next_player_turn() -> void: 
@@ -830,6 +872,8 @@ func process_tile_battles(tile_pos: Vector2) -> void:
 		for troopDict in tile_cell_troops:
 			if damageToDo.owner == troopDict.owner:
 				continue
+			if Game.are_player_allies(damageToDo.owner, troopDict.owner): 
+				continue
 			if troopDict.amount <= 0:
 				continue
 			var troopStrength: float = Game.tilesObj.get_troop_cell_strength(tile_pos, troopDict.owner, troopDict.troop_id)
@@ -841,6 +885,8 @@ func process_tile_battles(tile_pos: Vector2) -> void:
 		var i: int = 0
 		for troopDict in tile_cell_troops:
 			if damageToDo.owner == troopDict.owner:
+				continue
+			if Game.are_player_allies(damageToDo.owner, troopDict.owner): 
 				continue
 			if troopDict.amount <= 0:
 				continue
@@ -1007,7 +1053,7 @@ func is_player_menu_open() -> bool:
 	return $UI.is_a_menu_open()
 
 func can_do_tiles_actions(startTile: Vector2, endTile: Vector2, playerNumber: int):
-	if !Game.tilesObj.belongs_to_player(startTile, playerNumber):
+	if !player_can_select_tile_as_first_interaction(startTile, playerNumber):
 		return false
 	if !Game.tilesObj.is_next_to_tile(startTile,endTile):
 		return false
@@ -1399,6 +1445,8 @@ func execute_add_extra_troops():
 	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 
 func use_selection_point():
+	if Game.Network.is_client() and !is_local_player_turn():
+		return
 	Game.playersData[Game.current_player_turn].selectLeft-=1
 	if Game.Network.is_client() and Game.playersData[Game.current_player_turn].selectLeft >= 0:
 		Game.Network.net_send_event(self.node_id, NET_EVENTS.CLIENT_USE_POINT, null)
@@ -1478,10 +1526,10 @@ func server_process_event(eventId : int, eventData) -> void:
 		NET_EVENTS.CLIENT_USE_ACTION:
 			action_in_turn_executed()
 		NET_EVENTS.CLIENT_TURN_END:
-			if eventData.player_turn == Game.current_player_turn:
+			if eventData.player_turn == Game.current_player_turn and !Game.is_current_player_a_bot():
 				move_to_next_player_turn()
 		NET_EVENTS.CLIENT_SEND_GAME_INFO:
-			if	Game.current_player_turn == eventData.player_turn:
+			if	Game.current_player_turn == eventData.player_turn and !Game.is_current_player_a_bot():
 				Game.playersData[Game.current_player_turn].selectLeft = eventData.select_left
 				actions_available = eventData.actions_left
 		_:
@@ -1495,9 +1543,11 @@ func client_process_event(eventId : int, eventData) -> void:
 				if eventData.playerDataArray.size() <= i:
 					return
 				if i == net_local_player_number:
-					continue
-				Game.playersData[i].clear()
-				Game.playersData[i] = eventData.playerDataArray[i].duplicate(true)
+					Game.playersData[i].team = eventData.playerDataArray[i].team
+					#Game.playersData[i].alive = eventData.playerDataArray[i].alive
+				else:
+					Game.playersData[i].clear()
+					Game.playersData[i] = eventData.playerDataArray[i].duplicate(true)
 		
 		NET_EVENTS.UPDATE_TILE_DATA:
 			Game.tilesObj.set_sync_data(eventData.dictArray)

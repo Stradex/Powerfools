@@ -232,20 +232,30 @@ func gui_update_tile_info(tile_pos: Vector2) -> void:
 	
 	var populationStr: String = ""
 	var isEnemyPopulation: bool = false
+	var isAllyPopulation: bool = false
 	var troops_array: Array = Game.tilesObj.get_troops(tile_pos)
 	for troopDict in troops_array:
 		if troopDict.amount <= 0:
 			continue
 		if troopDict.owner == player_mask:
 			populationStr += "* " + str(Game.troopTypes.getName(troopDict.troop_id)) + ": " + str(troopDict.amount) + "\n"
+		elif Game.are_player_allies(troopDict.owner, player_mask):
+			isAllyPopulation = true
 		else:
 			isEnemyPopulation = true
 	if isEnemyPopulation:
 		populationStr += "Enemigos: \n"
 		for troopDict in troops_array:
-			if troopDict.amount <= 0 or troopDict.owner == player_mask: 
+			if troopDict.amount <= 0 or troopDict.owner == player_mask or Game.are_player_allies(troopDict.owner, player_mask): 
 				continue
 			populationStr += "* " + str(Game.troopTypes.getName(troopDict.troop_id)) + ": " + str(troopDict.amount) + "\n"
+	if isAllyPopulation:
+		populationStr += "Aliados: \n"
+		for troopDict in troops_array:
+			if troopDict.amount <= 0 or troopDict.owner == player_mask or !Game.are_player_allies(troopDict.owner, player_mask): 
+				continue
+			populationStr += "* " + str(Game.troopTypes.getName(troopDict.troop_id)) + ": " + str(troopDict.amount) + "\n"
+
 	$HUD/TileInfo/VBoxContainer/HBoxContainer4/PopulationText.text = populationStr
 
 func allow_show_tile_info(tile_pos: Vector2, playerNumber: int) -> bool:

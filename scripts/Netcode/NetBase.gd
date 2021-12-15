@@ -272,7 +272,7 @@ func net_send_event(entityId, eventId, eventData=null, unreliable = false) -> vo
 		server_send_event(entityId, eventId, eventData, unreliable)
 
 func client_send_event(entityId, eventId, eventData=null, unreliable = false) -> void:
-	print("client sending event...")
+	#print("client sending event...")
 	var eventTime: int = OS.get_ticks_msec()
 	if is_client():
 		if unreliable: # When it is not vital to the event to reach the server (not recommended unless necessary)
@@ -281,7 +281,7 @@ func client_send_event(entityId, eventId, eventData=null, unreliable = false) ->
 			send_rpc_id(SERVER_NETID, "server_process_event", [entityId, eventId, eventTime, eventData])
 
 func server_send_event(entityId, eventId, eventData=null, unreliable = false, saveEvent = false) -> void:
-	print("server sending event...")
+	#print("server sending event...")
 	var eventTime: int = OS.get_ticks_msec()
 	if is_server():
 		if saveEvent:
