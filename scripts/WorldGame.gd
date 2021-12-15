@@ -145,7 +145,10 @@ func _input(event):
 
 	if player_in_menu or !player_can_interact:
 		return
-		
+	
+	if Input.is_action_just_pressed("debug_key"):
+		debug_key_pressed()
+	
 	if Input.is_action_just_pressed("show_info"):
 		match Game.current_game_status:
 			Game.STATUS.PRE_GAME:
@@ -163,7 +166,12 @@ func _input(event):
 			Game.STATUS.GAME_STARTED:
 				game_interact()
 	if Input.is_action_just_pressed("toggle_ingame_menu"):
-		$UI.gui_open_ingame_menu_window()	
+		$UI.gui_open_ingame_menu_window()
+
+func debug_key_pressed():
+	var player_current_turn: int = Game.current_player_turn
+	var tile_selected: Vector2 = Game.current_tile_selected
+	print(Game.tilesObj.ai_get_all_own_territory_with_bridges(player_current_turn))
 
 ###################################################
 # SAVE & LOAD GAMES SYSTEM

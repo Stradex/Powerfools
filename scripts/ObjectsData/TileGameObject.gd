@@ -940,6 +940,79 @@ func ai_get_closest_cell_to_from_array(array_of_cells: Array, cell_pos: Vector2,
 		if cell_pos.distance_squared_to(array_of_cells[i]) < cell_pos.distance_squared_to(array_of_cells[closest_index]):
 			closest_index = i
 	return array_of_cells[closest_index]
+
+func ai_get_all_own_territory_islands(player_number: int) -> Array: #array of arrays
+	var island_tiles: Array = []
+	var owned_tiles: Array = get_all_player_tiles(player_number)
+	var search_complete: bool = false
+	while !search_complete:
+		search_complete = true
+		var current_island_tiles: Array =  ai_get_all_own_territory_tiles_recheable_from(owned_tiles[0], player_number)
+		if current_island_tiles.size() <= 0:
+			break
+		island_tiles.append(current_island_tiles)
+		for cell in current_island_tiles:
+			var remove_index: int = owned_tiles.find(cell)
+			if remove_index != -1:
+				owned_tiles.remove(remove_index)
+		if owned_tiles.size() > 0:
+			search_complete = false
+		
+	return island_tiles
+
+func ai_get_closest_cells_between_islands(island_a: Array, island_b: Array) -> Dictionary: #dictionary with two vector2
+	assert(island_a.size() > 0 and island_b.size() > 0)
+	
+	var closest_cells: Dictionary = { 
+		cellA = Vector2(0, 0),
+		cellB = Vector2(999, 999)
+	}
+	for islandACell in island_a:
+		for islandBCell in island_b:
+			if closest_cells.cellA.distance_squared_to(closest_cells.cellB) > islandACell.distance_squared_to(islandBCell):
+				closest_cells.cellA = islandACell
+				closest_cells.cellB = islandBCell
+	return closest_cells
+
+ #returns a whole array of cells with bridges in case there are islands (bridges being enemy territories needed to connect the islands)
+func ai_get_all_own_territory_with_bridges(player_number: int) -> Array:
+	var islands: Array = ai_get_all_own_territory_islands(player_number)
+	var all_territories: Array = get_all_player_tiles(player_number)
+	var islands_already_connected: Array = []
+	if islands.size() <= 1:
+		return all_territories #only one big island, no need for bridges
+	for i in range(islands.size()):
+		for j in range(islands.size()):
+			if i == j:
+				continue
+			if islands_already_connected.find(Vector2(i, j)) != -1 or islands_already_connected.find(Vector2(j, i)) != -1: #avoid doing extra work for free
+				continue
+			islands_already_connected.append(Vector2(i, j))
+			var closest_cells_between_islands: Dictionary = ai_get_closest_cells_between_islands(islands[i], islands[j])
+			var path_to_connect_islands: Array = ai_get_path_to_from(closest_cells_between_islands.cellA, closest_cells_between_islands.cellB, player_number)
+			for path_cell in path_to_connect_islands:
+				if all_territories.find(path_cell) == -1:
+					all_territories.append(path_cell)
+	return all_territories
+
+func ai_get_all_own_territory_tiles_recheable_from(start_pos: Vector2, player_number: int) -> Array:
+	# step 1 get neighbors from start_pos, then select the ones closest to end_pos
+	var owned_tiles: Array = get_all_player_tiles(player_number)
+	if owned_tiles.find(start_pos) == -1:
+		return []
+	var territories_recheable: Array = [start_pos]
+	var search_complete: bool = false
+	var neighbors: Array = []
+	while !search_complete:
+		search_complete = true
+		for cell in territories_recheable:
+			neighbors.clear()
+			neighbors = get_neighbors(cell)
+			for neighbor in neighbors:
+				if owned_tiles.find(neighbor) != -1 and territories_recheable.find(neighbor) == -1:
+					territories_recheable.append(neighbor)
+					search_complete = false
+	return territories_recheable
 	
 func ai_get_path_to_from(start_pos: Vector2, end_pos: Vector2, player_number: int) -> Array:
 	# step 1 get neighbors from start_pos, then select the ones closest to end_pos
