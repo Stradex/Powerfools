@@ -1,0 +1,61 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=4
+
+_global_script_classes=[ {
+"base": "Object",
+"class": "BuildingTypesObject",
+"language": "GDScript",
+"path": "res://scripts/ObjectsData/BuildingTypes.gd"
+}, {
+"base": "Object",
+"class": "CuteGrid",
+"language": "GDScript",
+"path": "res://scripts/Procedural/GridObject.gd"
+}, {
+"base": "Object",
+"class": "FileSystemBase",
+"language": "GDScript",
+"path": "res://scripts/System/FileSystem.gd"
+}, {
+"base": "Node",
+"class": "NetworkBase",
+"language": "GDScript",
+"path": "res://scripts/Netcode/NetBase.gd"
+}, {
+"base": "Object",
+"class": "TileGameObject",
+"language": "GDScript",
+"path": "res://scripts/ObjectsData/TileGameObject.gd"
+}, {
+"base": "Object",
+"class": "TilesTypesObject",
+"language": "GDScript",
+"path": "res://scripts/ObjectsData/TileTypes.gd"
+}, {
+"base": "Object",
+"class": "TroopTypesObject",
+"language": "GDScript",
+"path": "res://scripts/ObjectsData/TroopTypes.gd"
+}, {
+"base": "Node2D",
+"class": "WorldGameNode",
+"language": "GDScript",
+"path": "res://scripts/WorldGame.gd"
+} ]
+_global_script_class_icons={
+"BuildingTypesObject": "",
+"CuteGrid": "",
+"FileSystemBase": "",
+"NetworkBase": "",
+"TileGameObject": "",
+"TilesTypesObject": "",
+"TroopTypesObject": "",
+"WorldGameNode": ""
+}
