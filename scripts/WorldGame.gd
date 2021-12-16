@@ -52,7 +52,7 @@ enum NET_EVENTS {
 	SERVER_UPDATE_GAME_INFO,
 	CLIENT_SEND_GAME_INFO,
 	SERVER_SEND_PLAYERS_DATA,
-	MAX_EVENTS 
+	MAX_EVENTS
 }
 
 enum BOT_ACTIONS {
@@ -139,7 +139,7 @@ func _process(delta):
 
 func _input(event):
 	if Input.is_action_just_pressed("toggle_tile_info"):
-		$UI/HUD/TileInfo.visible = !$UI/HUD/TileInfo.visible 
+		$UI/HUD/TileInfo.visible = !$UI/HUD/TileInfo.visible
 	if Input.is_action_just_pressed("toggle_civ_info"):
 		$UI/HUD/CivilizationInfo.visible = !$UI/HUD/CivilizationInfo.visible
 	
@@ -278,16 +278,16 @@ func bot_process_game(bot_number: int):
 		print("[BOT] trying to defend capital!")
 
 	if enemy_reachable_capital != Vector2(-1, -1):
-		if Game.tilesObj.ai_have_strength_to_conquer(enemy_reachable_capital, bot_number):
+		if Game.tilesObj.ai_have_strength_to_conquer(enemy_reachable_capital, bot_number) or bot_is_having_debt:
 			print("[BOT] Storming enemy capital")
-			action_executed = bot_move_troops_towards_pos(enemy_reachable_capital, bot_number)
+			action_executed = bot_move_troops_towards_pos(enemy_reachable_capital, bot_number, bot_is_having_debt)
 
 	if !action_executed and plan_to_achieve.territories_to_defend.size() > 0: #being attacked
 		action_executed = bot_move_troops_towards_pos(plan_to_achieve.territories_to_defend[0], bot_number)
 		
 	if !action_executed and plan_to_achieve.territories_to_conquer.size() > 0:
-		if Game.tilesObj.ai_have_strength_to_conquer(plan_to_achieve.territories_to_conquer[0], bot_number):
-			action_executed = bot_move_troops_towards_pos(plan_to_achieve.territories_to_conquer[0], bot_number)
+		if Game.tilesObj.ai_have_strength_to_conquer(plan_to_achieve.territories_to_conquer[0], bot_number) or bot_is_having_debt:
+			action_executed = bot_move_troops_towards_pos(plan_to_achieve.territories_to_conquer[0], bot_number, bot_is_having_debt)
 		else:
 			plan_to_achieve.territories_to_conquer.clear()
 	
@@ -411,8 +411,8 @@ func bot_make_new_plan(bot_number: int) -> void:
 	var unproductive_territories: Array = Game.tilesObj.ai_get_cells_not_being_productive(bot_number)
 	for cell in unproductive_territories:
 		if Game.tilesObj.can_be_upgraded(cell, bot_number):
-				bot_next_plan.to_upgrade.append(cell)
-				break
+			bot_next_plan.to_upgrade.append(cell)
+			break
 	
 	if bot_next_plan.territories_to_conquer.size() > 0:
 		Game.playersData[bot_number].bot_stats.next_plan = bot_next_plan
@@ -421,7 +421,7 @@ func bot_make_new_plan(bot_number: int) -> void:
 	var strongest_player_enemy_cell: Vector2 = Game.tilesObj.ai_get_strongest_player_enemy_cell(bot_number)
 	var wekeast_enemy_cell: Vector2 = Game.tilesObj.ai_get_weakest_enemy_cell(bot_number)
 	
-	var cell_to_attack: Vector2 
+	var cell_to_attack: Vector2
 	if weakest_player_enemy_cell != Vector2(-1, -1) and strongest_player_enemy_cell != Vector2(-1, -1): # no playr enemies nearby
 		if ofensive_points > defensive_points:
 			cell_to_attack = weakest_player_enemy_cell
@@ -546,7 +546,7 @@ func bot_process_pre_game(bot_number: int):
 	#use_selection_point()
 	Game.playersData[bot_number].selectLeft -= 1
 	server_send_game_info()
-	if Game.playersData[bot_number].selectLeft == 0: 
+	if Game.playersData[bot_number].selectLeft == 0:
 		move_to_next_player_turn()
 	
 func bot_get_type_of_action_to_make(bot_number: int) -> int:
@@ -740,8 +740,7 @@ func process_unused_tiles() -> void:
 		return
 	
 	#add rocks first
-	#Game.tilesObj.pcg_generate_rocks(rng.randf_range(0.05, 0.75))
-	Game.tilesObj.pcg_generate_rocks(1.0)
+	Game.tilesObj.pcg_generate_rocks(rng.randf_range(0.25, 0.50))
 	#Game.tilesObj.recover_sync_data()
 	for x in range(Game.tile_map_size.x):
 		for y in range(Game.tile_map_size.y):
@@ -780,7 +779,7 @@ func start_player_turn(player_number: int):
 		
 	print("Player " + str(player_number) + " turn")
 	
-func move_to_next_player_turn() -> void: 
+func move_to_next_player_turn() -> void:
 	if Game.Network.is_client() and is_local_player_turn():
 		Game.Network.net_send_event(self.node_id, NET_EVENTS.CLIENT_TURN_END, {player_turn = Game.current_player_turn})
 	if Game.current_game_status == Game.STATUS.GAME_STARTED and !Game.Network.is_client():
@@ -838,7 +837,7 @@ func process_tiles_turn_end(playerNumber: int) -> void:
 func update_tile_owner(cell: Vector2) -> void:
 	var playersInTile: int = Game.tilesObj.get_number_of_players_in_cell(cell)
 	if playersInTile > 1:
-		return 
+		return
 	var tile_cell_troops = Game.tilesObj.get_troops(cell)
 	for troopDict in tile_cell_troops:
 		if troopDict.amount <= 0:
@@ -872,7 +871,7 @@ func process_tile_battles(tile_pos: Vector2) -> void:
 		for troopDict in tile_cell_troops:
 			if damageToDo.owner == troopDict.owner:
 				continue
-			if Game.are_player_allies(damageToDo.owner, troopDict.owner): 
+			if Game.are_player_allies(damageToDo.owner, troopDict.owner):
 				continue
 			if troopDict.amount <= 0:
 				continue
@@ -886,7 +885,7 @@ func process_tile_battles(tile_pos: Vector2) -> void:
 		for troopDict in tile_cell_troops:
 			if damageToDo.owner == troopDict.owner:
 				continue
-			if Game.are_player_allies(damageToDo.owner, troopDict.owner): 
+			if Game.are_player_allies(damageToDo.owner, troopDict.owner):
 				continue
 			if troopDict.amount <= 0:
 				continue
@@ -896,7 +895,7 @@ func process_tile_battles(tile_pos: Vector2) -> void:
 			var damageToApplyToThisTroop: float = initial_damage_to_do*percentOfDamageToApply
 			var troopsToKill: int = round(damageToApplyToThisTroop/individualTroopHealth)
 			if troopsToKill > troopDict.amount:
-				 troopsToKill = troopDict.amount
+				troopsToKill = troopDict.amount
 			Game.tilesObj.set_troops_amount_in_cell(tile_pos, troopDict.owner, troopDict.troop_id, troopDict.amount-troopsToKill)
 			
 			if !Game.troopTypes.getByID(troopDict.troop_id).is_warrior: #adding to the Civilians Killed array for future slaves in case of battle is finished this round
@@ -1020,7 +1019,7 @@ func update_gold_stats(playerNumber: int) -> void:
 	var nX: int
 	var nY: int
 	var pX: int
-	var pY: int 
+	var pY: int
 	for i in range(negativeBalanceTerritories.size()):
 		nX = negativeBalanceTerritories[i].x
 		nY = negativeBalanceTerritories[i].y
@@ -1058,6 +1057,8 @@ func can_do_tiles_actions(startTile: Vector2, endTile: Vector2, playerNumber: in
 	if !Game.tilesObj.is_next_to_tile(startTile,endTile):
 		return false
 	if !Game.tilesObj.belongs_to_player(endTile, playerNumber) and Game.tilesObj.get_warriors_count(startTile, playerNumber) <= 0: #don't allow civilians to invade
+		return false
+	if !Game.tilesObj.is_tile_walkeable(startTile) or !Game.tilesObj.is_tile_walkeable(endTile):
 		return false
 	return true
 

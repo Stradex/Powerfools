@@ -131,7 +131,7 @@ func update_visibility_tiles() -> void:
 			if tile_should_be_visible(Vector2(x, y), player_mask):
 				$VisibilityTiles.set_cellv(Vector2(x, y), -1)
 			else:
-				$VisibilityTiles.set_cellv(Vector2(x, y), -1) # change back to after debug id_not_visible_tile
+				$VisibilityTiles.set_cellv(Vector2(x, y), id_not_visible_tile) # change back to after debug id_not_visible_tile
 
 func tile_should_be_visible(tile_pos: Vector2, playerNumber: int) -> bool:
 	var tile_cell_data: Dictionary = Game.tilesObj.get_cell(tile_pos)
