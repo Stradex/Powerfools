@@ -1,12 +1,18 @@
 extends CanvasLayer
 var world_game_node: Node
 
+var player_editing_index: int = -1
+
 func init_gui(gameNode: Node):
 	world_game_node = gameNode
 	init_button_signals()
 	init_menu_graphics()
 
 func init_button_signals():
+	$ActionsMenu/EditPlayer/VBoxContainer/HBoxContainer/Cancelar.connect("pressed", self, "gui_close_edit_player")
+	$ActionsMenu/EditPlayer/VBoxContainer/HBoxContainer/Aceptar.connect("pressed", self, "gui_accept_edit_player")
+	$ActionsMenu/WaitingPlayers/VBoxContainer/HBoxContainer/AddBot.connect("pressed", world_game_node, "gui_add_bot")
+	$ActionsMenu/WaitingPlayers/VBoxContainer/PlayersList.connect("item_selected", world_game_node, "gui_player_selected")
 	$ActionsMenu/InGameMenu/VBoxContainer/GuardarPartida.connect("pressed", self, "gui_save_game")
 	$ActionsMenu/WaitingPlayers/VBoxContainer/HBoxContainer/LoadGame.connect("pressed", self, "gui_load_game")
 	$ActionsMenu/WaitingPlayers/VBoxContainer/HBoxContainer/StartGame.connect("pressed", self, "gui_start_online_game")
@@ -49,6 +55,24 @@ func close_all_windows() -> void:
 	$ActionsMenu/InGameMenu.visible = false
 	$ActionsMenu/EditTile.visible = false
 	$ActionsMenu/WaitingPlayers.visible = false
+	$ActionsMenu/EditPlayer.visible = false
+
+func gui_open_edit_player(var player_index: int) -> void:
+	close_all_windows()
+	player_editing_index = player_index
+	$ActionsMenu/EditPlayer/VBoxContainer/HBoxContainer2/PlayerNameText.text = str(Game.playersData[player_index].name)
+	$ActionsMenu/EditPlayer/VBoxContainer/HBoxContainer3/PlayerTeamText.text = str(Game.playersData[player_index].team)
+	$ActionsMenu/EditPlayer.visible = true
+
+
+func gui_accept_edit_player() -> void:
+	Game.playersData[player_editing_index].team = int($ActionsMenu/EditPlayer/VBoxContainer/HBoxContainer3/PlayerTeamText.text)
+	gui_close_edit_player()
+
+func gui_close_edit_player() -> void:
+	close_all_windows()
+	player_editing_index = -1
+	$ActionsMenu/WaitingPlayers.visible = true
 
 func gui_open_edit_tile_window() -> void:
 	if !world_game_node.can_interact_with_menu():
@@ -72,10 +96,12 @@ func gui_start_online_game() -> void:
 
 func update_lobby_info() -> void:
 	$ActionsMenu/WaitingPlayers/VBoxContainer/LobbyText.text = "Players:\n"
+	$ActionsMenu/WaitingPlayers/VBoxContainer/PlayersList.clear()
+	
 	for i in range(Game.playersData.size()):
 		if !Game.playersData[i].alive:
 			continue
-		$ActionsMenu/WaitingPlayers/VBoxContainer/LobbyText.text += "\t" + Game.playersData[i].name + "\n"
+		$ActionsMenu/WaitingPlayers/VBoxContainer/PlayersList.add_item(str(i) + ": " + Game.playersData[i].name + " [ " + str(Game.playersData[i].team) + "]")
 
 func gui_close_edit_tile_window() -> void:
 	close_all_windows()
@@ -246,13 +272,13 @@ func gui_update_tile_info(tile_pos: Vector2) -> void:
 	if isEnemyPopulation:
 		populationStr += "Enemigos: \n"
 		for troopDict in troops_array:
-			if troopDict.amount <= 0 or troopDict.owner == player_mask or Game.are_player_allies(troopDict.owner, player_mask): 
+			if troopDict.amount <= 0 or troopDict.owner == player_mask or Game.are_player_allies(troopDict.owner, player_mask):
 				continue
 			populationStr += "* " + str(Game.troopTypes.getName(troopDict.troop_id)) + ": " + str(troopDict.amount) + "\n"
 	if isAllyPopulation:
 		populationStr += "Aliados: \n"
 		for troopDict in troops_array:
-			if troopDict.amount <= 0 or troopDict.owner == player_mask or !Game.are_player_allies(troopDict.owner, player_mask): 
+			if troopDict.amount <= 0 or troopDict.owner == player_mask or !Game.are_player_allies(troopDict.owner, player_mask):
 				continue
 			populationStr += "* " + str(Game.troopTypes.getName(troopDict.troop_id)) + ": " + str(troopDict.amount) + "\n"
 
@@ -263,5 +289,9 @@ func allow_show_tile_info(tile_pos: Vector2, playerNumber: int) -> bool:
 	if tile_cell_data.owner == playerNumber:
 		return true
 	if Game.tilesObj.is_next_to_player_territory(tile_pos, playerNumber):
+		return true
+	if Game.tilesObj.belongs_to_allies(tile_pos, playerNumber):
+		return true
+	if Game.tilesObj.is_next_to_allies_territory_with_own_troops(tile_pos, playerNumber):
 		return true
 	return Game.tilesObj.has_troops_or_citizen(tile_pos, playerNumber)

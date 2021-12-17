@@ -5,6 +5,7 @@ const SNAPSHOT_DELAY = 1.0/10.0 #Msec to Sec (20hz)
 const MAX_PLAYERS:int = 4
 const SERVER_PORT:int = 27666
 const SERVER_NETID: int = 1
+const BOT_NETID: int = -666
 var clients_connected: Array
 var player_count: int = 1
 const MAX_CLIENT_LATENCY: float = 0.4 #350ms

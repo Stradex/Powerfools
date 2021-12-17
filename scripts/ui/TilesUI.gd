@@ -139,4 +139,8 @@ func tile_should_be_visible(tile_pos: Vector2, playerNumber: int) -> bool:
 		return true
 	if Game.tilesObj.is_next_to_player_territory(tile_pos, playerNumber):
 		return true
+	if Game.tilesObj.belongs_to_allies(tile_pos, playerNumber):
+		return true
+	if Game.tilesObj.is_next_to_allies_territory_with_own_troops(tile_pos, playerNumber):
+		return true
 	return Game.tilesObj.has_troops_or_citizen(tile_pos, playerNumber)

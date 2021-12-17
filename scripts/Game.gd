@@ -2,7 +2,7 @@ extends Node
 
 const VERSION: String = "0.1.1" #Major, Minor, build count
 const PORT: int = 27666
-const MAX_PLAYERS: int = 4
+const MAX_PLAYERS: int = 8
 const SNAPSHOT_DELAY: float = 1.0/30.0 #msec to sec
 const MAPS_FOLDER: String = "res://scenes/"
 const START_MAP: String = "WorldGame.tscn"
@@ -41,7 +41,11 @@ var defaultCivilizationNames: Array = [
 	"Asiria",
 	"Egipto",
 	"Persia",
-	"Sparta"
+	"Sparta",
+	"Roma",
+	"Cartago",
+	"Tebas",
+	"Argos"
 ]
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
@@ -175,9 +179,11 @@ func start_new_game(is_mp_game: bool = false):
 		init_player(1, Game.Network.SERVER_NETID, "bot", 1, true, 1) #bot - team 1
 		init_player(2, Game.Network.SERVER_NETID, "bot", 2, true, 1) #bot - team 1
 		init_player(3, Game.Network.SERVER_NETID, "bot", 3, true, 1) #bot - team 1
-	else:
-		init_player(2, Game.Network.SERVER_NETID, "bot", 2, true, 1) #Just for testing only
-		init_player(3, Game.Network.SERVER_NETID, "bot", 3, true, 1) #Just for testing only
+	#else:
+	#	init_player(2, Game.Network.SERVER_NETID, "bot", 2, true, 1) #Just for testing only
+	#	init_player(3, Game.Network.SERVER_NETID, "bot", 3, true, 1) #Just for testing only
+	#	init_player(4, Game.Network.SERVER_NETID, "bot", 4, true, 1) #Just for testing only
+		#init_player(5, Game.Network.SERVER_NETID, "bot", 5, true, 1) #Just for testing only
 	change_to_map(START_MAP)
 
 func are_player_allies(playerA: int, playerB: int) -> bool:
@@ -238,7 +244,23 @@ func get_local_player_number() -> int:
 			return i
 	return -1
 
-func add_player(netid: int, player_name: String, player_pin: int, forceid: int = -1) -> int:
+func get_free_netid() -> int:
+	var new_net_id: int = Game.Network.BOT_NETID
+	var netid_exists: bool = true
+	while netid_exists:
+		netid_exists = false
+		for i in range(playersData.size()):
+			if playersData[i].netid == new_net_id:
+				new_net_id-=1
+				netid_exists = true
+				break
+	return new_net_id
+		
+func add_player(netid: int, player_name: String, player_pin: int, forceid: int = -1, isBot: bool = false) -> int:
+	
+	if isBot:
+		netid = get_free_netid()
+	
 	var free_player_index: int = 0
 	for i in range(playersData.size()):
 		if playersData[i].netid != -1:
@@ -246,6 +268,7 @@ func add_player(netid: int, player_name: String, player_pin: int, forceid: int =
 			if playersData[i].netid == netid: #already exists this player
 				playersData[i].name = player_name
 				playersData[i].pin_code = player_pin
+				playersData[i].isBot =  isBot
 				print("The player %d with netid %d was already in the list!!" % [i, netid])
 				return i
 			continue
@@ -254,7 +277,7 @@ func add_player(netid: int, player_name: String, player_pin: int, forceid: int =
 	if forceid != -1:
 		free_player_index = forceid
 	
-	init_player(free_player_index, netid, player_name, player_pin)
+	init_player(free_player_index, netid, player_name, player_pin, isBot)
 	return free_player_index
 
 func get_next_player_turn() -> int:
@@ -262,6 +285,9 @@ func get_next_player_turn() -> int:
 		if i != current_player_turn and playersData[i].alive:
 			return i
 	return current_player_turn
+
+func is_player_a_bot(playerNumber: int) -> bool:
+	return playersData[playerNumber].isBot
 
 func is_current_player_a_bot() -> bool:
 	return playersData[current_player_turn].isBot

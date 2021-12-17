@@ -150,6 +150,23 @@ func is_next_to_player_territory(cell: Vector2, playerNumber: int) -> bool:
 			return true 
 	return false
 
+func is_next_to_allies_territory(cell: Vector2, playerNumber: int) -> bool:
+	# Game.are_player_allies(
+	var neighbors: Array = get_neighbors(cell)
+	for neighbor in neighbors:
+		if Game.are_player_allies(tiles_data[neighbor.x][neighbor.y].owner, playerNumber):
+			return true 
+	return false
+
+func is_next_to_allies_territory_with_own_troops(cell: Vector2, playerNumber: int) -> bool:
+	# Game.are_player_allies(
+	var neighbors: Array = get_neighbors(cell)
+	for neighbor in neighbors:
+		if Game.are_player_allies(tiles_data[neighbor.x][neighbor.y].owner, playerNumber) and player_has_troops_in_cell(neighbor, playerNumber):
+			return true 
+	return false
+
+
 func is_next_to_enemy_territory(cell: Vector2, playerNumber: int) -> bool:
 	var neighbors: Array = get_neighbors(cell)
 	for neighbor in neighbors:
@@ -615,6 +632,9 @@ func set_troops_amount_in_cell(tile_pos: Vector2, troops_owner: int, troop_id: i
 func set_cell_owner(tile_pos: Vector2, playerNumber: int) -> void:
 	tiles_data[tile_pos.x][tile_pos.y].owner = playerNumber
 
+func get_cell_owner(tile_pos: Vector2) -> int:
+	return tiles_data[tile_pos.x][tile_pos.y].owner
+
 ################
 #	GETTERS    #
 ################
@@ -689,7 +709,13 @@ func give_to_a_player(playerNumber: int, tile_pos: Vector2, tile_type_id: int, a
 	add_troops(tile_pos, add_troops)
 
 func update_gold_stats(tile_pos: Vector2, playerNumber: int) ->  void:
-	add_cell_gold(tile_pos, get_cell_gold_gain_and_losses(tile_pos, playerNumber))
+	var gold_multiplier: float = 1.0
+	if Game.is_player_a_bot(playerNumber):
+		gold_multiplier *= 1.15
+	var gold_to_give: float = get_cell_gold_gain_and_losses(tile_pos, playerNumber)
+	if gold_to_give >=0:
+		gold_to_give*=gold_multiplier
+	add_cell_gold(tile_pos, gold_to_give)
 
 func upgrade_tile(cell: Vector2) -> void:
 	var tileTypeData = Game.tileTypes.getByID(tiles_data[cell.x][cell.y].tile_id)

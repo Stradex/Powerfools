@@ -3,20 +3,46 @@ extends Node2D
 
 # Tropas se pueden mover maximo 5 casilleros solamente, no más (no estoy seguro todavia)
 # Poder quemar tierra
-# mapas que se generen solos, montañas ( bloquea )
+# Tabla de puntajes al perder o ganar la partida
 # Estadisticas batallas ganadas y perdidas, soldados perdidos, etc...
-# Facciones: Germanos, Galos, Persas, Esparta, Tebas, Macedonios, Griegos, Romanos, Cartago, Egipto, Escitas 
-# Programar bot
+# Facciones: Germanos, Galos, Persas, Esparta, Tebas, Macedonios, Griegos, Romanos, Cartago, Egipto, Escitas
+# Elegir equipos a la hora de entrar al server (SEGUIR)
+# Hacer que se puedan ver las tropias propias en territorio aliado.
+# Ver las construcciones de los aliados
+# Menu con construcciones 
+# Mostrar turnos que tardan en hacerse las construcciones y eso
+# Chat in game ( Ultimo a hacer )
+# Opciones de marcadores en ciertas provincias
+# Opciones de mostrar cordenadas en el mapa (A1, B2, ETC...)
+# OBSERVACIÓN: Bug que hace que de la nada a veces clientes pierdan plata
+# Cuando un jugador pierde, los bosques tienen que tener tribus!
+# Que los jugadores reciban la info de manera instantanea
+# Pantalla de VICTORIA: LA GUERRA ES PARA PUTOS, COMOS LOS PUTOS QUE JUEGAN ESTE JUEGO. 
+# 	-> LA GUERRA NO ES UN JUEGO FOTO DE GHANDI
+# Diferentes graficos para las bases
+# Que los clientes puedan seleccionar su equipo.
+# Que los aliados pueda ver los edificios que puedan 
+# Que los clientes reciban informacion en tiempo real
+# Hacer metropolis que cueste 60
+# Variacion de las piedritas
+# LIMPIAR CODIGO
+# Que los bots sigan conquistando despues de ver a los players
+# Auto save 1: cada 1 minuto, 2: cada 10 minutos, 3: cada 30 minutos
+# Opción gráfica de pantalla completa y resoluciones
+# Opciones de jugadores en el menu principal y no cuando joineas
+# Dificultades de bots: individuales -> NORMAL, DIFICIL, PESADILLA
+# PASO 1: LIMPIAR CODIGO
 
 const BOT_MIN_WARRIORS_TO_MOVE: int = 250
 const MIN_ACTIONS_PER_TURN: int = 3
 const MININUM_TROOPS_TO_FIGHT: int = 5
 const EXTRA_CIVILIANS_TO_GAIN_CONQUER: int = 500
 const WORLD_GAME_NODE_ID: int = 666 #NODE ID unique
-const AUTOSAVE_INTERVAL: float = 600.0 #Every 10 minutes
+const AUTOSAVE_INTERVAL: float = 60.0 #Every 1 minute
 const PLAYER_DATA_SYNC_INTERVAL: float = 2.0
 const BOT_SECS_TO_EXEC_ACTION: float = 1.0 #seconds for a bot to execute each action (not turn but every single action)
 const BOT_MAX_TURNS_FOR_PLAN: int = 3 #bot can be using same plan as maximum as 3 turns, to avoid bots getting stuck with old plans
+const BOT_MINIMUM_GOLD_TO_USE: float = 10.0
 
 var time_offset: float = 0.0
 var player_in_menu: bool = false
@@ -63,7 +89,8 @@ enum BOT_ACTIONS {
 
 var BOTS_DIFFICULTY_MULT: Dictionary = {
 	NORMAL = 1.2,
-	HARD = 1.6
+	HARD = 1.8,
+	NIGHTMARE = 2.5
 }
 
 ###################################################
@@ -198,12 +225,12 @@ func load_game_from(file_name: String):
 		return
 	Game.tilesObj.update_sync_data()
 	var data_to_load: Dictionary = Game.FileSystem.load_as_dict(file_name)
+	change_game_status(data_to_load.game_current_status)
 	#TODO: Sync player data CORRECTLY, RIGHT NOW IT ONLY WORKS FOR 2 PLAYERS AND NOTHING MORE!
 	Game.tilesObj.set_all(data_to_load.tiles_data, data_to_load.tile_size)
 	Game.current_player_turn = data_to_load.game_current_player_turn
 	Game.playersData[Game.current_player_turn].selectLeft = data_to_load.game_points_to_select_left
 	actions_available = data_to_load.game_actions_available
-	change_game_status(data_to_load.game_current_status)
 	server_send_game_info()
 	Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = Game.tilesObj.get_sync_data() })
 	Game.tilesObj.save_sync_data()
@@ -262,6 +289,17 @@ func bot_process_game(bot_number: int):
 	var bot_is_being_attacked: bool = Game.tilesObj.ai_is_being_attacked(bot_number)
 	var bot_is_having_debt: bool = Game.tilesObj.get_total_gold_gain_and_losses(bot_number) <= 0
 	var enemy_reachable_capital: Vector2 = Game.tilesObj.ai_get_reachable_player_capital(bot_number)
+	var bot_total_gold: float = Game.tilesObj.get_total_gold(bot_number)
+	var bot_available_gold_to_use: float = bot_total_gold
+	
+	if bot_is_having_debt:
+		bot_available_gold_to_use += Game.tilesObj.get_total_gold_gain_and_losses(bot_number)
+
+	print("Bot plata: " + str(bot_available_gold_to_use))
+		
+	if bot_available_gold_to_use <= 0:
+		Game.tilesObj.add_cell_gold(player_capital_pos, BOT_MINIMUM_GOLD_TO_USE)
+	
 	#var is_bot_being_attacked: bool = Game.tilesObj.is_player_being_attacked(bot_number)
 	#var is_bot_having_battles: bool = Game.tilesObj.is_player_having_battles(bot_number)
 	
@@ -272,12 +310,14 @@ func bot_process_game(bot_number: int):
 	var capital_health: float = Game.tilesObj.get_own_troops_health(player_capital_pos, bot_number)
 	var capital_damage: float = Game.tilesObj.get_own_troops_damage(player_capital_pos, bot_number)
 	var enemies_close_to_capital_force: Dictionary = Game.tilesObj.ai_get_enemies_strength_close_to(player_capital_pos, bot_number)
+	var capital_in_danger: bool = false
 	#Check if capital is being attacked or have neighbors enemies in order to defend
 	if enemies_close_to_capital_force.damage >= capital_damage or enemies_close_to_capital_force.health >= capital_health: #Capital under danger of attack!
+		capital_in_danger = true
 		action_executed = bot_move_troops_towards_pos(player_capital_pos, bot_number, true) #Force to move!
 		print("[BOT] trying to defend capital!")
 
-	if enemy_reachable_capital != Vector2(-1, -1):
+	if enemy_reachable_capital != Vector2(-1, -1) and !capital_in_danger:
 		if Game.tilesObj.ai_have_strength_to_conquer(enemy_reachable_capital, bot_number) or bot_is_having_debt:
 			print("[BOT] Storming enemy capital")
 			action_executed = bot_move_troops_towards_pos(enemy_reachable_capital, bot_number, bot_is_having_debt)
@@ -285,15 +325,15 @@ func bot_process_game(bot_number: int):
 	if !action_executed and plan_to_achieve.territories_to_defend.size() > 0: #being attacked
 		action_executed = bot_move_troops_towards_pos(plan_to_achieve.territories_to_defend[0], bot_number)
 		
-	if !action_executed and plan_to_achieve.territories_to_conquer.size() > 0:
+	if !action_executed and plan_to_achieve.territories_to_conquer.size() > 0 and !capital_in_danger:
 		if Game.tilesObj.ai_have_strength_to_conquer(plan_to_achieve.territories_to_conquer[0], bot_number) or bot_is_having_debt:
 			action_executed = bot_move_troops_towards_pos(plan_to_achieve.territories_to_conquer[0], bot_number, bot_is_having_debt)
 		else:
 			plan_to_achieve.territories_to_conquer.clear()
 	
-	if !action_executed and plan_to_achieve.troops.size() > 0:
+	if !action_executed and plan_to_achieve.troops.size() > 0 and bot_available_gold_to_use >= BOT_MINIMUM_GOLD_TO_USE :
 		action_executed = bot_recruit_troops(bot_number)
-	if !action_executed and plan_to_achieve.to_upgrade.size() > 0:
+	if !action_executed and plan_to_achieve.to_upgrade.size() > 0 and bot_available_gold_to_use >= BOT_MINIMUM_GOLD_TO_USE:
 		if bot_upgrade_territory(plan_to_achieve.to_upgrade[0], bot_number): #upgrade sucessful
 			action_executed = true
 			plan_to_achieve.to_upgrade.clear()
@@ -312,9 +352,14 @@ func bot_process_game(bot_number: int):
 	action_in_turn_executed()
 
 func bot_free_action(bot_number: int) -> bool:
+	var bot_gains: float = Game.tilesObj.get_total_gold_gain_and_losses(bot_number)
+	var bot_total_gold: float = Game.tilesObj.get_total_gold(bot_number)
+	var bot_available_gold_to_use: float = bot_total_gold
+	if bot_gains < 0.0:
+		 bot_available_gold_to_use += bot_gains
+	
 	var minimum_gold_needed: float = gold_needed_by_plans(bot_number)
-	print (minimum_gold_needed)
-	if Game.tilesObj.get_total_gold(bot_number) <= minimum_gold_needed:
+	if bot_total_gold <= minimum_gold_needed or bot_available_gold_to_use <= BOT_MINIMUM_GOLD_TO_USE: #avoid buying stuff in case bot does not have good money
 		return false
 	#See if it can make some places productive
 	var unproductive_territories: Array = Game.tilesObj.ai_get_cells_not_being_productive(bot_number)
@@ -460,12 +505,12 @@ func bot_make_new_troops(cell_pos: Vector2, bot_number: int) -> bool:
 	var upcomingTroopsDict: Dictionary = {
 		owner = bot_number,
 		troop_id= currentBuildingType.id_troop_generate,
-		amount = int(float(currentBuildingType.deploy_amount)*BOTS_DIFFICULTY_MULT.NORMAL),
+		amount = int(float(currentBuildingType.deploy_amount)*BOTS_DIFFICULTY_MULT.HARD),
 		turns_left = currentBuildingType.turns_to_deploy_troops
 	}
 	save_player_info()
 	Game.tilesObj.update_sync_data()
-	Game.tilesObj.take_cell_gold(cell_pos, float(currentBuildingType.deploy_prize)/BOTS_DIFFICULTY_MULT.NORMAL)
+	Game.tilesObj.take_cell_gold(cell_pos, float(currentBuildingType.deploy_prize)/BOTS_DIFFICULTY_MULT.HARD)
 	Game.tilesObj.append_upcoming_troops(cell_pos, upcomingTroopsDict)
 	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 	return true
@@ -573,7 +618,7 @@ func bot_execute_give_extra_gold(bot_number: int, cell: Vector2):
 		return
 	save_player_info()
 	Game.tilesObj.update_sync_data()
-	Game.tilesObj.add_cell_gold(cell, 10.0*BOTS_DIFFICULTY_MULT.NORMAL)
+	Game.tilesObj.add_cell_gold(cell, 10.0*BOTS_DIFFICULTY_MULT.HARD)
 	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 
 func bot_execute_add_extra_troops(bot_number: int, cell: Vector2):
@@ -584,7 +629,7 @@ func bot_execute_add_extra_troops(bot_number: int, cell: Vector2):
 	var extraRecruits: Dictionary = {
 		owner = bot_number,
 		troop_id = Game.troopTypes.getIDByName("recluta"),
-		amount = int(round(1000*BOTS_DIFFICULTY_MULT.NORMAL))
+		amount = int(round(1000*BOTS_DIFFICULTY_MULT.HARD))
 	}
 	Game.tilesObj.add_troops(cell, extraRecruits)
 	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
@@ -808,13 +853,13 @@ func update_actions_available() -> void:
 			actions_available = MIN_ACTIONS_PER_TURN
 
 func process_turn_end(playerNumber: int) -> void:
+	Game.tilesObj.recover_sync_data()
 	update_gold_stats(playerNumber)
 	process_tiles_turn_end(playerNumber)
 	if did_player_lost(playerNumber):
 		destroy_player(playerNumber)
 
 func process_tiles_turn_end(playerNumber: int) -> void:
-	Game.tilesObj.recover_sync_data()
 	for x in range(Game.tile_map_size.x):
 		for y in range(Game.tile_map_size.y):
 			process_tile_upgrade(Vector2(x, y), playerNumber)
@@ -929,7 +974,10 @@ func process_tile_battles(tile_pos: Vector2) -> void:
 			troop_id = Game.troopTypes.getIDByName("civil"),
 			amount = EXTRA_CIVILIANS_TO_GAIN_CONQUER+slaves_to_gain
 		}
-		Game.tilesObj.set_cell_owner(tile_pos, playerWhoWonId)
+		if !Game.are_player_allies(Game.tilesObj.get_cell_owner(tile_pos), playerWhoWonId): #do not take your allies troops if you were helping with the defense.
+			Game.tilesObj.set_cell_owner(tile_pos, playerWhoWonId)
+		if Game.is_player_a_bot(playerWhoWonId):
+			Game.tilesObj.add_cell_gold(tile_pos, 5.0) #give extra gold to bot when conquers
 		Game.tilesObj.add_troops(tile_pos, extra_population)
 
 func process_tile_recruitments(tile_pos: Vector2, playerNumber: int) -> void:
@@ -1266,6 +1314,21 @@ func game_tile_show_info():
 #########################
 #	BUTTONS & SIGNALS	#
 #########################
+
+func gui_player_selected(index: int):
+	if Game.Network.is_client():
+		return
+	var player_text: String = $UI/ActionsMenu/WaitingPlayers/VBoxContainer/PlayersList.get_item_text(index)
+	var cut_pos: int = player_text.find(":")
+	player_text.erase(cut_pos, player_text.length()-cut_pos)
+	var player_index: int = int(player_text)
+	$UI.gui_open_edit_player(player_index)
+	print("index Selected: " + str(player_index))
+
+func gui_add_bot():
+	if Game.Network.is_client():
+		return
+	Game.add_player(-1, "bot", 758, -1, true)
 
 func can_execute_action() -> bool:
 	return actions_available > 0
