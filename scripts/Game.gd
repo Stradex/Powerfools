@@ -178,10 +178,10 @@ func clear_players_data():
 func start_new_game(is_mp_game: bool = false):
 	current_player_turn = 0
 	if !is_mp_game:
-		init_player(0, Game.Network.SERVER_NETID) #human
+		init_player(0, Game.Network.SERVER_NETID, "Stradex", 555, false, 1) #human
 		init_player(1, Game.Network.SERVER_NETID, "bot", 1, true, 1) #bot - team 1
-		init_player(2, Game.Network.SERVER_NETID, "bot", 2, true, 1) #bot - team 1
-		init_player(3, Game.Network.SERVER_NETID, "bot", 3, true, 1) #bot - team 1
+		init_player(2, Game.Network.SERVER_NETID, "bot", 2, true, 2) #bot - team 2
+		init_player(3, Game.Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
 	#else:
 	#	init_player(2, Game.Network.SERVER_NETID, "bot", 2, true, 1) #Just for testing only
 	#	init_player(3, Game.Network.SERVER_NETID, "bot", 3, true, 1) #Just for testing only

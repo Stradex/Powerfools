@@ -307,6 +307,15 @@ func get_all_free_cells() -> Array:
 				free_cells.append(Vector2(x, y))
 	return free_cells
 
+func get_all_tiles_from_player_and_allies(playerNumber: int) -> Array:
+	var allies_cells: Array = []
+	for x in range(tile_size.x):
+		for y in range(tile_size.y):
+			if !Game.are_player_allies(tiles_data[x][y].owner, playerNumber):
+				continue			
+			allies_cells.append(Vector2(x, y))
+	return allies_cells
+
 func get_all_player_tiles(playerNumber: int) -> Array:
 	var player_cells: Array = []
 	for x in range(tile_size.x):
@@ -316,9 +325,9 @@ func get_all_player_tiles(playerNumber: int) -> Array:
 	return player_cells
 
 func get_all_tiles_with_warriors_from_player(player_number: int) -> Array:
-	var player_cells: Array = get_all_player_tiles(player_number)
+	var player_and_allies_cells: Array = get_all_tiles_from_player_and_allies(player_number) # fix: added allies territories also because sometimes bots got stuck at allies territories
 	var troops_cells: Array = []
-	for cell in player_cells:
+	for cell in player_and_allies_cells:
 		if get_warriors_count(cell, player_number) > 0:
 			troops_cells.append(cell)
 	return troops_cells
@@ -832,8 +841,6 @@ func set_sync_data( dictArray: Array ) -> void:
 	enemies_close_to_capital_force.health+=minimum_health_to_defend
 """
 
-#func ai_get_strongest_available_cell_to_use_for_attack(player_number: int, pos_to_move: Array) -> Vector2:
-
 func ai_get_cell_available_allowed_percent_troops_attack(cell_pos: Vector2, cell_to_attack: Vector2, player_number: int) -> float:
 	var available_force: float = get_own_troops_health(cell_pos, player_number) + get_own_troops_damage(cell_pos, player_number)
 	if available_force <= 0.0:
@@ -878,10 +885,11 @@ func ai_get_cells_not_in_danger(player_number: int, cells_to_ignore: Array = [])
 	return Game.Util.array_substract(get_all_player_tiles(player_number), ai_get_all_cells_in_danger(player_number, cells_to_ignore))
 
 func ai_get_cells_available_to_move_troops_towards(player_number: int, pos_to_move: Vector2) -> Array:
-	var cells_avilable_to_move_troops: Array = ai_get_cells_not_in_danger(player_number, [pos_to_move])
-	var cells_without_warriors: Array = Game.Util.array_substract(get_all_player_tiles(player_number), get_all_tiles_with_warriors_from_player(player_number))
-	cells_avilable_to_move_troops = Game.Util.array_substract(cells_avilable_to_move_troops, cells_without_warriors)
-	
+	var cells_with_warriors: Array = get_all_tiles_with_warriors_from_player(player_number)
+	var cells_in_danger: Array = ai_get_all_cells_in_danger(player_number, [pos_to_move])
+	var cells_in_battle: Array = get_cells_in_battle_with_enemies(player_number)
+	var cells_avilable_to_move_troops: Array = Game.Util.array_substract(cells_with_warriors, cells_in_danger) #all cells with warriors that are not in danger
+	cells_avilable_to_move_troops = Game.Util.array_substract(cells_with_warriors, cells_in_battle) #cells in battle cannot be used
 	return cells_avilable_to_move_troops
 
 func ai_get_cells_available_to_conquer_pos(player_number: int, pos_to_attack: Vector2) -> Array:
@@ -893,7 +901,6 @@ func ai_get_cells_available_to_conquer_pos(player_number: int, pos_to_attack: Ve
 
 	return cells_that_can_conquer_pos
 
-#From closest to farest
 func ai_order_cells_by_distance_to(cells_array: Array, cell_to_check_distance: Vector2) -> Array:
 	var cell_return: Array = cells_array.duplicate(true)
 	#cell_to_check_distance.distance_squared_to()
@@ -911,13 +918,6 @@ func ai_order_cells_by_distance_to(cells_array: Array, cell_to_check_distance: V
 
 func ai_get_closest_cell_capable_of_conquering(player_number: int, pos_to_attack: Vector2) -> Vector2:
 	return ai_get_closest_cell_to_from_array(ai_get_cells_available_to_conquer_pos(player_number, pos_to_attack), pos_to_attack)
-
-#func ai_get_all_cells_available_to_move_to_pos(player_number: int, pos_to_attack: Vector2) -> Vector2:
-#	var cells_available_to_move_troops_towards: Array = ai_get_cells_available_to_move_troops_towards(player_number, pos_to_move)
-#	var cells_that_can_conquer_pos: Array = []
-#	var closest_cell: Vector2 = 
-#	for cell in cells_available_to_move_troops_towards:
-	
 
 func ai_get_strongest_own_cell(player_number: int) -> Vector2:
 	var bot_cells: Array = get_all_player_tiles(player_number)
@@ -1145,38 +1145,6 @@ func ai_get_weakest_enemy_cell(player_number: int, use_allies_territories_too: b
 		if get_strength(cell, cell_owner) < get_strength(weakest_cell, weakest_cell_owner):
 			weakest_cell = cell
 	return weakest_cell
-
-func ai_cell_have_power_to_conquer(player_cell: Vector2, enemy_cell_pos: Vector2, player_number: int, defense_factor: float = 1.0) -> bool:
-	defense_factor *= 1.15 #extra defense factor for defense troops, to avoid bots making stupid choices
-	var enemy_health: float = get_enemies_troops_health(enemy_cell_pos, player_number)*defense_factor
-	var enemy_attack: float = get_enemies_troops_damage(enemy_cell_pos, player_number)*defense_factor
-	var player_health: float = get_own_troops_health(player_cell, player_number, true)
-	var player_attack: float = get_own_troops_damage(player_cell, player_number, true)
-	if enemy_health >= player_health and enemy_attack >= player_attack:
-		return false
-	return true
-
-func ai_get_closest_troop_capable_of_conquer(enemy_cell_pos: Vector2, player_number: int, minimum_amount: int = 0, defense_factor: float = 1.0) -> Vector2:
-	var cells_with_troops: Array = get_all_tiles_with_warriors_from_player(player_number)
-	var cells_to_use: Array = []
-	#Remove tiles that are in battle
-	for cell in cells_with_troops:
-		if !is_cell_in_battle(cell) and get_warriors_count(cell, player_number) > minimum_amount and ai_cell_have_power_to_conquer(cell, enemy_cell_pos, player_number, defense_factor):
-			cells_to_use.append(cell)
-	if cells_to_use.size() > 0:
-		return ai_get_closest_cell_to_from_array(cells_to_use, enemy_cell_pos)
-	return Vector2(-1, -1)
-
-func ai_get_closest_troop_force_pos_to(cell_pos: Vector2, player_number: int, minimum_amount: int = 0) -> Vector2:
-	var cells_with_troops: Array = get_all_tiles_with_warriors_from_player(player_number)
-	var cells_to_use: Array = []
-	#Remove tiles that are in battle
-	for cell in cells_with_troops:
-		if cell_pos != cell and !is_cell_in_battle(cell) and get_warriors_count(cell, player_number) > minimum_amount:
-			cells_to_use.append(cell)
-	if cells_to_use.size() > 0:
-		return ai_get_closest_cell_to_from_array(cells_to_use, cell_pos)
-	return Vector2(-1, -1)
 
 func ai_get_richest_enemy_cell(player_number: int) -> Vector2:
 	var enemy_cells: Array = ai_get_reachable_enemy_cells(player_number)
