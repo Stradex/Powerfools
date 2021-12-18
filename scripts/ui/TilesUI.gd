@@ -16,6 +16,7 @@ onready var id_tile_battle: int = $ConstructionTiles.tile_set.find_tile_by_name(
 onready var id_not_owned_tile: int = $OwnedTiles.tile_set.find_tile_by_name('tile_not_owned')
 onready var id_not_visible_tile: int = $VisibilityTiles.tile_set.find_tile_by_name('tile_invisible')
 onready var id_rock_tile: int = $BuildingsTiles.tile_set.find_tile_by_name('tile_rock3')
+onready var id_debug_tile: int = $DebugTiles.tile_set.find_tile_by_name('tile_path_debug')
 
 const MINIMUM_CIVILIAN_ICON_COUNT: int = 50 
 const MINIMUM_TROOPS_ICON_COUNT: int = 10
@@ -128,10 +129,16 @@ func update_visibility_tiles() -> void:
 		
 	for x in range(Game.tile_map_size.x):
 		for y in range(Game.tile_map_size.y):
-			if tile_should_be_visible(Vector2(x, y), player_mask):
-				$VisibilityTiles.set_cellv(Vector2(x, y), -1)
-			else:
-				$VisibilityTiles.set_cellv(Vector2(x, y), id_not_visible_tile) # change back to after debug id_not_visible_tile
+			$VisibilityTiles.set_cellv(Vector2(x, y), get_visibility_tile_img(Vector2(x, y)))
+
+func get_visibility_tile_img(tile_pos: Vector2) -> int:
+	var player_mask: int = Game.current_player_turn
+	if Game.Network.is_multiplayer() or Game.is_current_player_a_bot():
+		player_mask = Game.get_local_player_number()
+		
+	if Game.DEBUG_MODE or tile_should_be_visible(tile_pos, player_mask):
+		return -1
+	return id_not_visible_tile
 
 func tile_should_be_visible(tile_pos: Vector2, playerNumber: int) -> bool:
 	var tile_cell_data: Dictionary = Game.tilesObj.get_cell(tile_pos)
@@ -144,3 +151,10 @@ func tile_should_be_visible(tile_pos: Vector2, playerNumber: int) -> bool:
 	if Game.tilesObj.is_next_to_allies_territory_with_own_troops(tile_pos, playerNumber):
 		return true
 	return Game.tilesObj.has_troops_or_citizen(tile_pos, playerNumber)
+
+func debug_tile_path(tile_path: Array) -> void:
+	if !Game.DEBUG_MODE:
+		return
+	$DebugTiles.clear()
+	for cell in tile_path:
+		$DebugTiles.set_cellv(cell, id_debug_tile)

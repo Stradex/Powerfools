@@ -79,7 +79,7 @@ func player_has_troops_in_cell(tile_pos: Vector2, playerNumber: int) -> bool:
 	return false
 
 func get_all_capitals() -> Array:
-	var capitals_cells: Array
+	var capitals_cells: Array = []
 	for x in range(tile_size.x):
 		for y in range(tile_size.y):
 			if tiles_data[x][y].tile_id == tile_types_obj.getIDByName("capital"):
@@ -89,14 +89,7 @@ func get_all_capitals() -> Array:
 func is_tile_walkeable(tile_pos: Vector2) -> bool:
 	return tiles_data[tile_pos.x][tile_pos.y].owner != ROCK_OWNER_ID
 
-func get_all_walkeable_tiles() -> Array:
-	var walkeable_cells: Array
-	for x in range(tile_size.x):
-		for y in range(tile_size.y):
-			if is_tile_walkeable(Vector2(x, y)):
-				walkeable_cells.append(Vector2(x, y))
-	return walkeable_cells
-func is_owned_by_player(tile_pos: Vector2) -> bool:
+func is_owned_by_any_player(tile_pos: Vector2) -> bool:
 	return tiles_data[tile_pos.x][tile_pos.y].owner >= 0
 
 func belongs_to_player(tile_pos: Vector2, playerNumber: int) -> bool:
@@ -151,7 +144,6 @@ func is_next_to_player_territory(cell: Vector2, playerNumber: int) -> bool:
 	return false
 
 func is_next_to_allies_territory(cell: Vector2, playerNumber: int) -> bool:
-	# Game.are_player_allies(
 	var neighbors: Array = get_neighbors(cell)
 	for neighbor in neighbors:
 		if Game.are_player_allies(tiles_data[neighbor.x][neighbor.y].owner, playerNumber):
@@ -159,13 +151,11 @@ func is_next_to_allies_territory(cell: Vector2, playerNumber: int) -> bool:
 	return false
 
 func is_next_to_allies_territory_with_own_troops(cell: Vector2, playerNumber: int) -> bool:
-	# Game.are_player_allies(
 	var neighbors: Array = get_neighbors(cell)
 	for neighbor in neighbors:
 		if Game.are_player_allies(tiles_data[neighbor.x][neighbor.y].owner, playerNumber) and player_has_troops_in_cell(neighbor, playerNumber):
 			return true 
 	return false
-
 
 func is_next_to_enemy_territory(cell: Vector2, playerNumber: int) -> bool:
 	var neighbors: Array = get_neighbors(cell)
@@ -180,14 +170,6 @@ func is_upgrading(tile_pos: Vector2) -> bool:
 func is_building(tile_pos: Vector2) -> bool:
 	return tiles_data[tile_pos.x][tile_pos.y].turns_to_build > 0
 
-func get_all_buildings(playerNumber: int) -> Array:
-	var cells_with_builidngs: Array = []
-	for x in range(tile_size.x):
-		for y in range(tile_size.y):
-			if tiles_data[x][y].owner == playerNumber and tiles_data[x][y].building_id != -1:
-				cells_with_builidngs.append(Vector2(x, y))
-	return cells_with_builidngs
-
 func can_be_upgraded(tile_pos: Vector2, playerNumber: int) -> bool:
 	if tiles_data[tile_pos.x][tile_pos.y].owner != playerNumber:
 		return false
@@ -199,10 +181,6 @@ func can_be_upgraded(tile_pos: Vector2, playerNumber: int) -> bool:
 	
 	return tile_types_obj.canBeUpgraded(tiles_data[tile_pos.x][tile_pos.y].tile_id)
 
-func gold_needed_to_upgrade(tile_pos: Vector2) -> float:
-	var tileTypeDict = tile_types_obj.getByID(tiles_data[tile_pos.x][tile_pos.y].tile_id)
-	return tileTypeDict.improve_prize
-
 func is_cell_in_battle(tile_pos: Vector2) -> bool:
 	var players_in_cell: Array = get_players_in_cell(tile_pos)
 	for playerA in players_in_cell:
@@ -210,6 +188,12 @@ func is_cell_in_battle(tile_pos: Vector2) -> bool:
 			if !Game.are_player_allies(playerA, playerB):
 				return true
 	return false
+
+func is_player_being_attacked(playerNumber: int) -> bool:
+	return get_cells_invaded_by_enemies(playerNumber).size() > 0
+
+func is_player_having_battles(playerNumber: int) -> bool:
+	return get_cells_in_battle_with_enemies(playerNumber).size() > 0
 
 func can_buy_building_at_cell(tile_pos: Vector2, buildTypeId: int, goldAvailable: int, playerNumber: int):
 	if tiles_data[tile_pos.x][tile_pos.y].building_id == buildTypeId:
@@ -225,8 +209,35 @@ func can_buy_building_at_cell(tile_pos: Vector2, buildTypeId: int, goldAvailable
 #	GETTERS    #
 ################
 
+func get_name(tile_pos: Vector2) -> String:
+	return tiles_data[tile_pos.x][tile_pos.y].name
+
+func get_amount_of_buildings(building_id: int, playerNumber: int) -> int:
+	var count: int = 0
+	for x in range(tile_size.x):
+		for y in range(tile_size.y):
+			if tiles_data[x][y].owner == playerNumber and tiles_data[x][y].building_id == building_id:
+				count+=1
+	return count
+
 func get_owner(cell: Vector2) -> int:
 	return tiles_data[cell.x][cell.y].owner
+
+func get_all_buildings(playerNumber: int) -> Array:
+	var cells_with_builidngs: Array = []
+	for x in range(tile_size.x):
+		for y in range(tile_size.y):
+			if tiles_data[x][y].owner == playerNumber and tiles_data[x][y].building_id != -1:
+				cells_with_builidngs.append(Vector2(x, y))
+	return cells_with_builidngs
+
+func get_all_walkeable_tiles() -> Array:
+	var walkeable_cells: Array = []
+	for x in range(tile_size.x):
+		for y in range(tile_size.y):
+			if is_tile_walkeable(Vector2(x, y)):
+				walkeable_cells.append(Vector2(x, y))
+	return walkeable_cells
 
 func get_total_gold_gain_and_losses(playerNumber: int) -> float:
 	var goldGains: float = 0
@@ -261,7 +272,7 @@ func get_all_warriors_count(playerNumber: int) -> int:
 	for cell in cells_with_warriors:
 		warriors_count+= get_warriors_count(cell, playerNumber)
 	return warriors_count
-	
+
 func get_warriors_count(tile_pos: Vector2, playerNumber: int) -> int:
 	var tropsCount: int = 0
 	for troopDict in tiles_data[tile_pos.x][tile_pos.y].troops:
@@ -351,12 +362,6 @@ func get_cells_invaded_by_enemies(playerNumber: int) -> Array:
 		if belongs_to_player(cell, playerNumber):
 			cells_invaded_by_enemies.append(cell)
 	return cells_invaded_by_enemies
-
-func is_player_being_attacked(playerNumber: int) -> bool:
-	return get_cells_invaded_by_enemies(playerNumber).size() > 0
-
-func is_player_having_battles(playerNumber: int) -> bool:
-	return get_cells_in_battle_with_enemies(playerNumber).size() > 0
 
 func get_own_troops_damage(tilePos: Vector2, playerNumber: int, only_warriors: bool = false) -> float:
 	var allies_total_damage: float = 0.0
@@ -487,7 +492,6 @@ func get_total_warriors_strength(playerNumber: int) -> float:
 	
 	return totalStrength
 
-
 func get_civ_population_info(playerNumber: int) -> Array:
 	var troopsInfo: Array = []
 	var troopExists: bool = false
@@ -614,6 +618,9 @@ func get_players_in_cell(tile_pos: Vector2) -> Array:
 func get_number_of_players_in_cell(tile_pos: Vector2) -> int:
 	return get_players_in_cell(tile_pos).size()
 
+func get_cell_owner(tile_pos: Vector2) -> int:
+	return tiles_data[tile_pos.x][tile_pos.y].owner
+
 ################
 #	SETTERS    #
 ################
@@ -632,22 +639,6 @@ func set_troops_amount_in_cell(tile_pos: Vector2, troops_owner: int, troop_id: i
 func set_cell_owner(tile_pos: Vector2, playerNumber: int) -> void:
 	tiles_data[tile_pos.x][tile_pos.y].owner = playerNumber
 
-func get_cell_owner(tile_pos: Vector2) -> int:
-	return tiles_data[tile_pos.x][tile_pos.y].owner
-
-################
-#	GETTERS    #
-################
-func get_name(tile_pos: Vector2) -> String:
-	return tiles_data[tile_pos.x][tile_pos.y].name
-
-func get_amount_of_buildings(building_id: int, playerNumber: int) -> int:
-	var count: int = 0
-	for x in range(tile_size.x):
-		for y in range(tile_size.y):
-			if tiles_data[x][y].owner == playerNumber and tiles_data[x][y].building_id == building_id:
-				count+=1
-	return count
 ##################
 #	UTIL & TOOLS #
 ##################
@@ -690,6 +681,10 @@ func add_troops(tile_pos: Vector2, add_troops: Dictionary) -> void:
 
 func append_upcoming_troops(tile_pos: Vector2, troopDict: Dictionary) -> void:
 	tiles_data[tile_pos.x][tile_pos.y].upcomingTroops.append(troopDict)
+
+func gold_needed_to_upgrade(tile_pos: Vector2) -> float:
+	var tileTypeDict = tile_types_obj.getByID(tiles_data[tile_pos.x][tile_pos.y].tile_id)
+	return tileTypeDict.improve_prize
 
 ###########################
 # SHORTHANDS & GAME LOGIC #
@@ -757,70 +752,10 @@ func restore_previous_tiles_data() ->void:
 			tiles_data[x][y].clear()
 	tiles_data.clear()
 	tiles_data = previous_action_tiles_data.duplicate(true)
+	
 #################
 # NETCODE STUFF #
 #################
-
-func arrays_contents_are_equal(arrayA: Array, arrayB: Array) -> bool:
-	var arrayASize: int = arrayA.size()
-	var arrayBSize: int = arrayB.size()
-	if arrayASize != arrayBSize:
-		return false
-	for i in range(arrayASize):
-		if typeof(arrayA[i]) != typeof(arrayA[i]):
-			return false
-		if typeof(arrayA[i]) == TYPE_DICTIONARY:
-			if dicts_are_equal(arrayA[i], arrayB[i]):
-				continue
-			else:
-				return false
-		if typeof(arrayA[i]) == TYPE_ARRAY:
-			if arrays_contents_are_equal(arrayA[i], arrayB[i]):
-				continue
-			else:
-				return false
-		if arrayA[i] != arrayB[i]:
-			return false
-	return true
-
-func dicts_are_equal(dictA: Dictionary, dictB: Dictionary) -> bool:
-	for key in dictA:
-		if !dictB.has(key):
-			return false
-		if typeof(dictA[key]) != typeof(dictB[key]):
-			return false
-		if  typeof(dictA[key]) == TYPE_DICTIONARY:
-			if dicts_are_equal(dictA[key], dictB[key]):
-				continue
-			else:
-				return false
-		if  typeof(dictA[key]) == TYPE_ARRAY:
-			if arrays_contents_are_equal(dictA[key], dictB[key]):
-				continue
-			else:
-				return false
-		if dictB[key] != dictA[key]:
-			return false
-			
-	for key in dictB:
-		if !dictA.has(key):
-			return false
-		if typeof(dictA[key]) != typeof(dictB[key]):
-			return false
-		if  typeof(dictA[key]) == TYPE_DICTIONARY:
-			if dicts_are_equal(dictA[key], dictB[key]):
-				continue
-			else:
-				return false
-		if  typeof(dictA[key]) == TYPE_ARRAY:
-			if arrays_contents_are_equal(dictA[key], dictB[key]):
-				continue
-			else:
-				return false
-		if dictB[key] != dictA[key]:
-			return false
-
-	return true; #they are totally equal
 
 func set_sync_cell_data(cell: Vector2, cell_data: Dictionary) -> void:
 	tiles_data[cell.x][cell.y].troops.clear()
@@ -846,7 +781,7 @@ func get_sync_data(playerNumber: int = -1) -> Array: #if playerNumber != -1 then
 				continue
 			if old_tiles_data.size() <= x or old_tiles_data[x].size() <= y:
 				continue
-			if !dicts_are_equal(tiles_data[x][y], old_tiles_data[x][y]):
+			if !Game.Util.dicts_are_equal(tiles_data[x][y], old_tiles_data[x][y]):
 				cellsToSync.append({ cell_pos = Vector2(x, y), cell_data = tiles_data[x][y].duplicate( true ) })
 	#print( "get_sync_data: " + str(cellsToSync.size()) )
 	old_tiles_data = tiles_data.duplicate( true )
@@ -889,13 +824,140 @@ func set_sync_data( dictArray: Array ) -> void:
 #################
 # AI HELP STUFF #
 #################
+"""
+	var minimum_health_to_defend: float = float(Game.troopTypes.getByID(Game.troopTypes.getIDByName("recluta")).health)*float(BOT_MINIMUM_WARRIORS_AT_CAPITAL)
+	var minimum_damage_to_defend: float = Game.troopTypes.getAverageDamage(Game.troopTypes.getIDByName("recluta"))*float(BOT_MINIMUM_WARRIORS_AT_CAPITAL)
+	var enemies_close_to_capital_force: Dictionary = Game.tilesObj.ai_get_enemies_strength_close_to(player_capital_pos, bot_number)
+	enemies_close_to_capital_force.damage+=minimum_damage_to_defend
+	enemies_close_to_capital_force.health+=minimum_health_to_defend
+"""
 
-func ai_get_enemies_strength_close_to(tile_pos: Vector2, player_number: int) -> Dictionary:
+#func ai_get_strongest_available_cell_to_use_for_attack(player_number: int, pos_to_move: Array) -> Vector2:
+
+func ai_get_cell_available_allowed_percent_troops_attack(cell_pos: Vector2, cell_to_attack: Vector2, player_number: int) -> float:
+	var available_force: float = get_own_troops_health(cell_pos, player_number) + get_own_troops_damage(cell_pos, player_number)
+	if available_force <= 0.0:
+		return 0.0
+	var percent_allowed_to_move: float = ai_get_cell_available_force_to_attack(cell_pos, cell_to_attack, player_number)/available_force
+	return percent_allowed_to_move
+
+func ai_get_cell_available_force_to_attack(cell_pos: Vector2, cell_to_attack: Vector2, player_number: int) -> float:
+	var available_health: float = get_own_troops_health(cell_pos, player_number)
+	var available_damage: float = get_own_troops_damage(cell_pos, player_number)
+	var enemies_close_force: Dictionary = ai_get_enemies_strength_close_to(cell_pos, player_number, [cell_to_attack])
+	available_health-=enemies_close_force.health
+	available_damage-=enemies_close_force.damage
+	
+	return available_health+available_damage
+
+func ai_get_cell_enemy_force_to_defend(cell_pos: Vector2, player_number: int) -> float:
+	var available_health: float = get_enemies_troops_health(cell_pos, player_number)
+	var available_damage: float = get_enemies_troops_damage(cell_pos, player_number)
+	return available_health+available_damage
+
+func ai_can_conquer_enemy_pos(own_cell_pos: Vector2, enemy_cell_pos: Vector2, player_number: int) -> bool:
+	return ai_get_cell_available_force_to_attack(own_cell_pos, enemy_cell_pos, player_number) > ai_get_cell_enemy_force_to_defend(enemy_cell_pos, player_number)*1.1 #try to overcome enemy by a 10% as minimum
+
+func ai_cell_is_in_danger(cell_pos: Vector2, player_number: int, cells_to_ignore: Array = []) -> bool:
+	var cell_health: float = get_own_troops_health(cell_pos, player_number)
+	var cell_damage: float = get_own_troops_damage(cell_pos, player_number)
+	var enemies_close_force: Dictionary = ai_get_enemies_strength_close_to(cell_pos, player_number, cells_to_ignore)
+	if enemies_close_force.damage >= cell_damage or enemies_close_force.health >= cell_health: #Capital under danger of attack!
+		return true
+	return false
+
+func ai_get_all_cells_in_danger(player_number: int, cells_to_ignore: Array = []) -> Array:
+	var cells_in_danger: Array = []
+	var bot_cells: Array = get_all_player_tiles(player_number)
+	for cell in bot_cells:
+		if ai_cell_is_in_danger(cell, player_number, cells_to_ignore):
+			cells_in_danger.append(cell)
+	return cells_in_danger
+
+func ai_get_cells_not_in_danger(player_number: int, cells_to_ignore: Array = []) -> Array:
+	return Game.Util.array_substract(get_all_player_tiles(player_number), ai_get_all_cells_in_danger(player_number, cells_to_ignore))
+
+func ai_get_cells_available_to_move_troops_towards(player_number: int, pos_to_move: Vector2) -> Array:
+	var cells_avilable_to_move_troops: Array = ai_get_cells_not_in_danger(player_number, [pos_to_move])
+	var cells_without_warriors: Array = Game.Util.array_substract(get_all_player_tiles(player_number), get_all_tiles_with_warriors_from_player(player_number))
+	cells_avilable_to_move_troops = Game.Util.array_substract(cells_avilable_to_move_troops, cells_without_warriors)
+	
+	return cells_avilable_to_move_troops
+
+func ai_get_cells_available_to_conquer_pos(player_number: int, pos_to_attack: Vector2) -> Array:
+	var cells_available_to_move_troops_towards: Array = ai_get_cells_available_to_move_troops_towards(player_number, pos_to_attack)
+	var cells_that_can_conquer_pos: Array = []
+	for cell in cells_available_to_move_troops_towards:
+		if ai_can_conquer_enemy_pos(cell, pos_to_attack, player_number):
+			cells_that_can_conquer_pos.append(cell)
+
+	return cells_that_can_conquer_pos
+
+#From closest to farest
+func ai_order_cells_by_distance_to(cells_array: Array, cell_to_check_distance: Vector2) -> Array:
+	var cell_return: Array = cells_array.duplicate(true)
+	#cell_to_check_distance.distance_squared_to()
+	var is_in_order: bool = false
+	while !is_in_order:
+		is_in_order = true
+		for i in range(cell_return.size()-1):
+			if cell_return[i+1].distance_squared_to(cell_to_check_distance) < cell_return[i].distance_squared_to(cell_to_check_distance):
+				var tmp_cell: Vector2 = cell_return[i]
+				cell_return[i] = cell_return[i+1]
+				cell_return[i+1] = tmp_cell
+				is_in_order = false
+				break
+	return cell_return
+
+func ai_get_closest_cell_capable_of_conquering(player_number: int, pos_to_attack: Vector2) -> Vector2:
+	return ai_get_closest_cell_to_from_array(ai_get_cells_available_to_conquer_pos(player_number, pos_to_attack), pos_to_attack)
+
+#func ai_get_all_cells_available_to_move_to_pos(player_number: int, pos_to_attack: Vector2) -> Vector2:
+#	var cells_available_to_move_troops_towards: Array = ai_get_cells_available_to_move_troops_towards(player_number, pos_to_move)
+#	var cells_that_can_conquer_pos: Array = []
+#	var closest_cell: Vector2 = 
+#	for cell in cells_available_to_move_troops_towards:
+	
+
+func ai_get_strongest_own_cell(player_number: int) -> Vector2:
+	var bot_cells: Array = get_all_player_tiles(player_number)
+	var strongest_cell: Vector2 = Vector2(-1, -1)
+	for cell in bot_cells:
+		var cell_owner: int = tiles_data[cell.x][cell.y].owner
+		if cell_owner != player_number:
+			continue
+		if strongest_cell == Vector2(-1, -1):
+			strongest_cell = cell
+			continue
+		
+		var strongest_cell_owner: int = tiles_data[strongest_cell.x][strongest_cell.y].owner
+		if get_strength(cell, cell_owner) > get_strength(strongest_cell, strongest_cell_owner):
+			strongest_cell = cell
+	return strongest_cell
+
+func ai_get_strongest_enemy_cell_in_path(path_to_follow: Array, player_number: int) -> Vector2:
+	var strongest_cell: Vector2 = Vector2(-1, -1)
+	for cell in path_to_follow:
+		var cell_owner: int = tiles_data[cell.x][cell.y].owner
+		if cell_owner == player_number or Game.are_player_allies(player_number, cell_owner):
+			continue
+		if strongest_cell == Vector2(-1, -1):
+			strongest_cell = cell
+			continue
+		
+		var strongest_cell_owner: int = tiles_data[strongest_cell.x][strongest_cell.y].owner
+		if get_strength(cell, cell_owner) > get_strength(strongest_cell, strongest_cell_owner):
+			strongest_cell = cell
+	return strongest_cell
+
+func ai_get_enemies_strength_close_to(tile_pos: Vector2, player_number: int, cells_to_ignore: Array = []) -> Dictionary:
 	var neighbors: Array = get_neighbors(tile_pos)
 	var enemies_health: float = 0.0
 	var enemies_attack: float = 0.0
 	for neighbor in neighbors:
 		if tiles_data[neighbor.x][neighbor.y].owner == -1: #ignore tribal societies
+			continue
+		if cells_to_ignore.find(neighbor) != -1:
 			continue
 		enemies_health += get_enemies_troops_health(neighbor, player_number)
 		enemies_attack += get_enemies_troops_damage(neighbor, player_number)
@@ -928,10 +990,7 @@ func ai_get_neighbors_by_distance(cell: Vector2, distance: int, mask: int = ALL_
 				continue
 			return_array.append(data_to_apend[j])
 	#Substract to keep only the cells at distance
-	for i in range (array_to_substract.size()):
-		var index_to_remove: int = return_array.find(array_to_substract[i])
-		if index_to_remove >= 0:
-			return_array.remove(index_to_remove)
+	return_array = Game.Util.array_substract(return_array, array_to_substract)
 	return return_array
 
 func ai_get_free_cells() -> Array:
@@ -947,40 +1006,38 @@ func ai_pick_random_free_cell() -> Vector2:
 	var free_cells: Array = ai_get_free_cells()
 	return free_cells[rng.randi_range(0, free_cells.size()-1)]
 
+func ai_filter_cell_is_not_owned_by_any_player(cell: Vector2) -> bool:
+	return tiles_data[cell.x][cell.y].owner == -1
+
+func ai_filter_cell_is_available_to_buy(cell: Vector2, player_number: int) -> bool:
+	return tiles_data[cell.x][cell.y].owner == -1 and !is_next_to_enemy_territory(cell, player_number)
+
+func ai_get_closest_cell_to(cell: Vector2, filter_func: String, func_args: Array = [])-> Array: 
+	var distance: int = 1
+	var free_neighbors: Array = []
+	var iterations: int = 0
+	var args_to_send: Array = func_args.duplicate(true)
+	while free_neighbors.size() <= 0:
+		var neighbors: Array = ai_get_neighbors_by_distance(cell, distance)
+		for neighbor in neighbors:
+			iterations+=1
+			args_to_send.push_front(neighbor)
+			if callv(filter_func, args_to_send):
+				free_neighbors.append(neighbor)
+				
+			args_to_send.pop_front()
+		distance+=1
+		if iterations >= MAX_ITERATIONS_ALLOWED:
+			print("[CRASH] INFINITE LOOP AT: ai_get_closest_cell_to")
+			assert(0)
+
+	return free_neighbors
+
 func ai_get_closest_free_cell_to(cell: Vector2) -> Array:
-	var distance: int = 1
-	var free_neighbors: Array = []
-	var iterations: int = 0
-	while free_neighbors.size() <= 0:
-		var neighbors: Array = ai_get_neighbors_by_distance(cell, distance)
-		for neighbor in neighbors:
-			iterations+=1
-			if tiles_data[neighbor.x][neighbor.y].owner == -1:
-				free_neighbors.append(neighbor)
-		distance+=1
-		if iterations >= MAX_ITERATIONS_ALLOWED:
-			print("[CRASH] INFINITE LOOP AT: ai_get_closest_free_cell_to")
-			assert(0)
-			
-
-	return free_neighbors
-
+	return ai_get_closest_cell_to(cell, "ai_filter_cell_is_not_owned_by_any_player")
+	
 func ai_get_closest_available_to_buy_free_cell_to(cell: Vector2, player_number: int) -> Array:
-	var distance: int = 1
-	var free_neighbors: Array = []
-	var iterations: int = 0
-	while free_neighbors.size() <= 0:
-		var neighbors: Array = ai_get_neighbors_by_distance(cell, distance)
-		for neighbor in neighbors:
-			iterations+=1
-			if tiles_data[neighbor.x][neighbor.y].owner == -1 and !is_next_to_enemy_territory(neighbor, player_number):
-				free_neighbors.append(neighbor)
-		distance+=1
-		if iterations >= MAX_ITERATIONS_ALLOWED:
-			print("[CRASH] INFINITE LOOP AT: ai_get_closest_available_to_buy_free_cell_to")
-			assert(0)
-
-	return free_neighbors
+	return ai_get_closest_cell_to(cell, "ai_filter_cell_is_available_to_buy", [player_number])
 
 func ai_get_farthest_player_cell_from(cell: Vector2, player_number: int) -> Array:
 	var distance: int = 1
@@ -1002,8 +1059,21 @@ func ai_get_farthest_player_cell_from(cell: Vector2, player_number: int) -> Arra
 	
 	return farthest_cells
 
-func ai_get_reachable_enemy_cells(player_number: int) -> Array:
+func ai_get_reachable_enemy_cells(player_number: int , use_allies_territories_too: bool = false) -> Array:
 	var player_cells: Array = get_all_player_tiles(player_number)
+	
+	if use_allies_territories_too:
+		for i in Game.MAX_PLAYERS:
+			if i == player_number:
+				continue
+			if Game.playersData[i].team == -1:
+				continue
+			if !Game.playersData[i].alive:
+				continue
+			if Game.playersData[i].team != Game.playersData[player_number].team:
+				continue
+			player_cells += Game.Util.array_addition(player_cells, get_all_player_tiles(i))
+	
 	var enemy_cells: Array = []
 	for cell in player_cells:
 		var neighbors: Array = get_walkeable_neighbors(cell)
@@ -1015,11 +1085,15 @@ func ai_get_reachable_enemy_cells(player_number: int) -> Array:
 
 func ai_have_strength_to_conquer(cell_to_conquer: Vector2, player_number: int) -> bool:
 	var cell_owner: int = tiles_data[cell_to_conquer.x][cell_to_conquer.y].owner
+	
+	if cell_owner == player_number or Game.are_player_allies(cell_owner, player_number): #moving along own territory
+		return true
+	
 	var enemy_cell_strength: float = get_strength(cell_to_conquer, cell_owner)
 	return get_total_warriors_strength(player_number) > enemy_cell_strength
 
-func ai_get_reachable_player_enemy_cells(player_number: int) -> Array:
-	var enemy_cells: Array = ai_get_reachable_enemy_cells(player_number)
+func ai_get_reachable_player_enemy_cells(player_number: int, use_allies_territories_too: bool = false) -> Array:
+	var enemy_cells: Array = ai_get_reachable_enemy_cells(player_number, use_allies_territories_too)
 	var enemy_player_cells: Array = []
 	for cell in enemy_cells:
 		if tiles_data[cell.x][cell.y].owner != -1:
@@ -1033,8 +1107,8 @@ func ai_get_reachable_player_capital(player_number: int) -> Vector2:
 			return cell
 	return Vector2(-1, -1)
 
-func ai_get_strongest_player_enemy_cell( player_number: int ) -> Vector2:
-	var enemy_cells: Array = ai_get_reachable_player_enemy_cells(player_number)
+func ai_get_strongest_player_enemy_cell( player_number: int , use_allies_territories_too: bool = false) -> Vector2:
+	var enemy_cells: Array = ai_get_reachable_player_enemy_cells(player_number, use_allies_territories_too)
 	var strongest_cell: Vector2 = Vector2(-1, -1)
 	for cell in enemy_cells:
 		if strongest_cell == Vector2(-1, -1):
@@ -1044,11 +1118,10 @@ func ai_get_strongest_player_enemy_cell( player_number: int ) -> Vector2:
 		var strongest_cell_owner: int = tiles_data[strongest_cell.x][strongest_cell.y].owner
 		if get_strength(cell, cell_owner) > get_strength(strongest_cell, strongest_cell_owner):
 			strongest_cell = cell
-			#print(get_strength(cell, cell_owner))
 	return strongest_cell
 
-func ai_get_weakest_player_enemy_cell( player_number: int ) -> Vector2:
-	var enemy_cells: Array = ai_get_reachable_player_enemy_cells(player_number)
+func ai_get_weakest_player_enemy_cell( player_number: int , use_allies_territories_too: bool = false) -> Vector2:
+	var enemy_cells: Array = ai_get_reachable_player_enemy_cells(player_number, use_allies_territories_too)
 	var weakest_cell: Vector2 = Vector2(-1, -1)
 	for cell in enemy_cells:
 		if weakest_cell == Vector2(-1, -1):
@@ -1058,11 +1131,10 @@ func ai_get_weakest_player_enemy_cell( player_number: int ) -> Vector2:
 		var weakest_cell_owner: int = tiles_data[weakest_cell.x][weakest_cell.y].owner
 		if get_strength(cell, cell_owner) < get_strength(weakest_cell, weakest_cell_owner):
 			weakest_cell = cell
-			#print(get_strength(cell, cell_owner))
 	return weakest_cell
 
-func ai_get_weakest_enemy_cell(player_number: int) -> Vector2:
-	var enemy_cells: Array = ai_get_reachable_enemy_cells(player_number)
+func ai_get_weakest_enemy_cell(player_number: int, use_allies_territories_too: bool = false) -> Vector2:
+	var enemy_cells: Array = ai_get_reachable_enemy_cells(player_number, use_allies_territories_too)
 	var weakest_cell: Vector2 = Vector2(-1, -1)
 	for cell in enemy_cells:
 		if weakest_cell == Vector2(-1, -1):
@@ -1072,7 +1144,6 @@ func ai_get_weakest_enemy_cell(player_number: int) -> Vector2:
 		var weakest_cell_owner: int = tiles_data[weakest_cell.x][weakest_cell.y].owner
 		if get_strength(cell, cell_owner) < get_strength(weakest_cell, weakest_cell_owner):
 			weakest_cell = cell
-			#print(get_strength(cell, cell_owner))
 	return weakest_cell
 
 func ai_cell_have_power_to_conquer(player_cell: Vector2, enemy_cell_pos: Vector2, player_number: int, defense_factor: float = 1.0) -> bool:
@@ -1081,7 +1152,7 @@ func ai_cell_have_power_to_conquer(player_cell: Vector2, enemy_cell_pos: Vector2
 	var enemy_attack: float = get_enemies_troops_damage(enemy_cell_pos, player_number)*defense_factor
 	var player_health: float = get_own_troops_health(player_cell, player_number, true)
 	var player_attack: float = get_own_troops_damage(player_cell, player_number, true)
-	if enemy_health >= player_health or enemy_attack >= player_attack:
+	if enemy_health >= player_health and enemy_attack >= player_attack:
 		return false
 	return true
 
@@ -1093,7 +1164,7 @@ func ai_get_closest_troop_capable_of_conquer(enemy_cell_pos: Vector2, player_num
 		if !is_cell_in_battle(cell) and get_warriors_count(cell, player_number) > minimum_amount and ai_cell_have_power_to_conquer(cell, enemy_cell_pos, player_number, defense_factor):
 			cells_to_use.append(cell)
 	if cells_to_use.size() > 0:
-		return ai_get_closest_cell_to_from_array(cells_to_use, enemy_cell_pos, player_number)
+		return ai_get_closest_cell_to_from_array(cells_to_use, enemy_cell_pos)
 	return Vector2(-1, -1)
 
 func ai_get_closest_troop_force_pos_to(cell_pos: Vector2, player_number: int, minimum_amount: int = 0) -> Vector2:
@@ -1104,7 +1175,7 @@ func ai_get_closest_troop_force_pos_to(cell_pos: Vector2, player_number: int, mi
 		if cell_pos != cell and !is_cell_in_battle(cell) and get_warriors_count(cell, player_number) > minimum_amount:
 			cells_to_use.append(cell)
 	if cells_to_use.size() > 0:
-		return ai_get_closest_cell_to_from_array(cells_to_use, cell_pos, player_number)
+		return ai_get_closest_cell_to_from_array(cells_to_use, cell_pos)
 	return Vector2(-1, -1)
 
 func ai_get_richest_enemy_cell(player_number: int) -> Vector2:
@@ -1119,7 +1190,9 @@ func ai_get_richest_enemy_cell(player_number: int) -> Vector2:
 			#print(get_strength(cell, cell_owner))
 	return richest_cell
 
-func ai_get_closest_cell_to_from_array(array_of_cells: Array, cell_pos: Vector2, player_number: int) -> Vector2:
+func ai_get_closest_cell_to_from_array(array_of_cells: Array, cell_pos: Vector2) -> Vector2:
+	if array_of_cells.size() <= 0:
+		return Vector2(-1, -1)
 	var closest_index: int = 0
 	for i in range(array_of_cells.size()):
 		if cell_pos.distance_squared_to(array_of_cells[i]) < cell_pos.distance_squared_to(array_of_cells[closest_index]):
@@ -1129,6 +1202,8 @@ func ai_get_closest_cell_to_from_array(array_of_cells: Array, cell_pos: Vector2,
 func ai_get_all_own_territory_islands(player_number: int) -> Array: #array of arrays
 	var island_tiles: Array = []
 	var owned_tiles: Array = get_all_player_tiles(player_number)
+	if owned_tiles.size() <= 0:
+		return []
 	var search_complete: bool = false
 	var iterations: int = 0
 	while !search_complete:
@@ -1164,10 +1239,8 @@ func ai_get_closest_cells_between_islands(island_a: Array, island_b: Array) -> D
 				closest_cells.cellB = islandBCell
 	return closest_cells
 
- #returns a whole array of cells with bridges in case there are islands (bridges being enemy territories needed to connect the islands)
-func ai_get_all_own_territory_with_bridges(player_number: int) -> Array:
-	var islands: Array = ai_get_all_own_territory_islands(player_number)
-	var all_territories: Array = get_all_player_tiles(player_number)
+func ai_get_islands_with_bridges(islands: Array) -> Array:
+	var all_territories: Array = Game.Util.convert_multidimentional_array_into_onedimensional(islands)
 	var islands_already_connected: Array = []
 	if islands.size() <= 1:
 		return all_territories #only one big island, no need for bridges
@@ -1179,11 +1252,25 @@ func ai_get_all_own_territory_with_bridges(player_number: int) -> Array:
 				continue
 			islands_already_connected.append(Vector2(i, j))
 			var closest_cells_between_islands: Dictionary = ai_get_closest_cells_between_islands(islands[i], islands[j])
-			var path_to_connect_islands: Array = ai_get_path_to_from(closest_cells_between_islands.cellA, closest_cells_between_islands.cellB, player_number)
+			var path_to_connect_islands: Array = ai_get_path_to_from(closest_cells_between_islands.cellA, closest_cells_between_islands.cellB)
 			for path_cell in path_to_connect_islands:
 				if all_territories.find(path_cell) == -1:
 					all_territories.append(path_cell)
 	return all_territories
+
+ #returns a whole array of cells with bridges in case there are islands (bridges being enemy territories needed to connect the islands)
+func ai_get_all_own_territory_with_bridges(player_number: int) -> Array:
+	return ai_get_islands_with_bridges(ai_get_all_own_territory_islands(player_number))
+
+func ai_get_all_own_and_allies_territories_with_bridges(player_number: int) -> Array:
+	var all_allies_and_own_territories_islands: Array = ai_get_all_own_territory_islands(player_number)
+	for i in Game.MAX_PLAYERS:
+		if i == player_number:
+			continue
+		if Game.playersData[i].alive and Game.playersData[i].team != -1 and Game.playersData[i].team == Game.playersData[player_number].team:
+			all_allies_and_own_territories_islands = Game.Util.array_addition(all_allies_and_own_territories_islands, ai_get_all_own_territory_islands(i), true)
+	
+	return ai_get_islands_with_bridges(all_allies_and_own_territories_islands)
 
 func ai_get_all_own_territory_tiles_recheable_from(start_pos: Vector2, player_number: int) -> Array:
 	# step 1 get neighbors from start_pos, then select the ones closest to end_pos
@@ -1211,13 +1298,15 @@ func ai_get_all_own_territory_tiles_recheable_from(start_pos: Vector2, player_nu
 	return territories_recheable
 
 func ai_get_attack_path_from_to(start_pos: Vector2, end_pos: Vector2, player_number: int) -> Array:
-	var walk_territories: Array = ai_get_all_own_territory_with_bridges(player_number)
+	var walk_territories: Array = ai_get_all_own_and_allies_territories_with_bridges(player_number)
 	var path_to_use: Array = [start_pos]
 	var cells_to_ignore: Array = []
+	if walk_territories.size() <= 0:
+		walk_territories.append(start_pos)
 	#Step 1: Update walk territories to include end_pos and make bridges if necessary just in case
 	if walk_territories.find(end_pos) == -1: #update walk_territories_path 
 		var closest_cells_between_islands: Dictionary = ai_get_closest_cells_between_islands(walk_territories, [end_pos])
-		var path_to_connect_islands: Array = ai_get_path_to_from(closest_cells_between_islands.cellA, closest_cells_between_islands.cellB, player_number)
+		var path_to_connect_islands: Array = ai_get_path_to_from(closest_cells_between_islands.cellA, closest_cells_between_islands.cellB)
 		for path_cell in path_to_connect_islands:
 			if walk_territories.find(path_cell) == -1:
 				walk_territories.append(path_cell)
@@ -1241,14 +1330,17 @@ func ai_get_attack_path_from_to(start_pos: Vector2, end_pos: Vector2, player_num
 		if valid_neighbors.size() <= 0: #unable to move, go back
 			cells_to_ignore.append(path_to_use[path_to_use.size()-1])
 			path_to_use.pop_back() #removes last element
+			if path_to_use.size() <= 0: #failed
+				print("[ERROR] ai_get_attack_path_from_to failed, using ai_get_path_to_from")
+				return ai_get_path_to_from(start_pos, end_pos)
 		else:
-			path_to_use.append(ai_get_closest_cell_to_from_array(valid_neighbors, end_pos, player_number))
+			path_to_use.append(ai_get_closest_cell_to_from_array(valid_neighbors, end_pos))
 		if path_to_use.find(end_pos) != -1:
 			path_completed = true
 	
 	return path_to_use
 
-func ai_get_path_to_from(start_pos: Vector2, end_pos: Vector2, player_number: int) -> Array:
+func ai_get_path_to_from(start_pos: Vector2, end_pos: Vector2) -> Array:
 	var walk_territories: Array = get_all_walkeable_tiles()
 	var cells_to_ignore: Array = []
 	# step 1 get neighbors from start_pos, then select the ones closest to end_pos
@@ -1272,16 +1364,23 @@ func ai_get_path_to_from(start_pos: Vector2, end_pos: Vector2, player_number: in
 		if valid_neighbors.size() <= 0: #unable to move, go back
 			cells_to_ignore.append(path_to_use[path_to_use.size()-1])
 			path_to_use.pop_back() #removes last element
+			if path_to_use.size() <= 0: #failed
+				print("[ERROR] ai_get_path_to_from failed, return null path")
+				return [] #null return equals impossible to achieve path
 		else:
-			path_to_use.append(ai_get_closest_cell_to_from_array(valid_neighbors, end_pos, player_number))
+			path_to_use.append(ai_get_closest_cell_to_from_array(valid_neighbors, end_pos))
 		if path_to_use.find(end_pos) != -1:
 			path_completed = true
 	
 	return path_to_use
 
+# Edit, change this to mak
 func ai_move_warriors_from_to(start_pos: Vector2, end_pos: Vector2, player_number: int, percent_to_move: float = 1.0) -> void:
+	var allowed_percent_to_move: float = ai_get_cell_available_allowed_percent_troops_attack(start_pos, end_pos, player_number)*0.95 #make it a bit less in order to avoid problems
+	if allowed_percent_to_move > percent_to_move:
+		allowed_percent_to_move = percent_to_move
+		
 	var startTroopsArray: Array = tiles_data[start_pos.x][start_pos.y].troops
-	var endTroopsArray: Array = tiles_data[end_pos.x][end_pos.y].troops
 	for troopDict in startTroopsArray:
 		if troopDict.owner != player_number:
 			continue
@@ -1289,7 +1388,7 @@ func ai_move_warriors_from_to(start_pos: Vector2, end_pos: Vector2, player_numbe
 			continue
 		if !troop_types_obj.getByID(troopDict.troop_id).is_warrior:
 			continue
-		var troops_to_move: int = int(floor(troopDict.amount*percent_to_move))
+		var troops_to_move: int = int(floor(troopDict.amount*allowed_percent_to_move))
 		if troops_to_move > troopDict.amount:
 			troops_to_move = troopDict.amount
 		add_troops(end_pos, {
@@ -1302,7 +1401,6 @@ func ai_move_warriors_from_to(start_pos: Vector2, end_pos: Vector2, player_numbe
 func ai_get_all_cells_without_buildings(playerNumber: int) -> Array:
 	var cells_with_builidngs: Array = get_all_buildings(playerNumber)
 	var bot_tiles: Array = get_all_player_tiles(playerNumber)
-	var cells_without_buildings: Array = []
 	
 	for cell in cells_with_builidngs:
 		var to_remove_index: int = bot_tiles.find(cell)
@@ -1330,7 +1428,7 @@ func ai_is_being_attacked(playerNumber: int) -> bool:
 	return ai_all_cells_being_attacked(playerNumber).size() > 0
 
 #################
-# PCG STUFFF	#
+# PCG STUFFF    #
 #################
 
 func pcg_get_closest_cells_between_islands(island_a: Array, island_b: Array) -> Dictionary: #dictionary with two vector2
@@ -1464,10 +1562,9 @@ func pcg_generate_rocks(percent_to_generate: float = 0.125) -> void:
 			for cellPath in tmp_path:
 				if capital_paths.find(cellPath) == -1:
 					capital_paths.append(cellPath)
-	for cell in capital_paths:
-		var remove_index: int = rock_cells.find(cell) 
-		if remove_index != -1:
-			rock_cells.remove(remove_index)
+					
+	rock_cells = Game.Util.array_substract(rock_cells, capital_paths)
+	
 	#removing bad diagonal rocks
 	var need_to_clean: bool = true
 	while need_to_clean:
@@ -1493,16 +1590,9 @@ func pcg_generate_rocks(percent_to_generate: float = 0.125) -> void:
 	
 	#update free cells
 	all_free_cells = get_all_free_cells() #avoid bug
-	for rock_pos in rock_cells:
-		var remove_index: int = all_free_cells.find(rock_pos) 
-		if remove_index != -1:
-			all_free_cells.remove(remove_index)
-	#Make sure that it is possible to walk all over the cells without getting trapped inside rocks
+	all_free_cells = Game.Util.array_substract(all_free_cells, rock_cells)
 	all_free_cells = pcg_make_bridge_to_connect_tiles(all_free_cells)
-	for cell in all_free_cells:
-		var remove_index: int = rock_cells.find(cell) 
-		if remove_index != -1: #not allowed to use, remove from rock cells
-			rock_cells.remove(remove_index)
+	rock_cells = Game.Util.array_substract(rock_cells, all_free_cells)
 	
 	#Start adding rocks finally
 	for rock_pos in rock_cells:

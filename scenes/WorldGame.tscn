@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=2]
+[gd_scene load_steps=24 format=2]
 
 [ext_resource path="res://scripts/WorldGame.gd" type="Script" id=1]
 [ext_resource path="res://tilesResources/SelectionTiles.tres" type="TileSet" id=2]
@@ -16,6 +16,7 @@
 [ext_resource path="res://scripts/ui/UI.gd" type="Script" id=14]
 [ext_resource path="res://scripts/ui/TilesUI.gd" type="Script" id=15]
 [ext_resource path="res://tilesResources/VisibilityTiles.tres" type="TileSet" id=16]
+[ext_resource path="res://tilesResources/DebugTiles.tres" type="TileSet" id=17]
 
 [sub_resource type="DynamicFont" id=1]
 size = 30
@@ -55,6 +56,14 @@ __meta__ = {
 
 [node name="Tiles" type="Node2D" parent="."]
 script = ExtResource( 15 )
+
+[node name="DebugTiles" type="TileMap" parent="Tiles"]
+modulate = Color( 1, 1, 1, 0.643137 )
+light_mask = -2147483647
+z_index = 6
+tile_set = ExtResource( 17 )
+cell_size = Vector2( 80, 80 )
+format = 1
 
 [node name="SelectionTiles" type="TileMap" parent="Tiles"]
 modulate = Color( 1, 1, 1, 0.533333 )

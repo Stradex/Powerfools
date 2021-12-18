@@ -57,6 +57,11 @@ func calculateTroopDamage(troopID: int) -> float:
 		i+=1
 	return 0.0
 
+func amountNeededToDefend(troopID: int, enemy_health: float, enemy_damage: float) -> int:
+	var average_troop_damage: float = float((TroopsTypes[troopID].damage.x + TroopsTypes[troopID].damage.y)/2.0)
+	var average_troop_health: float = float(TroopsTypes[troopID].health)
+	return int(round((enemy_health + enemy_damage)/(average_troop_damage+average_troop_health)))
+
 func getAverageDamage(troopID: int) -> float:
 	var i: int = 0
 	for troopDict in TroopsTypes:

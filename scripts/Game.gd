@@ -11,12 +11,15 @@ const SCREEN_HEIGHT: int = 720
 const TILE_SIZE: int = 80
 const GAME_FPS: int = 4 # we really don't need to much higher FPS, this is mostly for game logic, not graphic stuff
 const DATA_FILES_FOLDER: String = "data";
+const DEBUG_MODE: bool = true
+
 var current_turn: int = 0
 onready var troopTypes: TroopTypesObject = TroopTypesObject.new()
 onready var buildingTypes: BuildingTypesObject = BuildingTypesObject.new()
 onready var tileTypes: TilesTypesObject = TilesTypesObject.new()
 onready var Network: NetworkBase = NetworkBase.new()
 onready var FileSystem: FileSystemBase = FileSystemBase.new();
+onready var Util: UtilObject = UtilObject.new()
 var Boop_Object = preload("res://scripts/Netcode/Boop.gd");
 
 var tilesObj: TileGameObject

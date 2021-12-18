@@ -285,6 +285,8 @@ func gui_update_tile_info(tile_pos: Vector2) -> void:
 	$HUD/TileInfo/VBoxContainer/HBoxContainer4/PopulationText.text = populationStr
 
 func allow_show_tile_info(tile_pos: Vector2, playerNumber: int) -> bool:
+	if Game.DEBUG_MODE:
+		return true
 	var tile_cell_data: Dictionary = Game.tilesObj.get_cell(tile_pos)
 	if tile_cell_data.owner == playerNumber:
 		return true
