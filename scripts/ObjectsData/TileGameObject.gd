@@ -857,13 +857,13 @@ func ai_get_cell_available_force_to_attack(cell_pos: Vector2, cell_to_attack: Ve
 	
 	return available_health+available_damage
 
-func ai_get_cell_enemy_force_to_defend(cell_pos: Vector2, player_number: int) -> float:
+func ai_get_cell_enemy_force(cell_pos: Vector2, player_number: int) -> float:
 	var available_health: float = get_enemies_troops_health(cell_pos, player_number)
 	var available_damage: float = get_enemies_troops_damage(cell_pos, player_number)
 	return available_health+available_damage
 
 func ai_can_conquer_enemy_pos(own_cell_pos: Vector2, enemy_cell_pos: Vector2, player_number: int) -> bool:
-	return ai_get_cell_available_force_to_attack(own_cell_pos, enemy_cell_pos, player_number) > ai_get_cell_enemy_force_to_defend(enemy_cell_pos, player_number)*1.1 #try to overcome enemy by a 10% as minimum
+	return ai_get_cell_available_force_to_attack(own_cell_pos, enemy_cell_pos, player_number) > ai_get_cell_enemy_force(enemy_cell_pos, player_number)*1.1 #try to overcome enemy by a 10% as minimum
 
 func ai_cell_is_in_danger(cell_pos: Vector2, player_number: int, cells_to_ignore: Array = []) -> bool:
 	var cell_health: float = get_own_troops_health(cell_pos, player_number)
@@ -1100,8 +1100,8 @@ func ai_get_reachable_player_enemy_cells(player_number: int, use_allies_territor
 			enemy_player_cells.append(cell)
 	return enemy_player_cells
 
-func ai_get_reachable_player_capital(player_number: int) -> Vector2:
-	var enemy_cells: Array = ai_get_reachable_player_enemy_cells(player_number)
+func ai_get_reachable_player_capital(player_number: int, use_allies_territories_too: bool = false) -> Vector2:
+	var enemy_cells: Array = ai_get_reachable_player_enemy_cells(player_number, use_allies_territories_too)
 	for cell in enemy_cells:
 		if is_capital(cell):
 			return cell
@@ -1114,9 +1114,7 @@ func ai_get_strongest_player_enemy_cell( player_number: int , use_allies_territo
 		if strongest_cell == Vector2(-1, -1):
 			strongest_cell = cell
 			continue
-		var cell_owner: int = tiles_data[cell.x][cell.y].owner
-		var strongest_cell_owner: int = tiles_data[strongest_cell.x][strongest_cell.y].owner
-		if get_strength(cell, cell_owner) > get_strength(strongest_cell, strongest_cell_owner):
+		if ai_get_cell_enemy_force(cell, player_number) > ai_get_cell_enemy_force(strongest_cell, player_number):
 			strongest_cell = cell
 	return strongest_cell
 
@@ -1146,8 +1144,8 @@ func ai_get_weakest_enemy_cell(player_number: int, use_allies_territories_too: b
 			weakest_cell = cell
 	return weakest_cell
 
-func ai_get_richest_enemy_cell(player_number: int) -> Vector2:
-	var enemy_cells: Array = ai_get_reachable_enemy_cells(player_number)
+func ai_get_richest_enemy_cell(player_number: int, use_allies_territories_too: bool = false) -> Vector2:
+	var enemy_cells: Array = ai_get_reachable_enemy_cells(player_number, use_allies_territories_too)
 	var richest_cell: Vector2 = Vector2(-1, -1)
 	for cell in enemy_cells:
 		if richest_cell == Vector2(-1, -1):
@@ -1155,8 +1153,32 @@ func ai_get_richest_enemy_cell(player_number: int) -> Vector2:
 			continue
 		if get_cell_gold(cell) > get_cell_gold(richest_cell):
 			richest_cell = cell
-			#print(get_strength(cell, cell_owner))
 	return richest_cell
+
+func ai_get_closest_to_enemy_cell(player_number: int, pos_to_compare: Vector2, use_allies_territories_too: bool = false) -> Vector2:
+	var enemy_cells: Array = ai_get_reachable_enemy_cells(player_number, use_allies_territories_too)
+	return ai_get_closest_cell_to_from_array(enemy_cells, pos_to_compare)
+
+func ai_get_closest_to_player_enemy_cell(player_number: int, pos_to_compare: Vector2, use_allies_territories_too: bool = false) -> Vector2:
+	var enemy_cells: Array = ai_get_reachable_player_enemy_cells(player_number, use_allies_territories_too)
+	return ai_get_closest_cell_to_from_array(enemy_cells, pos_to_compare)
+
+func ai_get_closest_to_capital_enemy_cell(player_number: int,  use_allies_territories_too: bool = false) -> Vector2:
+	return ai_get_closest_to_enemy_cell(player_number, get_player_capital_vec2(player_number), use_allies_territories_too)
+
+func ai_get_closest_to_capital_player_enemy_cell(player_number: int,  use_allies_territories_too: bool = false) -> Vector2:
+	return ai_get_closest_to_player_enemy_cell(player_number, get_player_capital_vec2(player_number), use_allies_territories_too)
+
+func ai_get_strongest_enemy_cell(player_number: int) -> Vector2:
+	var enemy_cells: Array = ai_get_reachable_enemy_cells(player_number)
+	var strongest_cell: Vector2 = Vector2(-1, -1)
+	for cell in enemy_cells:
+		if strongest_cell == Vector2(-1, -1):
+			strongest_cell = cell
+			continue
+		if ai_get_cell_enemy_force(cell, player_number) > ai_get_cell_enemy_force(strongest_cell, player_number):
+			strongest_cell = cell
+	return strongest_cell
 
 func ai_get_closest_cell_to_from_array(array_of_cells: Array, cell_pos: Vector2) -> Vector2:
 	if array_of_cells.size() <= 0:
@@ -1285,7 +1307,7 @@ func ai_get_attack_path_from_to(start_pos: Vector2, end_pos: Vector2, player_num
 	var path_completed: bool = false
 	var iterations: int = 0
 	while !path_completed:
-		neighbors = get_neighbors(path_to_use[path_to_use.size()-1])
+		neighbors = get_walkeable_neighbors(path_to_use[path_to_use.size()-1])
 		valid_neighbors.clear()
 		for neighbor in neighbors:
 			iterations+=1
@@ -1333,7 +1355,7 @@ func ai_get_path_to_from(start_pos: Vector2, end_pos: Vector2) -> Array:
 			cells_to_ignore.append(path_to_use[path_to_use.size()-1])
 			path_to_use.pop_back() #removes last element
 			if path_to_use.size() <= 0: #failed
-				print("[ERROR] ai_get_path_to_from failed, return null path")
+				print("[ERROR] ai_get_path_to_from failed, return null path: " +str(start_pos) + " -> " +str(end_pos))
 				return [] #null return equals impossible to achieve path
 		else:
 			path_to_use.append(ai_get_closest_cell_to_from_array(valid_neighbors, end_pos))
@@ -1343,10 +1365,13 @@ func ai_get_path_to_from(start_pos: Vector2, end_pos: Vector2) -> Array:
 	return path_to_use
 
 # Edit, change this to mak
-func ai_move_warriors_from_to(start_pos: Vector2, end_pos: Vector2, player_number: int, percent_to_move: float = 1.0) -> void:
+func ai_move_warriors_from_to(start_pos: Vector2, end_pos: Vector2, player_number: int, percent_to_move: float = 1.0, force_to_move: bool = false) -> void:
 	var allowed_percent_to_move: float = ai_get_cell_available_allowed_percent_troops_attack(start_pos, end_pos, player_number)*0.95 #make it a bit less in order to avoid problems
 	if allowed_percent_to_move > percent_to_move:
 		allowed_percent_to_move = percent_to_move
+		
+	if force_to_move: #Move everything
+		allowed_percent_to_move = 1.0
 		
 	var startTroopsArray: Array = tiles_data[start_pos.x][start_pos.y].troops
 	for troopDict in startTroopsArray:
