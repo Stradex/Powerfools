@@ -34,10 +34,20 @@ var nextInteractTileSelected: Vector2 = Vector2(-1, -1)
 var local_name: String = "player"
 var local_pin: int = 0
 
+var bot_difficulties_stats: Array = []
+
 enum STATUS {
 	LOBBY_WAIT, #Server just started and waiting for players to start
 	PRE_GAME, #Select capital and territories for each players
 	GAME_STARTED #game is going on
+}
+
+enum BOT_DIFFICULTY {
+	EASY,
+	NORMAL,
+	HARD,
+	NIGHTMARE,
+	MAX_DIFFICULTIES
 }
 
 var defaultCivilizationNames: Array = [
@@ -54,6 +64,7 @@ var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready():
 	rng.randomize()
+	init_bots_stats()
 	init_players()
 	init_tiles_types()
 	init_troops_types()
@@ -61,6 +72,34 @@ func _ready():
 	Network.ready()
 	clear_players_data()
 	
+
+func init_bots_stats():
+	bot_difficulties_stats.clear()
+	bot_difficulties_stats.resize(BOT_DIFFICULTY.MAX_DIFFICULTIES)
+	bot_difficulties_stats[BOT_DIFFICULTY.EASY] = {
+		TROOPS_MULT = 1.0,
+		DISCOUNT_MULT = 1.0,
+		EXTRA_GOLD_MULT = 1.0,
+		GAINS_MULT = 1.0
+	}
+	bot_difficulties_stats[BOT_DIFFICULTY.NORMAL] = {
+		TROOPS_MULT = 1.25,
+		DISCOUNT_MULT = 0.8,
+		EXTRA_GOLD_MULT = 1.25,
+		GAINS_MULT = 1.1
+	}
+	bot_difficulties_stats[BOT_DIFFICULTY.HARD] = {
+		TROOPS_MULT = 1.5,
+		DISCOUNT_MULT = 0.65,
+		EXTRA_GOLD_MULT = 1.5,
+		GAINS_MULT = 1.25
+	}
+	bot_difficulties_stats[BOT_DIFFICULTY.NIGHTMARE] = {
+		TROOPS_MULT = 2.0,
+		DISCOUNT_MULT = 0.5,
+		EXTRA_GOLD_MULT = 2.0,
+		GAINS_MULT = 1.5
+	}
 
 func init_players():
 	playersData.clear()
@@ -74,6 +113,7 @@ func init_players():
 			selectLeft = 0,
 			netid = -1,
 			team = -1, #-1 equals no team, so enemy with everyone 
+			turns_played = 0,
 			bot_stats = {}
 		})
 
@@ -178,10 +218,14 @@ func clear_players_data():
 func start_new_game(is_mp_game: bool = false):
 	current_player_turn = 0
 	if !is_mp_game:
-		init_player(0, Game.Network.SERVER_NETID, "Stradex", 555, false, 1) #human
+		init_player(0, Game.Network.SERVER_NETID, "Stradex", 555, true, 1) #human
 		init_player(1, Game.Network.SERVER_NETID, "bot", 1, true, 1) #bot - team 1
-		init_player(2, Game.Network.SERVER_NETID, "bot", 2, true, 2) #bot - team 2
+		init_player(2, Game.Network.SERVER_NETID, "bot", 2, true, 1) #bot - team 2
 		init_player(3, Game.Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
+		set_bot_difficulty(0, BOT_DIFFICULTY.EASY)
+		set_bot_difficulty(1, BOT_DIFFICULTY.EASY)
+		set_bot_difficulty(2, BOT_DIFFICULTY.EASY)
+		set_bot_difficulty(3, BOT_DIFFICULTY.NIGHTMARE)
 	#else:
 	#	init_player(2, Game.Network.SERVER_NETID, "bot", 2, true, 1) #Just for testing only
 	#	init_player(3, Game.Network.SERVER_NETID, "bot", 3, true, 1) #Just for testing only
@@ -198,6 +242,13 @@ func are_player_allies(playerA: int, playerB: int) -> bool:
 		return false
 	return playersData[playerA].team == playersData[playerB].team
 
+func bot_reset_stats(bot_number: int) -> void:
+	rng.randomize()
+	playersData[bot_number].bot_stats.aggressiveness = rng.randf_range(0.1, 1.0)
+	playersData[bot_number].bot_stats.defensiveness  = rng.randf_range(0.1, 1.0)
+	playersData[bot_number].bot_stats.avarice = rng.randf_range(0.1, 1.0)
+	print("[BOT] reseting stats...")
+
 func init_player(player_id: int, net_id: int, player_name: String = "player", player_pin: int = 0, is_bot:bool = false, team:int = -1):
 	playersData[player_id].alive = true
 	playersData[player_id].isBot = is_bot
@@ -206,20 +257,15 @@ func init_player(player_id: int, net_id: int, player_name: String = "player", pl
 	playersData[player_id].name = player_name
 	playersData[player_id].pin_code = player_pin
 	playersData[player_id].team = team
+	playersData[player_id].turns_played = 0
 	if is_bot:
 		playersData[player_id].bot_stats = {
 			aggressiveness =  rng.randf_range(0.1, 1.0), #the bigger, the most willing to start expanding and looking for other players the bot will be
 			defensiveness  =  rng.randf_range(0.1, 1.0), #the bigger, the most willing to make a strong defense the bot will be willing to
 			avarice = rng.randf_range(0.1, 1.0),  #the bigger, the most amount of gains and gold the bot will wish to have
 			troops_quality = rng.randf_range(0.1, 1.0), #the bigger, the best kind of troops the bot will want to have
-			next_plan = {
-				territories_to_conquer = [], #array with data (Vec2 pos) of territories the bot wish to conquer
-				troops = [], #array with data of troops bot wish to have
-				to_upgrade = [],#array with data of territories (Vec2 pos) the bot wish to upgrade
-				gold = 0, #gold bot wish to collect
-				territories_to_defend = [],
-				plan_turns_executed=0
-			} #array with data for the plan the bot wishes to achieve
+			difficulty = BOT_DIFFICULTY.HARD,
+			path_to_follow = []
 		}
 	else:
 		playersData[player_id].bot_stats.clear()
@@ -283,11 +329,32 @@ func add_player(netid: int, player_name: String, player_pin: int, forceid: int =
 	init_player(free_player_index, netid, player_name, player_pin, isBot)
 	return free_player_index
 
+func set_bot_difficulty(bot_number: int, new_difficulty: int) -> void:
+	playersData[bot_number].bot_stats.difficulty = new_difficulty
+	
+func get_bot_difficulty(bot_number: int) -> int:
+	return playersData[bot_number].bot_stats.difficulty
+
 func get_next_player_turn() -> int:
 	for i in range(playersData.size()):
 		if i != current_player_turn and playersData[i].alive:
 			return i
 	return current_player_turn
+
+func get_bot_difficulty_stats(bot_number: int) -> Dictionary:
+	return bot_difficulties_stats[get_bot_difficulty(bot_number)]
+
+func get_bot_troops_multiplier(bot_number: int) -> float:
+	return get_bot_difficulty_stats(bot_number).TROOPS_MULT
+	
+func get_bot_discount_multiplier(bot_number: int) -> float:
+	return get_bot_difficulty_stats(bot_number).DISCOUNT_MULT
+
+func get_bot_extra_gold_multiplier(bot_number: int) -> float:
+	return get_bot_difficulty_stats(bot_number).EXTRA_GOLD_MULT
+
+func get_bot_gains_multiplier(bot_number: int) -> float:
+	return get_bot_difficulty_stats(bot_number).GAINS_MULT
 
 func is_player_a_bot(playerNumber: int) -> bool:
 	return playersData[playerNumber].isBot
