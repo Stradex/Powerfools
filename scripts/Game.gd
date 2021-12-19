@@ -11,7 +11,7 @@ const SCREEN_HEIGHT: int = 720
 const TILE_SIZE: int = 80
 const GAME_FPS: int = 4 # we really don't need to much higher FPS, this is mostly for game logic, not graphic stuff
 const DATA_FILES_FOLDER: String = "data";
-const DEBUG_MODE: bool = true
+const DEBUG_MODE: bool = false
 
 var current_turn: int = 0
 onready var troopTypes: TroopTypesObject = TroopTypesObject.new()
@@ -23,6 +23,7 @@ onready var Util: UtilObject = UtilObject.new()
 var Boop_Object = preload("res://scripts/Netcode/Boop.gd");
 
 var tilesObj: TileGameObject
+var BotSystem: BotObject
 var playersData: Array
 var tile_map_size: Vector2 = Vector2(round(SCREEN_WIDTH/TILE_SIZE), round(SCREEN_HEIGHT/TILE_SIZE))
 var current_tile_selected: Vector2 = Vector2.ZERO
@@ -84,7 +85,7 @@ func init_bots_stats():
 	}
 	bot_difficulties_stats[BOT_DIFFICULTY.NORMAL] = {
 		TROOPS_MULT = 1.25,
-		DISCOUNT_MULT = 0.8,
+		DISCOUNT_MULT = 0.85,
 		EXTRA_GOLD_MULT = 1.25,
 		GAINS_MULT = 1.1
 	}
@@ -149,7 +150,7 @@ func init_tiles_types():
 	tileTypes.add({
 		name = "ciudad",
 		next_stage = "metropolis",
-		improve_prize = 100,
+		improve_prize = 60,
 		turns_to_improve = 10,
 		gold_to_produce = 2,
 		strength_boost = 0.1,
@@ -218,14 +219,14 @@ func clear_players_data():
 func start_new_game(is_mp_game: bool = false):
 	current_player_turn = 0
 	if !is_mp_game:
-		init_player(0, Game.Network.SERVER_NETID, "Stradex", 555, true, 1) #human
-		init_player(1, Game.Network.SERVER_NETID, "bot", 1, true, 1) #bot - team 1
-		init_player(2, Game.Network.SERVER_NETID, "bot", 2, true, 1) #bot - team 2
-		init_player(3, Game.Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
-		set_bot_difficulty(0, BOT_DIFFICULTY.EASY)
-		set_bot_difficulty(1, BOT_DIFFICULTY.EASY)
-		set_bot_difficulty(2, BOT_DIFFICULTY.EASY)
-		set_bot_difficulty(3, BOT_DIFFICULTY.NIGHTMARE)
+		init_player(0, Game.Network.SERVER_NETID, "Stradex", 555, false, 1) #human
+		init_player(1, Game.Network.SERVER_NETID, "bot", 1, true, 2) #bot - team 1
+		#init_player(2, Game.Network.SERVER_NETID, "bot", 2, true, 1) #bot - team 2
+		#init_player(3, Game.Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
+		#set_bot_difficulty(0, BOT_DIFFICULTY.EASY)
+		set_bot_difficulty(1, BOT_DIFFICULTY.NIGHTMARE)
+		#set_bot_difficulty(2, BOT_DIFFICULTY.EASY)
+		#set_bot_difficulty(3, BOT_DIFFICULTY.NIGHTMARE)
 	#else:
 	#	init_player(2, Game.Network.SERVER_NETID, "bot", 2, true, 1) #Just for testing only
 	#	init_player(3, Game.Network.SERVER_NETID, "bot", 3, true, 1) #Just for testing only

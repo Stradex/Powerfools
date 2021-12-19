@@ -41,6 +41,11 @@ func init_button_signals():
 
 func init_menu_graphics():
 	close_all_windows()
+	$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.clear()
+	$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.add_item("Fácil", 0)
+	$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.add_item("Normal", 1)
+	$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.add_item("Difícil", 2)
+	$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.add_item("Pesadilla", 3)
 	$HUD/GameInfo/Waiting.visible = false
 
 ###################################
@@ -62,11 +67,29 @@ func gui_open_edit_player(var player_index: int) -> void:
 	player_editing_index = player_index
 	$ActionsMenu/EditPlayer/VBoxContainer/HBoxContainer2/PlayerNameText.text = str(Game.playersData[player_index].name)
 	$ActionsMenu/EditPlayer/VBoxContainer/HBoxContainer3/PlayerTeamText.text = str(Game.playersData[player_index].team)
+	
+	if Game.playersData[player_index].isBot:
+		$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel.visible = true
+		$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.select(Game.playersData[player_index].bot_stats.difficulty)
+	else:
+		$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel.visible = false
+	
 	$ActionsMenu/EditPlayer.visible = true
 
 
 func gui_accept_edit_player() -> void:
 	Game.playersData[player_editing_index].team = int($ActionsMenu/EditPlayer/VBoxContainer/HBoxContainer3/PlayerTeamText.text)
+	if Game.playersData[player_editing_index].isBot:
+		Game.playersData[player_editing_index].bot_stats.difficulty = $ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.selected
+		match Game.playersData[player_editing_index].bot_stats.difficulty:
+			Game.BOT_DIFFICULTY.EASY:
+				Game.playersData[player_editing_index].name = "bot [Fácil]"
+			Game.BOT_DIFFICULTY.NORMAL:
+				Game.playersData[player_editing_index].name = "bot [Normal]"
+			Game.BOT_DIFFICULTY.HARD:
+				Game.playersData[player_editing_index].name = "bot [Difícil]"
+			Game.BOT_DIFFICULTY.NIGHTMARE:
+				Game.playersData[player_editing_index].name = "bot [Pesadilla]"
 	gui_close_edit_player()
 
 func gui_close_edit_player() -> void:
