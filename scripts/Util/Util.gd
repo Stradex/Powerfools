@@ -87,7 +87,7 @@ func array_addition(arrayA: Array, arrayB: Array, allow_duplicates: bool = false
 			continue
 		return_array.append(arrayB[i])
 	return return_array
-	
+
 func convert_multidimentional_array_into_onedimensional(array_of_arrays: Array, allow_duplicates: bool = false) -> Array:
 	var single_array: Array = []
 	for data in array_of_arrays:

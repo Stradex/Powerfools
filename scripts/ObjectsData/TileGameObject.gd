@@ -35,7 +35,8 @@ var default_tile: Dictionary = {
 	turns_to_build = 0, # if > 0, it is building
 	building_id = -1, #a tile can only hold one building, so choose carefully!
 	troops = [],
-	upcomingTroops = [] #array with all the upcoming troops. DATA: turns to wait, owner, troop_id and amount
+	upcomingTroops = [], #array with all the upcoming troops. DATA: turns to wait, owner, troop_id and amount
+	type_of_rock = -1
 }
 var alphabet: Array = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "N", "Ñ", "O", "P", "Q", "R", "S", "T", "V", "W", "X", "Y", "Z"]
 
@@ -1699,3 +1700,4 @@ func pcg_generate_rocks(percent_to_generate: float = 0.125) -> void:
 	#Start adding rocks finally
 	for rock_pos in rock_cells:
 		tiles_data[rock_pos.x][rock_pos.y].owner = ROCK_OWNER_ID
+		tiles_data[rock_pos.x][rock_pos.y].type_of_rock = rng.randi_range(0, 3)

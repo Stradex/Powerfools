@@ -53,7 +53,6 @@ func init_menu_graphics():
 	$TilesCoordinates.visible = false
 
 func init_tile_coordinates():
-
 	var dynamic_font = DynamicFont.new()
 	dynamic_font.font_data = load("res://assets/fonts/PixelOperatorMono8-Bold.ttf")
 	dynamic_font.size = 20

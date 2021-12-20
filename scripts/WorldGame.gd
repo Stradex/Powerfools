@@ -28,6 +28,11 @@ extends Node2D
 # Opciones de jugadores en el menu principal y no cuando joineas
 # PASO 1: LIMPIAR CODIGO
 # Modo blitz: que los jugadores juegen su turno todos al mismo tiempo ( Ultra a futuro )
+# Que no se muestren las coordenadas a la hora de escribir el nombre de un territorio.
+# BUG: No termina solo el turno cuando quedan 0 acciones!
+# BUG: Que cuando un player pierde, los aliados en los territorios NO desaparezcan.
+# BUG: Tropas en territorio ajeno deberia costa lo mismo que en territorio propio.
+# BUG: Bots deberian construir siempre su primer construcciones 
 
 const MIN_ACTIONS_PER_TURN: int = 3
 const MININUM_TROOPS_TO_FIGHT: int = 5
@@ -86,6 +91,8 @@ func _ready():
 	init_timers_and_tweens()
 	init_game()
 	$UI.init_gui(self)
+	if Game.Network.is_multiplayer():
+		$UI/ActionsMenu/WaitingPlayers.visible = true
 	Game.Network.register_synced_node(self, WORLD_GAME_NODE_ID);
 
 func _process(delta):
@@ -197,6 +204,7 @@ func init_timers_and_tweens() -> void:
 	if Game.Network.is_server():
 		server_tween = Tween.new()
 		add_child(server_tween)
+	
 func init_game() -> void:
 	if Game.tilesObj:
 		Game.tilesObj.clear()
@@ -1067,10 +1075,7 @@ func action_in_turn_executed():
 		return
 	server_send_game_info()
 	if actions_available <= 0:
-		if is_local_player_turn() or Game.is_current_player_a_bot():
-			move_to_next_player_turn()
-		else: #client or other player playing
-			server_tween.start()
+		move_to_next_player_turn()
 
 func execute_tile_action():
 	var startX: int = Game.interactTileSelected.x
@@ -1200,20 +1205,6 @@ func client_send_game_info(unreliable: bool = false) -> void:
 		actions_left = actions_available
 	}, unreliable)
 	
-#OPTIMIZAR NETCODE, USAR EVENTOS NO SNAPSHOTS!, Y USAR LO MINIMO Y NECESARIO
-"""
-func server_send_boop() -> Dictionary:
-	var boopData = { }
-	return boopData
-
-func client_send_boop() -> Dictionary:
-	var boopData = { }
-	return boopData
-func client_process_boop(boopData) -> void:
-
-func server_process_boop(boopData) -> void:
-"""
-
 func get_tiles_node_transformation() -> Dictionary:
 	return {scale = $Tiles.scale, position = $Tiles.position}
 

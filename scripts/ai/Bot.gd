@@ -351,17 +351,25 @@ func bot_try_to_upgrade_unproductive_territories(bot_number: int) -> bool:
 
 func bot_try_to_make_a_building(bot_number: int) -> bool:
 	var cells_without_buildings: Array = Game.tilesObj.ai_get_all_cells_without_buildings(bot_number)
-	if cells_without_buildings.size() > 0 and bot_buy_building_at_cell(cells_without_buildings[rng.randi_range(0, cells_without_buildings.size()-1)], bot_number):
-		#print("[BOT] making a building")
-		return true
-		
+
+	while cells_without_buildings.size() > 0:
+		var random_index: int  = rng.randi_range(0, cells_without_buildings.size()-1)
+		if bot_buy_building_at_cell(cells_without_buildings[random_index], bot_number):
+			return true
+		cells_without_buildings.remove(random_index)
+
 	return false
 
 func bot_try_to_recruit_troops(bot_number: int) -> bool:
+	#ai_order_cells_by_distance_to
 	var cells_that_can_recruit: Array = Game.tilesObj.ai_get_all_cells_available_to_recruit(bot_number)
-	if cells_that_can_recruit.size() > 0 and bot_make_new_troops(cells_that_can_recruit[rng.randi_range(0, cells_that_can_recruit.size()-1)], bot_number):
-		#print("[BOT] recruiting troops")
-		return true
+	
+	while cells_that_can_recruit.size() > 0:
+		var random_index: int  = rng.randi_range(0, cells_that_can_recruit.size()-1)
+		if bot_make_new_troops(cells_that_can_recruit[random_index], bot_number):
+			return true
+		cells_that_can_recruit.remove(random_index)
+		
 	return false
 
 func bot_try_buy_or_upgrade(bot_number: int, type_of_attitude: int) -> bool:
@@ -375,14 +383,14 @@ func bot_try_buy_or_upgrade(bot_number: int, type_of_attitude: int) -> bool:
 		return false
 
 	if bot_gains >= BOT_MIMINUM_GOLD_GAINS_DESIRED and bot_is_lacking_troops(bot_number, type_of_attitude):
-		#print("[BOT] is lacking troops...")
+		print("[BOT] is lacking troops...")
 		return bot_try_to_recruit_troops(bot_number) or bot_try_to_make_a_building(bot_number)
-	elif bot_needs_to_upgrade_unproductive_territories(bot_number, type_of_attitude):
-		#print("[BOT] is having too many unproductive territories...")
-		return bot_try_to_upgrade_unproductive_territories(bot_number)
-	elif bot_is_lacking_recruit_buildings(bot_number, type_of_attitude):
-		#print("[BOT] is lacking buildings...")
+	elif bot_is_lacking_recruit_buildings(bot_number, type_of_attitude) and bot_gains >= BOT_MIMINUM_GOLD_GAINS_DESIRED:
+		print("[BOT] is lacking buildings...")
 		return bot_try_to_make_a_building(bot_number)
+	elif bot_needs_to_upgrade_unproductive_territories(bot_number, type_of_attitude):
+		print("[BOT] is having too many unproductive territories...")
+		return bot_try_to_upgrade_unproductive_territories(bot_number)
 
 	match type_of_attitude:
 		BOT_ACTIONS.GREEDY:
@@ -475,8 +483,18 @@ func bot_buy_building_at_cell(cell_pos: Vector2, bot_number: int) -> bool:
 	for i in range(buildingTypesList.size()):
 		if Game.tilesObj.can_buy_building_at_cell(cell_pos, i, getTotalGoldAvailable, bot_number):
 			available_buildings_to_build.append(i)
+	var best_building_id_to_buy: int = -1
+	for i in available_buildings_to_build:
+		if best_building_id_to_buy == -1:
+			best_building_id_to_buy = i
+			continue
+		var best_building_dict_prize: float = Game.buildingTypes.getByID(best_building_id_to_buy).buy_prize
+		var current_building_dict_prize: float = Game.buildingTypes.getByID(i).buy_prize
+		if current_building_dict_prize >= best_building_dict_prize:
+			 best_building_id_to_buy = i
+		
 	Game.tilesObj.update_sync_data()
-	Game.tilesObj.buy_building(cell_pos, available_buildings_to_build[rng.randi_range(0, available_buildings_to_build.size()-1)])
+	Game.tilesObj.buy_building(cell_pos, available_buildings_to_build[best_building_id_to_buy])
 	Game.Network.net_send_event(game_node.node_id, game_node.NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 	return true
 

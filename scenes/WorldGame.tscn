@@ -127,6 +127,7 @@ format = 1
 tile_set = ExtResource( 3 )
 cell_size = Vector2( 80, 80 )
 format = 1
+tile_data = PoolIntArray( 262139, 0, 0 )
 
 [node name="UI" type="CanvasLayer" parent="."]
 layer = 2

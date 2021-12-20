@@ -18,6 +18,13 @@ onready var id_not_visible_tile: int = $VisibilityTiles.tile_set.find_tile_by_na
 onready var id_rock_tile: int = $BuildingsTiles.tile_set.find_tile_by_name('tile_rock3')
 onready var id_debug_tile: int = $DebugTiles.tile_set.find_tile_by_name('tile_path_debug')
 
+onready var id_rock_types: Array = [
+	$BuildingsTiles.tile_set.find_tile_by_name('tile_rock1'),
+	$BuildingsTiles.tile_set.find_tile_by_name('tile_rock2'),
+	$BuildingsTiles.tile_set.find_tile_by_name('tile_rock3'),
+	$BuildingsTiles.tile_set.find_tile_by_name('tile_rock4')
+]
+
 const MINIMUM_CIVILIAN_ICON_COUNT: int = 50 
 const MINIMUM_TROOPS_ICON_COUNT: int = 10
 
@@ -32,7 +39,8 @@ func update_building_tiles() -> void:
 			var tile_cell_data: Dictionary = Game.tilesObj.get_cell(Vector2(x, y))
 			var tileImgToSet
 			if tile_cell_data.owner == Game.tilesObj.ROCK_OWNER_ID:
-				tileImgToSet = id_rock_tile
+				tileImgToSet = id_rock_types[tile_cell_data.type_of_rock]
+				#tileImgToSet = id_rock_tile
 			else:
 				tileImgToSet = $BuildingsTiles.tile_set.find_tile_by_name(Game.tileTypes.getImg(tile_cell_data.tile_id))
 				
