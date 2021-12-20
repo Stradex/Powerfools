@@ -75,6 +75,7 @@ enum NET_EVENTS {
 	SERVER_UPDATE_GAME_INFO,
 	CLIENT_SEND_GAME_INFO,
 	SERVER_SEND_PLAYERS_DATA,
+	SERVER_SEND_GAME_ENDED,
 	MAX_EVENTS
 }
 ###################################################
@@ -125,6 +126,15 @@ func _input(event):
 		$UI.show_game_coords()	
 	elif Input.is_action_just_released("toggle_coords"):
 		$UI.hide_game_coords()	
+
+	if Input.is_action_just_pressed("zoom_in_hud"):
+		$Tiles.position = Vector2(0.0, 0.0)
+		$Tiles.scale = Vector2(1.0, 1.0)
+		$UI.init_tile_coordinates()
+	elif Input.is_action_just_pressed("zoom_out_hud"):
+		$Tiles.position = Vector2(60.0, 0.0)
+		$Tiles.scale = Vector2(0.9, 0.9)
+		$UI.init_tile_coordinates()
 
 	if player_in_menu or !player_can_interact:
 		return
@@ -332,6 +342,7 @@ func change_game_status(new_status: int) -> void:
 			$UI/HUD/GameInfo.visible = false
 			$UI/HUD/PreGameInfo.visible = false
 			$UI.open_lobby_window()
+			print("lala")
 		Game.STATUS.PRE_GAME:
 			$UI/HUD/GameInfo.visible = false
 			$UI/HUD/PreGameInfo.visible = true
@@ -426,6 +437,21 @@ func update_actions_available() -> void:
 		if actions_available < MIN_ACTIONS_PER_TURN:
 			actions_available = MIN_ACTIONS_PER_TURN
 
+func check_if_game_finished() -> bool:
+	var all_player_capitals: Array = Game.tilesObj.get_all_capitals()
+	var players_alive: Array = []
+	for capital in all_player_capitals:
+		var player_owner: int = Game.tilesObj.get_cell_owner(capital)
+		if players_alive.find(player_owner) == -1:
+			players_alive.append(player_owner)
+			
+	for playerA in players_alive:
+		for playerB in players_alive:
+			if !Game.are_player_allies(playerA, playerB):
+				return false
+	
+	return true
+
 func process_turn_end(playerNumber: int) -> void:
 	Game.tilesObj.recover_sync_data()
 	
@@ -433,7 +459,12 @@ func process_turn_end(playerNumber: int) -> void:
 	process_tiles_turn_end(playerNumber)
 	if did_player_lost(playerNumber):
 		destroy_player(playerNumber)
-
+		
+	if check_if_game_finished():
+		if Game.Network.is_server():
+			Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_GAME_ENDED, null)
+		$UI/GameFinished.visible = true
+		return
 	if Game.Network.is_server():
 		var next_player_turn: int = Game.get_next_player_turn()
 		var sync_arrayA: Array = Game.tilesObj.get_sync_neighbors(next_player_turn)
@@ -1183,6 +1214,9 @@ func client_process_boop(boopData) -> void:
 func server_process_boop(boopData) -> void:
 """
 
+func get_tiles_node_transformation() -> Dictionary:
+	return {scale = $Tiles.scale, position = $Tiles.position}
+
 func server_process_event(eventId : int, eventData) -> void:
 	match eventId:
 		NET_EVENTS.UPDATE_TILE_DATA:
@@ -1236,5 +1270,7 @@ func client_process_event(eventId : int, eventData) -> void:
 				save_player_info()
 			Game.playersData[Game.current_player_turn].selectLeft = eventData.select_left
 			actions_available = eventData.actions_left
+		NET_EVENTS.SERVER_SEND_GAME_ENDED:
+			$UI/GameFinished.visible = true
 		_:
 			print("Warning: Received unkwown event")

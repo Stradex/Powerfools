@@ -59,7 +59,7 @@ func update_building_tiles() -> void:
 			
 			$CivilianTiles.set_cellv(Vector2(x, y), get_civilians_tile_id(Vector2(x, y), player_mask))
 			$BuildingsTiles.set_cellv(Vector2(x, y), tileImgToSet)
-			if tile_cell_data.owner == player_mask:
+			if Game.are_player_allies(tile_cell_data.owner, player_mask):
 				$TroopsTiles.set_cellv(Vector2(x, y), get_troops_tile_id(Vector2(x, y), player_mask))
 			else:
 				$TroopsTiles.set_cellv(Vector2(x, y), -1)
@@ -79,7 +79,7 @@ func get_civilians_tile_id(tile_pos: Vector2, playerNumber: int) -> int:
 func get_troops_tile_id(tile_pos: Vector2, playerNumber: int) -> int:
 	var troopsCountInTile: int = Game.tilesObj.get_warriors_count(tile_pos, playerNumber)
 	var upcoming_troops_data: Array = Game.tilesObj.get_upcoming_troops(tile_pos)
-	if upcoming_troops_data.size() > 0:
+	if upcoming_troops_data.size() > 0 and Game.tilesObj.get_owner(tile_pos) == playerNumber:
 		return id_tile_deploying_troops
 	elif troopsCountInTile > MINIMUM_TROOPS_ICON_COUNT:
 		return id_tile_troops
@@ -91,6 +91,8 @@ func update_selection_tiles() -> void:
 	if Game.Network.is_multiplayer() or Game.is_current_player_a_bot():
 		player_mask = Game.get_local_player_number()
 	var mouse_pos: Vector2 = get_global_mouse_position()
+	mouse_pos -= self.position
+	mouse_pos /= self.scale
 	var tile_selected: Vector2 = $SelectionTiles.world_to_map(mouse_pos)
 	if Game.current_tile_selected == tile_selected:
 		return

@@ -41,7 +41,9 @@ func init_button_signals():
 
 func init_menu_graphics():
 	close_all_windows()
-	#init_tile_coordinates()
+	init_tile_coordinates()
+	$ActionsMenu.visible = true
+	$HUD.visible = true
 	$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.clear()
 	$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.add_item("Fácil", 0)
 	$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.add_item("Normal", 1)
@@ -59,18 +61,30 @@ func init_tile_coordinates():
 	dynamic_font.outline_color = Color( 0, 0, 0, 0.75 )
 	dynamic_font.use_filter = true
 	
+	var transform_to_apply: Dictionary = world_game_node.get_tiles_node_transformation()
+	#print(transform_to_apply)
+	for obj in $TilesCoordinates.get_children(): #removing old labels just in case
+		if obj.is_in_group("label_coords"):
+			$TilesCoordinates.remove_child(obj)
+			obj.remove_from_group("label_coords")
+			obj.queue_free()
+		
+	#var 
 	var game_coods: Dictionary = Game.tilesObj.get_all_tile_coords()
 	for x in range(game_coods.coords_size.x):
 		for y in range(game_coods.coords_size.y):
 			var vboxconteiner: VBoxContainer = VBoxContainer.new()
-			vboxconteiner.rect_position = Vector2(x*Game.TILE_SIZE, y*Game.TILE_SIZE)
-			vboxconteiner.rect_size = Vector2(Game.TILE_SIZE, Game.TILE_SIZE)
+			var position_to_use: Vector2 = Vector2(x*Game.TILE_SIZE*transform_to_apply.scale.x, y*Game.TILE_SIZE*transform_to_apply.scale.y)
+			position_to_use+=transform_to_apply.position
+			vboxconteiner.rect_position = position_to_use
+			vboxconteiner.rect_size = Vector2(Game.TILE_SIZE*transform_to_apply.scale.x, Game.TILE_SIZE*transform_to_apply.scale.y)
 			vboxconteiner.alignment = BoxContainer.ALIGN_CENTER
 			var label: Label = Label.new()
 			label.text = game_coods.coords[x][y]
 			label.align = Label.ALIGN_CENTER
 			label.add_font_override("font", dynamic_font)
 			vboxconteiner.add_child(label)
+			vboxconteiner.add_to_group("label_coords")
 			$TilesCoordinates.add_child(vboxconteiner)
 
 ###################################
@@ -89,9 +103,13 @@ func close_all_windows() -> void:
 
 func show_game_coords() -> void:
 	$TilesCoordinates.visible = true
+	$ActionsMenu.visible = false
+	$HUD.visible = false
 
 func hide_game_coords() -> void:
 	$TilesCoordinates.visible = false
+	$ActionsMenu.visible = true
+	$HUD.visible = true
 
 func gui_open_edit_player(var player_index: int) -> void:
 	close_all_windows()
