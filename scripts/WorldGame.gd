@@ -5,7 +5,6 @@ extends Node2D
 # Tabla de puntajes al perder o ganar la partida
 # Estadisticas batallas ganadas y perdidas, soldados perdidos, etc...
 # Facciones: Germanos, Galos, Persas, Esparta, Tebas, Macedonios, Griegos, Romanos, Cartago, Egipto, Escitas
-# Elegir equipos a la hora de entrar al server (SEGUIR)
 # Hacer que se puedan ver las tropias propias en territorio aliado.
 # Ver las construcciones de los aliados
 # Menu con construcciones 
@@ -14,7 +13,6 @@ extends Node2D
 # Opciones de marcadores en ciertas provincias
 # Opciones de mostrar cordenadas en el mapa (A1, B2, ETC...)
 # OBSERVACIÓN: Bug que hace que de la nada a veces clientes pierdan plata
-# Cuando un jugador pierde, los bosques tienen que tener tribus!
 # Que los jugadores reciban la info de manera instantanea
 # Pantalla de VICTORIA: LA GUERRA ES PARA PUTOS, COMOS LOS PUTOS QUE JUEGAN ESTE JUEGO. 
 # 	-> LA GUERRA NO ES UN JUEGO FOTO DE GHANDI
@@ -22,17 +20,14 @@ extends Node2D
 # Que los clientes puedan seleccionar su equipo.
 # Que los aliados pueda ver los edificios que puedan 
 # Que los clientes reciban informacion en tiempo real
-# Hacer metropolis que cueste 60
 # Variacion de las piedritas
 # LIMPIAR CODIGO
 # Que los bots sigan conquistando despues de ver a los players
 # Auto save 1: cada 1 minuto, 2: cada 10 minutos, 3: cada 30 minutos
 # Opción gráfica de pantalla completa y resoluciones
 # Opciones de jugadores en el menu principal y no cuando joineas
-# Dificultades de bots: individuales -> NORMAL, DIFICIL, PESADILLA
 # PASO 1: LIMPIAR CODIGO
 # Modo blitz: que los jugadores juegen su turno todos al mismo tiempo ( Ultra a futuro )
-# fix bug: jugador puede hacer click derecha en la casilla de sus aliados cuando no es su turno 
 
 const MIN_ACTIONS_PER_TURN: int = 3
 const MININUM_TROOPS_TO_FIGHT: int = 5
@@ -54,6 +49,7 @@ var undo_available: bool = true
 var turn_number: int = 0
 
 onready var tween: Tween
+onready var server_tween: Tween
 onready var net_sync_timer: Timer
 onready var autosave_timer: Timer
 onready var playerdata_sync_timer: Timer
@@ -87,8 +83,8 @@ enum NET_EVENTS {
 
 func _ready():
 	init_timers_and_tweens()
-	$UI.init_gui(self)
 	init_game()
+	$UI.init_gui(self)
 	Game.Network.register_synced_node(self, WORLD_GAME_NODE_ID);
 
 func _process(delta):
@@ -124,7 +120,11 @@ func _input(event):
 		$UI/HUD/TileInfo.visible = !$UI/HUD/TileInfo.visible
 	if Input.is_action_just_pressed("toggle_civ_info"):
 		$UI/HUD/CivilizationInfo.visible = !$UI/HUD/CivilizationInfo.visible
-	
+
+	if Input.is_action_just_pressed("toggle_coords"):
+		$UI.show_game_coords()	
+	elif Input.is_action_just_released("toggle_coords"):
+		$UI.hide_game_coords()	
 
 	if player_in_menu or !player_can_interact:
 		return
@@ -184,7 +184,9 @@ func init_timers_and_tweens() -> void:
 		autosave_timer.connect("timeout", self, "on_autosave_timeout")
 		add_child(autosave_timer)
 		autosave_timer.start()
-
+	if Game.Network.is_server():
+		server_tween = Tween.new()
+		add_child(server_tween)
 func init_game() -> void:
 	if Game.tilesObj:
 		Game.tilesObj.clear()
@@ -376,8 +378,10 @@ func pre_game() -> void:
 	change_game_status(Game.STATUS.GAME_STARTED)
 
 func start_player_turn(player_number: int):
-	Game.tilesObj.save_sync_data()
 	Game.current_player_turn = player_number
+	if Game.Network.is_client():
+		return
+	Game.tilesObj.save_sync_data()
 	save_player_info()
 	update_actions_available()
 	server_send_game_info()
@@ -395,11 +399,13 @@ func start_player_turn(player_number: int):
 func move_to_next_player_turn() -> void:
 	if Game.Network.is_client() and is_local_player_turn():
 		Game.Network.net_send_event(self.node_id, NET_EVENTS.CLIENT_TURN_END, {player_turn = Game.current_player_turn})
+		
 	if Game.current_game_status == Game.STATUS.GAME_STARTED and !Game.Network.is_client():
 		process_turn_end(Game.current_player_turn)
 	elif Game.current_game_status == Game.STATUS.PRE_GAME and !Game.Network.is_client():
 		Game.tilesObj.recover_sync_data()
 		Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = Game.tilesObj.get_sync_data() })
+
 	var new_player_turn: int = -1
 	for i in range(Game.current_player_turn, Game.playersData.size()):
 		if i != Game.current_player_turn and Game.playersData[i].alive:
@@ -527,12 +533,8 @@ func process_tile_battles(tile_pos: Vector2) -> void:
 			i+=1
 	#Step4: Check if battle is over
 	if !Game.tilesObj.is_cell_in_battle(tile_pos):
-		var playerWhoWonId: int = -1
-		for troopDict in tile_cell_troops:
-			if troopDict.amount <= 0:
-				continue
-			playerWhoWonId = troopDict.owner
-			
+		var playerWhoWonId: int = Game.tilesObj.get_strongest_player_in_cell(tile_pos) #give the cell to the strongest ally
+		
 		var slaves_to_gain: int = 0
 		for civiliansKilledDictionary in civiliansKilledBy:
 			if civiliansKilledDictionary.attacker == playerWhoWonId:
@@ -546,7 +548,6 @@ func process_tile_battles(tile_pos: Vector2) -> void:
 		}
 		
 		if !Game.are_player_allies(Game.tilesObj.get_cell_owner(tile_pos), playerWhoWonId): #do not take your allies troops if you were helping with the defense.
-			
 			var bot_number: int = -1
 			if Game.is_player_a_bot(Game.tilesObj.get_cell_owner(tile_pos)):
 				bot_number = Game.tilesObj.get_cell_owner(tile_pos)
@@ -555,8 +556,6 @@ func process_tile_battles(tile_pos: Vector2) -> void:
 			elif Game.is_player_a_bot(playerWhoWonId):
 				bot_number = playerWhoWonId
 				Game.BotSystem.bot_territories_to_recover[bot_number] = Game.Util.array_search_and_remove(Game.BotSystem.bot_territories_to_recover[bot_number], tile_pos)
-				print(Game.BotSystem.bot_territories_to_recover)
-				
 			Game.tilesObj.set_cell_owner(tile_pos, playerWhoWonId)
 
 		if Game.is_player_a_bot(playerWhoWonId):
@@ -773,8 +772,7 @@ func give_player_rural(playerNumber: int, tile_pos: Vector2) ->void:
 		amount = 1000
 	}
 	Game.tilesObj.give_to_a_player(playerNumber, tile_pos, Game.tileTypes.getIDByName("rural"), 0, starting_population)
-	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = tile_pos, cell_data = Game.tilesObj.get_cell(tile_pos)})
-	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
+	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 
 func add_tribal_society_to_tile(cell: Vector2) -> void:
 	Game.tilesObj.set_cell_gold(cell, round(Game.rng.randf_range(5.0, 20.0)))
@@ -895,7 +893,7 @@ func game_tile_show_info():
 		return
 	
 	if !is_local_player_turn():
-		$UI/ActionsMenu/InGameTileActions.visible = true
+		$UI/ActionsMenu/InGameTileActions.visible = false
 		return
 	var cell_data: Dictionary = Game.tilesObj.get_cell(Game.current_tile_selected)
 	
@@ -957,7 +955,7 @@ func execute_recruit_troops():
 	Game.tilesObj.take_cell_gold(Game.current_tile_selected, currentBuildingTypeSelected.deploy_prize)
 	Game.tilesObj.append_upcoming_troops(Game.current_tile_selected, upcomingTroopsDict)
 	action_in_turn_executed()
-	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
+	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 	
 func execute_buy_building(var selectedBuildTypeId: int):
 	var getTotalGoldAvailable: int = Game.tilesObj.get_total_gold(Game.current_player_turn)
@@ -967,7 +965,7 @@ func execute_buy_building(var selectedBuildTypeId: int):
 	Game.tilesObj.update_sync_data()
 	Game.tilesObj.buy_building(Game.current_tile_selected, selectedBuildTypeId)
 	action_in_turn_executed()
-	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
+	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 
 func execute_open_build_window():
 	update_build_menu()
@@ -990,7 +988,7 @@ func gui_urbanizar_tile():
 	Game.tilesObj.update_sync_data()
 	Game.tilesObj.queue_upgrade_cell(Game.current_tile_selected)
 	action_in_turn_executed()
-	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
+	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 	$UI/ActionsMenu/InGameTileActions.visible = false
 
 func update_troops_move_data( var index: int ):
@@ -1018,21 +1016,31 @@ func execute_accept_tiles_actions():
 	Game.tilesObj.update_sync_data()
 	execute_tile_action()
 	action_in_turn_executed()
-	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
+	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 
 func action_in_turn_executed():
 	if Game.current_game_status != Game.STATUS.GAME_STARTED:
 		return
 	actions_available-=1
-	if Game.Network.is_client() and is_local_player_turn():
-		Game.Network.net_send_event(self.node_id, NET_EVENTS.CLIENT_USE_ACTION, null)
-		if actions_available <= 0:
-			save_player_info() #Avoid weird stuff in multiplayer
+
+	if is_local_player_turn() or Game.is_current_player_a_bot():
+		if Game.Network.is_client() and is_local_player_turn() :
+			Game.Network.net_send_event(self.node_id, NET_EVENTS.CLIENT_USE_ACTION,  {player_turn = Game.current_player_turn, dictArray = Game.tilesObj.get_sync_data()})
+		else:
+			Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
+	
+	if actions_available <= 0:
+		save_player_info() #Avoid weird stuff in multiplayer
+	
+	if Game.Network.is_client():
 		return
 	server_send_game_info()
 	if actions_available <= 0:
-		move_to_next_player_turn()
-		
+		if is_local_player_turn() or Game.is_current_player_a_bot():
+			move_to_next_player_turn()
+		else: #client or other player playing
+			server_tween.start()
+
 func execute_tile_action():
 	var startX: int = Game.interactTileSelected.x
 	var startY: int = Game.interactTileSelected.y
@@ -1079,22 +1087,36 @@ func execute_give_extra_gold():
 	Game.tilesObj.update_sync_data()
 	Game.tilesObj.add_cell_gold(Game.current_tile_selected, 10)
 	use_selection_point()
-	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = Game.current_tile_selected, cell_data = Game.tilesObj.get_cell(Game.current_tile_selected)})
-	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
+	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 
 func execute_add_extra_troops():
 	if !is_local_player_turn() or !have_selection_points_left():
 		return
 	save_player_info()
-	give_troops_to_player_and_sync(Game.current_tile_selected, Game.current_player_turn, "recluta", 1000)
+	#give_troops_to_player_and_sync(Game.current_tile_selected, Game.current_player_turn, "recluta", 1000)
+	Game.tilesObj.update_sync_data()
+	var extraTroops: Dictionary = {
+		owner = Game.current_player_turn,
+		troop_id = Game.troopTypes.getIDByName("recluta"),
+		amount = 1000
+	}
+	Game.tilesObj.add_troops(Game.current_tile_selected, extraTroops)
+	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 	use_selection_point()
 
 func use_selection_point():
 	if Game.Network.is_client() and !is_local_player_turn():
 		return
 	Game.playersData[Game.current_player_turn].selectLeft-=1
+	
 	if Game.Network.is_client() and Game.playersData[Game.current_player_turn].selectLeft >= 0:
-		Game.Network.net_send_event(self.node_id, NET_EVENTS.CLIENT_USE_POINT, null)
+		Game.Network.net_send_event(self.node_id, NET_EVENTS.CLIENT_USE_POINT,  {player_turn = Game.current_player_turn, dictArray = Game.tilesObj.get_sync_data()})
+		return
+	elif is_local_player_turn() or Game.is_current_player_a_bot():
+		Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
+			
+	if Game.Network.is_client() and Game.playersData[Game.current_player_turn].selectLeft >= 0:
+		Game.Network.net_send_event(self.node_id, NET_EVENTS.CLIENT_USE_POINT, {player_turn = Game.current_player_turn})
 		return
 	server_send_game_info()
 	if Game.playersData[Game.current_player_turn].selectLeft == 0: 
@@ -1165,11 +1187,14 @@ func server_process_event(eventId : int, eventData) -> void:
 	match eventId:
 		NET_EVENTS.UPDATE_TILE_DATA:
 			Game.tilesObj.set_sync_data(eventData.dictArray)
-			#Game.tilesObj.set_sync_cell_data(eventData.cell, eventData.cell_data)
 		NET_EVENTS.CLIENT_USE_POINT:
-			use_selection_point()
+			if eventData.player_turn == Game.current_player_turn and !Game.is_current_player_a_bot():
+				Game.tilesObj.set_sync_data(eventData.dictArray)
+				use_selection_point()
 		NET_EVENTS.CLIENT_USE_ACTION:
-			action_in_turn_executed()
+			if eventData.player_turn == Game.current_player_turn and !Game.is_current_player_a_bot():
+				Game.tilesObj.set_sync_data(eventData.dictArray)
+				action_in_turn_executed()
 		NET_EVENTS.CLIENT_TURN_END:
 			if eventData.player_turn == Game.current_player_turn and !Game.is_current_player_a_bot():
 				move_to_next_player_turn()
@@ -1207,7 +1232,7 @@ func client_process_event(eventId : int, eventData) -> void:
 					return
 				if actions_available > 0 and eventData.actions_left > actions_available:
 					return
-			if is_local_player_turn() and old_player_turn !=  Game.current_player_turn:
+			if is_local_player_turn() and old_player_turn != Game.current_player_turn:
 				save_player_info()
 			Game.playersData[Game.current_player_turn].selectLeft = eventData.select_left
 			actions_available = eventData.actions_left

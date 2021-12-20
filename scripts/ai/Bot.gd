@@ -62,7 +62,7 @@ func bot_try_desperate_action(bot_number: int, bot_is_having_debt: bool) -> bool
 		return false
 	
 	var strongest_enemy_cell: Vector2 = Game.tilesObj.ai_get_strongest_enemy_cell_in_array(enemies_next_to_capital, bot_number)
-	print("[BOT] Trying desperate defense")
+	#print("[BOT] Trying desperate defense")
 	return Game.tilesObj.ai_move_warriors_from_to(player_capital_pos, strongest_enemy_cell, bot_number, 1.0, true)
 
 func bot_is_lacking_troops(bot_number: int, type_of_attitude: int) -> bool:
@@ -183,13 +183,13 @@ func bot_process_game(bot_number: int) -> void:
 	
 	match type_of_attitude:
 		BOT_ACTIONS.OFFENSIVE:
-			print("[BOT] Playing ofensive")
+			#print("[BOT] Playing ofensive")
 			action_executed = bot_play_agressive(bot_number, player_capital_pos, bot_is_having_debt)
 		BOT_ACTIONS.DEFENSIVE:
-			print("[BOT] Playing defensive")
+			#print("[BOT] Playing defensive")
 			action_executed = bot_play_defensive(bot_number, player_capital_pos, bot_is_having_debt)
 		BOT_ACTIONS.GREEDY:
-			print("[BOT] Playing greedy")
+			#print("[BOT] Playing greedy")
 			action_executed = bot_play_greedy(bot_number, player_capital_pos, bot_is_having_debt)
 	
 	if !action_executed:
@@ -274,7 +274,7 @@ func bot_try_to_move_troops_to_frontiers(bot_number: int) -> bool:
 	#var cell_to_move_troops_from: Vector2 = Game.tilesObj.ai_get_strongest_available_cell_in_array(inner_territories, bot_number)
 	var cell_to_move_troops_towards: Vector2 = Game.tilesObj.ai_get_weakest_cell_in_array(outer_territories, bot_number)
 	if bot_move_troops_towards_pos(cell_to_move_troops_towards, bot_number):
-		print("[BOT] moving troops towards borders...")
+		#print("[BOT] moving troops towards borders...")
 		return true
 	return false
 
@@ -286,7 +286,7 @@ func bot_try_to_recover_territory(bot_number: int, player_capital_pos: Vector2, 
 		if !Game.tilesObj.ai_have_strength_to_conquer(to_recover_cell, bot_number) and !bot_is_having_debt:
 			continue
 		if bot_move_troops_towards_pos(to_recover_cell, bot_number, bot_is_having_debt):
-			print("[BOT] recovering territory...")
+			#print("[BOT] recovering territory...")
 			return true
 	return false
 
@@ -294,7 +294,7 @@ func bot_try_to_defend_own_capital(bot_number: int, player_capital_pos: Vector2)
 	var capital_in_danger: bool = bot_capital_in_danger(bot_number)
 	if !capital_in_danger:
 		return false
-	print("BOT trying to defend own capital")
+	#print("BOT trying to defend own capital")
 	return bot_move_troops_towards_pos(player_capital_pos, bot_number, true) #Fixme: Force to move towards capital
 
 func bot_try_to_attack_enemy_capital(bot_number: int, player_capital_pos: Vector2, bot_is_having_debt: bool, type_of_attitude: int) -> bool:
@@ -336,7 +336,7 @@ func bot_try_to_upgrade_territory(bot_number: int) -> bool:
 	for cell in bot_cells:
 		if Game.tilesObj.can_be_upgraded(cell, bot_number):
 			if bot_upgrade_territory(cell, bot_number): #upgraded
-				print("[BOT] upgrading territory")
+				#print("[BOT] upgrading territory")
 				return true
 	return false
 
@@ -345,14 +345,14 @@ func bot_try_to_upgrade_unproductive_territories(bot_number: int) -> bool:
 	for cell in unproductive_territories:
 		if Game.tilesObj.can_be_upgraded(cell, bot_number):
 			if bot_upgrade_territory(cell, bot_number): #upgraded
-				print("[BOT] upgrading unproductive territory")
+				#print("[BOT] upgrading unproductive territory")
 				return true
 	return false
 
 func bot_try_to_make_a_building(bot_number: int) -> bool:
 	var cells_without_buildings: Array = Game.tilesObj.ai_get_all_cells_without_buildings(bot_number)
 	if cells_without_buildings.size() > 0 and bot_buy_building_at_cell(cells_without_buildings[rng.randi_range(0, cells_without_buildings.size()-1)], bot_number):
-		print("[BOT] making a building")
+		#print("[BOT] making a building")
 		return true
 		
 	return false
@@ -360,7 +360,7 @@ func bot_try_to_make_a_building(bot_number: int) -> bool:
 func bot_try_to_recruit_troops(bot_number: int) -> bool:
 	var cells_that_can_recruit: Array = Game.tilesObj.ai_get_all_cells_available_to_recruit(bot_number)
 	if cells_that_can_recruit.size() > 0 and bot_make_new_troops(cells_that_can_recruit[rng.randi_range(0, cells_that_can_recruit.size()-1)], bot_number):
-		print("[BOT] recruiting troops")
+		#print("[BOT] recruiting troops")
 		return true
 	return false
 
@@ -375,13 +375,13 @@ func bot_try_buy_or_upgrade(bot_number: int, type_of_attitude: int) -> bool:
 		return false
 
 	if bot_gains >= BOT_MIMINUM_GOLD_GAINS_DESIRED and bot_is_lacking_troops(bot_number, type_of_attitude):
-		print("[BOT] is lacking troops...")
+		#print("[BOT] is lacking troops...")
 		return bot_try_to_recruit_troops(bot_number) or bot_try_to_make_a_building(bot_number)
 	elif bot_needs_to_upgrade_unproductive_territories(bot_number, type_of_attitude):
-		print("[BOT] is having too many unproductive territories...")
+		#print("[BOT] is having too many unproductive territories...")
 		return bot_try_to_upgrade_unproductive_territories(bot_number)
 	elif bot_is_lacking_recruit_buildings(bot_number, type_of_attitude):
-		print("[BOT] is lacking buildings...")
+		#print("[BOT] is lacking buildings...")
 		return bot_try_to_make_a_building(bot_number)
 
 	match type_of_attitude:

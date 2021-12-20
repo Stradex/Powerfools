@@ -14,7 +14,7 @@ const NW: int = 128
 const ALL_DIR: int = N | NE | E | SE | S | SW | W | NW # All 8 directions
 const DIAG_DIR: int = NE | SE | SW | NW # Diagonal directions only
 const HOR_AND_VER_DIR: int = ALL_DIR - DIAG_DIR # Horizontal and vertical directions
-const MAX_ITERATIONS_ALLOWED: int = 9999
+const MAX_ITERATIONS_ALLOWED: int = 15000 #max iterations allowed
 const DIRS: Dictionary = { # The keys are vectors 2D, which is awesome and handy
 	Vector2(0, -1): N,
 	Vector2(1, -1): NE,
@@ -37,6 +37,7 @@ var default_tile: Dictionary = {
 	troops = [],
 	upcomingTroops = [] #array with all the upcoming troops. DATA: turns to wait, owner, troop_id and amount
 }
+var alphabet: Array = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "N", "Ñ", "O", "P", "Q", "R", "S", "T", "V", "W", "X", "Y", "Z"]
 
 var saved_tiles_data: Array = []
 var previous_action_tiles_data: Array = []
@@ -69,6 +70,13 @@ func _init(init_tile_size: Vector2, default_tile_id: int, init_tile_types_obj, i
 #	BOOLEANS   #
 ################
 
+func get_all_tile_coords() -> Dictionary:
+	var tile_coords: Array = []
+	for x in range(tile_size.x):
+		tile_coords.append([])
+		for y in range(tile_size.y):
+			tile_coords[x].append(str(alphabet[x] + str(y+1)))
+	return {coords_size = tile_size, coords = tile_coords }
 func is_capital(tile_pos: Vector2) -> bool:
 	return tiles_data[tile_pos.x][tile_pos.y].tile_id == tile_types_obj.getIDByName("capital")
 
@@ -195,6 +203,19 @@ func is_cell_in_battle(tile_pos: Vector2) -> bool:
 			if !Game.are_player_allies(playerA, playerB):
 				return true
 	return false
+
+func get_strongest_player_in_cell(tile_pos: Vector2) -> int:
+	var players_in_cell: Array = get_players_in_cell(tile_pos)
+	var strongest_player: int = -1
+	for player in players_in_cell:
+		if strongest_player == -1:
+			strongest_player = player
+			continue
+		if get_strength(tile_pos, player) > get_strength(tile_pos, strongest_player):
+			strongest_player = player
+		
+	return strongest_player
+
 
 func is_player_being_attacked(playerNumber: int) -> bool:
 	return get_cells_invaded_by_enemies(playerNumber).size() > 0

@@ -41,17 +41,41 @@ func init_button_signals():
 
 func init_menu_graphics():
 	close_all_windows()
+	#init_tile_coordinates()
 	$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.clear()
 	$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.add_item("Fácil", 0)
 	$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.add_item("Normal", 1)
 	$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.add_item("Difícil", 2)
 	$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.add_item("Pesadilla", 3)
 	$HUD/GameInfo/Waiting.visible = false
+	$TilesCoordinates.visible = false
+
+func init_tile_coordinates():
+
+	var dynamic_font = DynamicFont.new()
+	dynamic_font.font_data = load("res://assets/fonts/PixelOperatorMono8-Bold.ttf")
+	dynamic_font.size = 20
+	dynamic_font.outline_size = 3
+	dynamic_font.outline_color = Color( 0, 0, 0, 0.75 )
+	dynamic_font.use_filter = true
+	
+	var game_coods: Dictionary = Game.tilesObj.get_all_tile_coords()
+	for x in range(game_coods.coords_size.x):
+		for y in range(game_coods.coords_size.y):
+			var vboxconteiner: VBoxContainer = VBoxContainer.new()
+			vboxconteiner.rect_position = Vector2(x*Game.TILE_SIZE, y*Game.TILE_SIZE)
+			vboxconteiner.rect_size = Vector2(Game.TILE_SIZE, Game.TILE_SIZE)
+			vboxconteiner.alignment = BoxContainer.ALIGN_CENTER
+			var label: Label = Label.new()
+			label.text = game_coods.coords[x][y]
+			label.align = Label.ALIGN_CENTER
+			label.add_font_override("font", dynamic_font)
+			vboxconteiner.add_child(label)
+			$TilesCoordinates.add_child(vboxconteiner)
 
 ###################################
 #	BUTTONS & SIGNALS
 ###################################
-
 func close_all_windows() -> void:
 	$ActionsMenu/InGameTileActions.visible = false
 	$ActionsMenu/ExtrasMenu.visible = false
@@ -61,9 +85,18 @@ func close_all_windows() -> void:
 	$ActionsMenu/EditTile.visible = false
 	$ActionsMenu/WaitingPlayers.visible = false
 	$ActionsMenu/EditPlayer.visible = false
+	$TilesCoordinates.visible = false
+
+func show_game_coords() -> void:
+	$TilesCoordinates.visible = true
+
+func hide_game_coords() -> void:
+	$TilesCoordinates.visible = false
 
 func gui_open_edit_player(var player_index: int) -> void:
 	close_all_windows()
+	if Game.Network.is_client():
+		return
 	player_editing_index = player_index
 	$ActionsMenu/EditPlayer/VBoxContainer/HBoxContainer2/PlayerNameText.text = str(Game.playersData[player_index].name)
 	$ActionsMenu/EditPlayer/VBoxContainer/HBoxContainer3/PlayerTeamText.text = str(Game.playersData[player_index].team)
@@ -78,6 +111,9 @@ func gui_open_edit_player(var player_index: int) -> void:
 
 
 func gui_accept_edit_player() -> void:
+	if Game.Network.is_client():
+		gui_close_edit_player()
+		return
 	Game.playersData[player_editing_index].team = int($ActionsMenu/EditPlayer/VBoxContainer/HBoxContainer3/PlayerTeamText.text)
 	if Game.playersData[player_editing_index].isBot:
 		Game.playersData[player_editing_index].bot_stats.difficulty = $ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.selected
