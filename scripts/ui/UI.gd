@@ -42,6 +42,7 @@ func init_button_signals():
 func init_menu_graphics():
 	close_all_windows()
 	init_tile_coordinates()
+	$GameFinished.visible = false
 	$ActionsMenu.visible = true
 	$HUD.visible = true
 	$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.clear()
@@ -290,7 +291,8 @@ func gui_update_civilization_info() -> void:
 	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer/TotTalentosText.text = str(stepify(Game.tilesObj.get_total_gold(player_mask), 0.1))
 	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer2/StrengthText.text = str(Game.tilesObj.get_total_strength(player_mask))
 	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer6/GainText.text = str(stepify(Game.tilesObj.get_total_gold_gain_and_losses(player_mask), 0.1))
-	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer7/WarCostsText.text = str(stepify(Game.tilesObj.get_all_war_costs(player_mask), 0.1))
+	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer7/WarCostsText.text = str(stepify(Game.tilesObj.get_all_war_costs(player_mask), 0.1)) 
+	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer8/TravelCostsText.text = str(stepify(Game.tilesObj.get_all_travel_costs(player_mask), 0.1)) 
 
 	var civilizationTroopsInfo: Array = Game.tilesObj.get_civ_population_info(player_mask)
 	var populationStr: String = ""
@@ -373,3 +375,8 @@ func allow_show_tile_info(tile_pos: Vector2, playerNumber: int) -> bool:
 	if Game.tilesObj.is_next_to_allies_territory_with_own_troops(tile_pos, playerNumber):
 		return true
 	return Game.tilesObj.has_troops_or_citizen(tile_pos, playerNumber)
+
+func open_finish_game_screen(game_duration: float) -> void:
+	close_all_windows()
+	$GameFinished.visible = true
+	$GameFinished/CenterContainer/HBoxContainer/DurationText.text = str(int(round(game_duration))) + " minutos"

@@ -17,6 +17,7 @@ onready var id_not_owned_tile: int = $OwnedTiles.tile_set.find_tile_by_name('til
 onready var id_not_visible_tile: int = $VisibilityTiles.tile_set.find_tile_by_name('tile_invisible')
 onready var id_rock_tile: int = $BuildingsTiles.tile_set.find_tile_by_name('tile_rock3')
 onready var id_debug_tile: int = $DebugTiles.tile_set.find_tile_by_name('tile_path_debug')
+onready var id_enemy_player_tile: int = $OwnedTiles.tile_set.find_tile_by_name('tile_player_enemy')
 
 onready var id_rock_types: Array = [
 	$BuildingsTiles.tile_set.find_tile_by_name('tile_rock1'),
@@ -62,6 +63,8 @@ func update_building_tiles() -> void:
 			
 			if  Game.tilesObj.belongs_to_player(Vector2(x, y), player_mask):
 				$OwnedTiles.set_cellv(Vector2(x, y), -1)
+			elif tile_cell_data.owner >= 0 and !Game.are_player_allies(tile_cell_data.owner, player_mask):
+				$OwnedTiles.set_cellv(Vector2(x, y), id_enemy_player_tile)
 			else:
 				$OwnedTiles.set_cellv(Vector2(x, y), id_not_owned_tile)
 			

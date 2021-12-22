@@ -1,17 +1,15 @@
 class_name WorldGameNode
 extends Node2D
 
-# Poder quemar tierra
+# Poder vender territorios
 # Tabla de puntajes al perder o ganar la partida
 # Estadisticas batallas ganadas y perdidas, soldados perdidos, etc...
 # Facciones: Germanos, Galos, Persas, Esparta, Tebas, Macedonios, Griegos, Romanos, Cartago, Egipto, Escitas
-# Hacer que se puedan ver las tropias propias en territorio aliado.
 # Ver las construcciones de los aliados
 # Menu con construcciones 
 # Mostrar turnos que tardan en hacerse las construcciones y eso
 # Chat in game ( Ultimo a hacer )
 # Opciones de marcadores en ciertas provincias
-# Opciones de mostrar cordenadas en el mapa (A1, B2, ETC...)
 # OBSERVACIÓN: Bug que hace que de la nada a veces clientes pierdan plata
 # Que los jugadores reciban la info de manera instantanea
 # Pantalla de VICTORIA: LA GUERRA ES PARA PUTOS, COMOS LOS PUTOS QUE JUEGAN ESTE JUEGO. 
@@ -20,19 +18,19 @@ extends Node2D
 # Que los clientes puedan seleccionar su equipo.
 # Que los aliados pueda ver los edificios que puedan 
 # Que los clientes reciban informacion en tiempo real
-# Variacion de las piedritas
-# LIMPIAR CODIGO
-# Que los bots sigan conquistando despues de ver a los players
 # Auto save 1: cada 1 minuto, 2: cada 10 minutos, 3: cada 30 minutos
 # Opción gráfica de pantalla completa y resoluciones
 # Opciones de jugadores en el menu principal y no cuando joineas
 # PASO 1: LIMPIAR CODIGO
 # Modo blitz: que los jugadores juegen su turno todos al mismo tiempo ( Ultra a futuro )
-# Que no se muestren las coordenadas a la hora de escribir el nombre de un territorio.
-# BUG: No termina solo el turno cuando quedan 0 acciones!
-# BUG: Que cuando un player pierde, los aliados en los territorios NO desaparezcan.
-# BUG: Tropas en territorio ajeno deberia costa lo mismo que en territorio propio.
-# BUG: Bots deberian construir siempre su primer construcciones 
+# Cuanto terreno tenes info
+# Agregar: que los civiles se regeneren 
+# Dificultad experto.
+# Que las tropas no se generen una vez conquistado un territorio.
+# Que los civiles se vayan reproduciendo por turno (para llegar al minimo necesario para ser productivo), 200 por turno si faltan.
+# Que los bots puedan tener formaciones
+# Que los bots cuando juegan en equipo se ayuden unos a otros.
+# No poder robarle atlentos a tus aliados del orto jaja
 
 const MIN_ACTIONS_PER_TURN: int = 3
 const MININUM_TROOPS_TO_FIGHT: int = 5
@@ -52,6 +50,7 @@ var rng: RandomNumberGenerator = RandomNumberGenerator.new();
 var node_id: int = -1
 var undo_available: bool = true
 var turn_number: int = 0
+var game_start_time: float = 0.0
 
 onready var tween: Tween
 onready var server_tween: Tween
@@ -129,11 +128,6 @@ func _input(event):
 	if Input.is_action_just_pressed("toggle_civ_info"):
 		$UI/HUD/CivilizationInfo.visible = !$UI/HUD/CivilizationInfo.visible
 
-	if Input.is_action_just_pressed("toggle_coords"):
-		$UI.show_game_coords()	
-	elif Input.is_action_just_released("toggle_coords"):
-		$UI.hide_game_coords()	
-
 	if Input.is_action_just_pressed("zoom_in_hud"):
 		$Tiles.position = Vector2(0.0, 0.0)
 		$Tiles.scale = Vector2(1.0, 1.0)
@@ -145,6 +139,12 @@ func _input(event):
 
 	if player_in_menu or !player_can_interact:
 		return
+	
+	if Input.is_action_just_pressed("toggle_coords"):
+		$UI.show_game_coords()	
+	elif Input.is_action_just_released("toggle_coords"):
+		$UI.hide_game_coords()	
+
 	
 	if Input.is_action_just_pressed("debug_key"):
 		debug_key_pressed()
@@ -206,6 +206,7 @@ func init_timers_and_tweens() -> void:
 		add_child(server_tween)
 	
 func init_game() -> void:
+	game_start_time = OS.get_ticks_msec()
 	if Game.tilesObj:
 		Game.tilesObj.clear()
 	Game.tilesObj = TileGameObject.new(Game.tile_map_size, Game.tileTypes.getIDByName('vacio'), Game.tileTypes, Game.troopTypes, Game.buildingTypes, Game.rng)
@@ -398,6 +399,8 @@ func pre_game() -> void:
 
 func start_player_turn(player_number: int):
 	Game.current_player_turn = player_number
+	if Game.current_player_turn == Game.get_local_player_number():
+		$Sounds/player_turn.play()
 	if Game.Network.is_client():
 		return
 	Game.tilesObj.save_sync_data()
@@ -472,6 +475,7 @@ func process_turn_end(playerNumber: int) -> void:
 		if Game.Network.is_server():
 			Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_GAME_ENDED, null)
 		$UI/GameFinished.visible = true
+		$UI.open_finish_game_screen((OS.get_ticks_msec() - game_start_time)/60000.0)
 		return
 	if Game.Network.is_server():
 		var next_player_turn: int = Game.get_next_player_turn()
@@ -646,13 +650,14 @@ func update_gold_stats(playerNumber: int) -> void:
 	var totalAmountOfGold: int = 0
 	var player_capital_pos: Vector2 = Game.tilesObj.get_player_capital_vec2(playerNumber)
 	var all_war_costs: float = Game.tilesObj.get_all_war_costs(playerNumber)
+	var all_travel_costs: float = Game.tilesObj.get_all_travel_costs(playerNumber)
 	#Step 1, update all gold in all the tiles
 	for x in range(Game.tile_map_size.x):
 		for y in range(Game.tile_map_size.y):
 			if Game.tilesObj.belongs_to_player(Vector2(x, y), playerNumber):
 				
 				if Vector2(x, y) == player_capital_pos:
-					Game.tilesObj.take_cell_gold(Vector2(x, y), all_war_costs) # war costs implemented
+					Game.tilesObj.take_cell_gold(Vector2(x, y), all_war_costs + all_travel_costs) # travel and war costs implemented
 	
 				Game.tilesObj.update_gold_stats(Vector2(x, y), playerNumber)
 				var cellGold: float = Game.tilesObj.get_cell_gold(Vector2(x, y))
@@ -832,7 +837,10 @@ func destroy_player(playerNumber: int):
 	for x in range(Game.tile_map_size.x):
 		for y in range(Game.tile_map_size.y):
 			if Game.tilesObj.belongs_to_player(Vector2(x, y), playerNumber):
+				Game.tilesObj.remove_troops_from_player(Vector2(x, y), playerNumber)
+				var troops_backup: Array = Game.tilesObj.get_troops(Vector2(x,y), true) #true = get a duplicate(true) copy
 				Game.tilesObj.clear_cell(Vector2(x, y))
+				Game.tilesObj.set_troops(Vector2(x, y), troops_backup)
 				add_tribal_society_to_tile(Vector2(x, y))
 	Game.playersData[playerNumber].alive = false
 	print("PLAYER " + str(playerNumber) + " LOST!")
@@ -1259,6 +1267,9 @@ func client_process_event(eventId : int, eventData) -> void:
 					return
 			if is_local_player_turn() and old_player_turn != Game.current_player_turn:
 				save_player_info()
+			
+			if Game.get_local_player_number() == Game.current_player_turn and old_player_turn != Game.current_player_turn:
+				$Sounds/player_turn.play()
 			Game.playersData[Game.current_player_turn].selectLeft = eventData.select_left
 			actions_available = eventData.actions_left
 		NET_EVENTS.SERVER_SEND_GAME_ENDED:
