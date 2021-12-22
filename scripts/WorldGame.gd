@@ -22,12 +22,9 @@ extends Node2D
 # Opción gráfica de pantalla completa y resoluciones
 # Opciones de jugadores en el menu principal y no cuando joineas
 # PASO 1: LIMPIAR CODIGO
-# Modo blitz: que los jugadores juegen su turno todos al mismo tiempo ( Ultra a futuro )
 # Cuanto terreno tenes info
-# Agregar: que los civiles se regeneren 
 # Dificultad experto.
 # Que las tropas no se generen una vez conquistado un territorio.
-# Que los civiles se vayan reproduciendo por turno (para llegar al minimo necesario para ser productivo), 200 por turno si faltan.
 # Que los bots puedan tener formaciones
 # Que los bots cuando juegan en equipo se ayuden unos a otros.
 # No poder robarle atlentos a tus aliados del orto jaja
@@ -41,6 +38,7 @@ const PLAYER_DATA_SYNC_INTERVAL: float = 2.0
 const BOT_SECS_TO_EXEC_ACTION: float = 1.0 #seconds for a bot to execute each action (not turn but every single action)
 const BOT_MAX_TURNS_FOR_PLAN: int = 3 #bot can be using same plan as maximum as 3 turns, to avoid bots getting stuck with old plans
 const BOT_TURNS_TO_RESET_STATS: int = 15
+const EXTRA_CIVILIANS_PER_TURN: int = 200
 
 var time_offset: float = 0.0
 var player_in_menu: bool = false
@@ -493,10 +491,27 @@ func process_tiles_turn_end(playerNumber: int) -> void:
 	for x in range(Game.tile_map_size.x):
 		for y in range(Game.tile_map_size.y):
 			process_tile_upgrade(Vector2(x, y), playerNumber)
-			process_tile_builings(Vector2(x, y), playerNumber)
+			process_tile_buildings(Vector2(x, y), playerNumber)
 			process_tile_recruitments(Vector2(x, y), playerNumber)
 			process_tile_battles(Vector2(x, y))
 			update_tile_owner(Vector2(x, y))
+			process_tile_underpopulation(Vector2(x, y), playerNumber)
+
+func process_tile_underpopulation(cell: Vector2, playerNumber: int) -> void:
+	if !Game.tilesObj.belongs_to_player(cell, playerNumber):
+		return
+	if Game.tilesObj.has_minimum_civilization(cell, playerNumber):
+		return
+	if Game.tilesObj.is_cell_in_battle(cell):
+		return
+	var extra_population: Dictionary = {
+		owner = playerNumber,
+		troop_id = Game.troopTypes.getIDByName("civil"),
+		amount = EXTRA_CIVILIANS_PER_TURN
+	}
+	print("Giving extra civilization per turn")
+	Game.tilesObj.add_troops(cell, extra_population)
+	return
 
 func update_tile_owner(cell: Vector2) -> void:
 	var playersInTile: int = Game.tilesObj.get_number_of_players_in_cell(cell)
@@ -628,7 +643,7 @@ func process_tile_recruitments(tile_pos: Vector2, playerNumber: int) -> void:
 				restartLoop = true # restart the loop as long as there are troops to remove
 				break
 
-func process_tile_builings(tile_pos: Vector2, playerNumber: int) -> void:
+func process_tile_buildings(tile_pos: Vector2, playerNumber: int) -> void:
 	if !Game.tilesObj.belongs_to_player(tile_pos, playerNumber):
 		return
 	if !Game.tilesObj.is_building(tile_pos):
@@ -1158,10 +1173,7 @@ func use_selection_point():
 		return
 	elif is_local_player_turn() or Game.is_current_player_a_bot():
 		Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
-			
-	if Game.Network.is_client() and Game.playersData[Game.current_player_turn].selectLeft >= 0:
-		Game.Network.net_send_event(self.node_id, NET_EVENTS.CLIENT_USE_POINT, {player_turn = Game.current_player_turn})
-		return
+
 	server_send_game_info()
 	if Game.playersData[Game.current_player_turn].selectLeft == 0: 
 		move_to_next_player_turn()

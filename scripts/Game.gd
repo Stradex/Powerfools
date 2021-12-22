@@ -82,28 +82,32 @@ func init_bots_stats():
 		DISCOUNT_MULT = 1.0,
 		EXTRA_GOLD_MULT = 1.0,
 		GAINS_MULT = 1.0,
-		CAPITAL_MINIMUM_RECRUITS = 1000
+		CAPITAL_MINIMUM_RECRUITS = 1000,
+		MINIMUM_BUILDINGS = 1
 	}
 	bot_difficulties_stats[BOT_DIFFICULTY.NORMAL] = {
 		TROOPS_MULT = 1.2,
 		DISCOUNT_MULT = 0.85,
 		EXTRA_GOLD_MULT = 1.25,
 		GAINS_MULT = 1.1,
-		CAPITAL_MINIMUM_RECRUITS = 2000
+		CAPITAL_MINIMUM_RECRUITS = 2000,
+		MINIMUM_BUILDINGS = 2
 	}
 	bot_difficulties_stats[BOT_DIFFICULTY.HARD] = {
 		TROOPS_MULT = 1.5,
 		DISCOUNT_MULT = 0.65,
 		EXTRA_GOLD_MULT = 1.5,
 		GAINS_MULT = 1.25,
-		CAPITAL_MINIMUM_RECRUITS = 3000
+		CAPITAL_MINIMUM_RECRUITS = 3000,
+		MINIMUM_BUILDINGS = 3
 	}
 	bot_difficulties_stats[BOT_DIFFICULTY.NIGHTMARE] = {
 		TROOPS_MULT = 2.0,
 		DISCOUNT_MULT = 0.5,
 		EXTRA_GOLD_MULT = 2.0,
 		GAINS_MULT = 1.5,
-		CAPITAL_MINIMUM_RECRUITS = 5000
+		CAPITAL_MINIMUM_RECRUITS = 5000,
+		MINIMUM_BUILDINGS = 4
 	}
 
 func init_players():
@@ -212,14 +216,13 @@ func start_new_game(is_mp_game: bool = false):
 	if !is_mp_game:
 		init_player(0, Game.Network.SERVER_NETID, "Stradex", 555, true, 1) #human
 		init_player(1, Game.Network.SERVER_NETID, "bot", 1, true, 2) #bot - team 1
-		init_player(2, Game.Network.SERVER_NETID, "bot", 1, true, 2) #bot - team 1
+		#init_player(2, Game.Network.SERVER_NETID, "bot", 1, true, 2) #bot - team 1
 		#init_player(2, Game.Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
 		#init_player(3, Game.Network.SERVER_NETID, "bot", 4, true, 2) #bot - team 2
 		#init_player(4, Game.Network.SERVER_NETID, "bot", 4, true, 2) #bot - team 2
-		#set_bot_difficulty(0, BOT_DIFFICULTY.NIGHTMARE)
 		set_bot_difficulty(0, BOT_DIFFICULTY.NIGHTMARE)
 		set_bot_difficulty(1, BOT_DIFFICULTY.HARD)
-		set_bot_difficulty(2, BOT_DIFFICULTY.HARD)
+		#set_bot_difficulty(2, BOT_DIFFICULTY.HARD)
 		#set_bot_difficulty(2, BOT_DIFFICULTY.EASY)
 		#set_bot_difficulty(3, BOT_DIFFICULTY.EASY)
 		#set_bot_difficulty(4, BOT_DIFFICULTY.EASY)
@@ -337,6 +340,9 @@ func get_next_player_turn() -> int:
 		if i != current_player_turn and playersData[i].alive:
 			return i
 	return current_player_turn
+
+func get_bot_minimum_buildings(bot_number: int) -> int:
+	return get_bot_difficulty_stats(bot_number).MINIMUM_BUILDINGS
 
 func get_bot_minimum_capital_troops(bot_number: int) -> int:
 	return get_bot_difficulty_stats(bot_number).CAPITAL_MINIMUM_RECRUITS

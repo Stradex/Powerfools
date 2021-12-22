@@ -75,6 +75,9 @@ func _init(init_tile_size: Vector2, default_tile_id: int, init_tile_types_obj, i
 #	BOOLEANS   #
 ################
 
+func cell_has_building(cell: Vector2) -> bool:
+	return tiles_data[cell.x][cell.y].building_id != -1
+
 func get_all_tile_coords() -> Dictionary:
 	var tile_coords: Array = []
 	for x in range(tile_size.x):
@@ -1065,6 +1068,21 @@ func ai_order_cells_by_distance_to(cells_array: Array, cell_to_check_distance: V
 func ai_get_closest_cell_capable_of_conquering(player_number: int, pos_to_attack: Vector2) -> Vector2:
 	return ai_get_closest_cell_to_from_array(ai_get_cells_available_to_conquer_pos(player_number, pos_to_attack), pos_to_attack)
 
+func ai_get_strongest_available_force_own_cell(player_number: int) -> Vector2:
+	var bot_cells: Array = get_all_player_tiles(player_number)
+	var strongest_cell: Vector2 = Vector2(-1, -1)
+	for cell in bot_cells:
+		var cell_owner: int = tiles_data[cell.x][cell.y].owner
+		if cell_owner != player_number:
+			continue
+		if strongest_cell == Vector2(-1, -1):
+			strongest_cell = cell
+			continue
+		
+		if ai_get_cell_available_force(cell, player_number) > ai_get_cell_available_force(strongest_cell, player_number):
+			strongest_cell = cell
+	return strongest_cell
+
 func ai_get_strongest_own_cell(player_number: int) -> Vector2:
 	var bot_cells: Array = get_all_player_tiles(player_number)
 	var strongest_cell: Vector2 = Vector2(-1, -1)
@@ -1274,6 +1292,20 @@ func ai_get_reachable_player_capital(player_number: int, use_allies_territories_
 			return cell
 	return Vector2(-1, -1)
 
+func ai_get_strongest_capable_of_conquer_player_enemy_cell( player_number: int,  use_allies_territories_too: bool = false) -> Vector2:
+	var enemy_cells: Array = ai_get_reachable_player_enemy_cells(player_number, use_allies_territories_too)
+	var strongest_own_ofensive_cell: Vector2 = ai_get_strongest_available_force_own_cell(player_number)
+	var strongest_cell: Vector2 = Vector2(-1, -1)
+	for cell in enemy_cells:
+		if strongest_cell == Vector2(-1, -1):
+			strongest_cell = cell
+			continue
+		if !ai_can_conquer_enemy_pos(strongest_own_ofensive_cell, cell, player_number):
+			continue
+		if ai_get_cell_enemy_force(cell, player_number) > ai_get_cell_enemy_force(strongest_cell, player_number):
+			strongest_cell = cell
+	return strongest_cell
+	
 func ai_get_strongest_player_enemy_cell( player_number: int , use_allies_territories_too: bool = false) -> Vector2:
 	var enemy_cells: Array = ai_get_reachable_player_enemy_cells(player_number, use_allies_territories_too)
 	var strongest_cell: Vector2 = Vector2(-1, -1)
@@ -1335,6 +1367,14 @@ func ai_get_closest_to_capital_enemy_cell(player_number: int,  use_allies_territ
 
 func ai_get_closest_to_capital_player_enemy_cell(player_number: int,  use_allies_territories_too: bool = false) -> Vector2:
 	return ai_get_closest_to_player_enemy_cell(player_number, get_player_capital_vec2(player_number), use_allies_territories_too)
+
+func ai_get_distance_from_capital_to_player_enemy(player_number: int, use_allies_territories_too: bool = false) -> float:
+	var player_capital_cell: Vector2 = get_player_capital_vec2(player_number)
+	
+	var closest_player_to_capital: Vector2 = ai_get_closest_to_capital_player_enemy_cell(player_number, use_allies_territories_too)
+	if closest_player_to_capital == Vector2(-1, -1):
+		return 9999.0
+	return closest_player_to_capital.distance_to(player_capital_cell)
 
 func ai_get_strongest_enemy_cell(player_number: int) -> Vector2:
 	var enemy_cells: Array = ai_get_reachable_enemy_cells(player_number)
@@ -1566,12 +1606,8 @@ func ai_move_warriors_from_to(start_pos: Vector2, end_pos: Vector2, player_numbe
 func ai_get_all_cells_without_buildings(playerNumber: int) -> Array:
 	var cells_with_builidngs: Array = get_all_buildings(playerNumber)
 	var bot_tiles: Array = get_all_player_tiles(playerNumber)
-	
-	for cell in cells_with_builidngs:
-		var to_remove_index: int = bot_tiles.find(cell)
-		if to_remove_index != -1:
-			bot_tiles.remove(to_remove_index)
-	return bot_tiles
+
+	return Game.Util.array_substract(bot_tiles, cells_with_builidngs)
 
 func ai_get_all_cells_available_to_recruit(playerNumber: int) -> Array:
 	var cells_with_builidngs: Array = get_all_buildings(playerNumber)
