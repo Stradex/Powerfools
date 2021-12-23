@@ -35,7 +35,11 @@ func list_files_in_directory(path, extension: String = "") -> Array:
 	dir.list_dir_end()
 
 	return files
-	
+
+func file_exists(filename: String) -> bool:
+	var file: File = File.new()
+	return file.file_exists(filename)
+
 func get_data_from_json(filename: String) -> Dictionary:
 	var file: File = File.new()
 	assert(file.file_exists(filename), ("¡The file %s doesn't exists!" % filename))

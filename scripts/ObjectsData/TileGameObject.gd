@@ -1,8 +1,6 @@
 class_name TileGameObject
 extends Object
 
-const BOT_MINIMUM_WARRIORS_AT_CAPITAL: int = 3000
-
 const ROCK_OWNER_ID: int = -3 #if owner == -3, then it is a rock and no player/bot should be allowed to move troops or build or anything here
 
 
@@ -477,6 +475,32 @@ func get_enemies_troops_health(tilePos: Vector2, playerNumber: int) -> float:
 		enemies_total_health += troopDict.amount*troopHealth
 	return enemies_total_health
 
+func get_enemies_upcoming_troops_health(tilePos: Vector2, playerNumber: int) -> float:
+	var upcoming_total_health: float = 0.0
+	for troopDict in tiles_data[tilePos.x][tilePos.y].upcomingTroops:
+		if troopDict.owner == playerNumber:
+			continue
+		if Game.are_player_allies(playerNumber, troopDict.owner):
+			continue
+		if troopDict.amount <= 0:
+			continue
+		var troopHealth: float = troop_types_obj.getByID(troopDict.troop_id).health
+		upcoming_total_health += troopDict.amount*troopHealth
+	return upcoming_total_health
+
+func get_enemies_upcoming_troops_damage(tilePos: Vector2, playerNumber: int) -> float:
+	var upcoming_total_damage: float = 0.0
+	for troopDict in tiles_data[tilePos.x][tilePos.y].upcomingTroops:
+		if troopDict.owner == playerNumber:
+			continue
+		if Game.are_player_allies(playerNumber, troopDict.owner):
+			continue
+		if troopDict.amount <= 0:
+			continue
+		var averageTroopDamage: float = (troop_types_obj.getByID(troopDict.troop_id).damage.x + troop_types_obj.getByID(troopDict.troop_id).damage.y)/2.0
+		upcoming_total_damage += troopDict.amount*averageTroopDamage
+	return upcoming_total_damage
+
 func get_troop_cell_damage(tilePos: Vector2, playerNumber: int, troop_id: int) -> float:
 	for troopDict in tiles_data[tilePos.x][tilePos.y].troops:
 		if troopDict.owner != playerNumber:
@@ -932,15 +956,21 @@ func ai_get_cell_available_force(cell_pos: Vector2, player_number: int) -> float
 	var available_health: float = get_own_troops_health(cell_pos, player_number, true)
 	var available_damage: float = get_own_troops_damage(cell_pos, player_number, true)
 	var enemies_close_force: Dictionary = ai_get_enemies_strength_close_to(cell_pos, player_number)
-	available_health-=enemies_close_force.health
-	available_damage-=enemies_close_force.damage
-	
+
 	if is_capital(cell_pos): #Extra force to protect owns capital
 		var minimum_recruits_force_at_capital: float = float(Game.get_bot_minimum_capital_troops(player_number))
 		var minimum_health_to_defend: float = float(troop_types_obj.getByID(troop_types_obj.getIDByName("recluta")).health)*minimum_recruits_force_at_capital
 		var minimum_damage_to_defend: float = troop_types_obj.getAverageDamage(troop_types_obj.getIDByName("recluta"))*minimum_recruits_force_at_capital
 		available_health-=minimum_health_to_defend
 		available_damage-=minimum_damage_to_defend
+	else:
+		var upcoming_enemies_force: Dictionary = ai_get_upcoming_enemies_strength_at(cell_pos, player_number)
+		#Fix: help bots to avoid leaving cells unprotected when an upcoming troop is going to spawn.
+		enemies_close_force.damage+=upcoming_enemies_force.damage
+		enemies_close_force.health+=upcoming_enemies_force.health
+
+	available_health-=enemies_close_force.health
+	available_damage-=enemies_close_force.damage
 		
 	return available_health+available_damage
 
@@ -948,16 +978,23 @@ func ai_get_cell_available_force_to_attack(cell_pos: Vector2, cell_to_attack: Ve
 	var available_health: float = get_own_troops_health(cell_pos, player_number, true)
 	var available_damage: float = get_own_troops_damage(cell_pos, player_number, true)
 	var enemies_close_force: Dictionary = ai_get_enemies_strength_close_to(cell_pos, player_number, [cell_to_attack])
-	
-	if !is_capital(cell_to_attack): # in case of enemy cell being capital it doesn't matter at all the force as long as you can take it down.
-		available_health-=enemies_close_force.health
-		available_damage-=enemies_close_force.damage
+
 	if is_capital(cell_pos): #Extra force to protect owns capital
 		var minimum_recruits_force_at_capital: float = float(Game.get_bot_minimum_capital_troops(player_number))
 		var minimum_health_to_defend: float = float(troop_types_obj.getByID(troop_types_obj.getIDByName("recluta")).health)*minimum_recruits_force_at_capital
 		var minimum_damage_to_defend: float = troop_types_obj.getAverageDamage(troop_types_obj.getIDByName("recluta"))*minimum_recruits_force_at_capital
 		available_health-=minimum_health_to_defend
 		available_damage-=minimum_damage_to_defend
+	else:
+		var upcoming_enemies_force: Dictionary = ai_get_upcoming_enemies_strength_at(cell_pos, player_number)
+		#Fix: help bots to avoid leaving cells unprotected when an upcoming troop is going to spawn.
+		enemies_close_force.damage+=upcoming_enemies_force.damage
+		enemies_close_force.health+=upcoming_enemies_force.health
+
+	if !is_capital(cell_to_attack): # in case of enemy cell being capital it doesn't matter at all the force as long as you can take it down.
+		available_health-=enemies_close_force.health
+		available_damage-=enemies_close_force.damage
+
 	return available_health+available_damage
 
 func ai_get_cell_force(cell_pos: Vector2, player_number: int) -> float:
@@ -977,6 +1014,12 @@ func ai_cell_is_in_danger(cell_pos: Vector2, player_number: int, cells_to_ignore
 	var cell_health: float = get_own_troops_health(cell_pos, player_number)
 	var cell_damage: float = get_own_troops_damage(cell_pos, player_number)
 	var enemies_close_force: Dictionary = ai_get_enemies_strength_close_to(cell_pos, player_number, cells_to_ignore)
+	
+	if !is_capital(cell_pos):  #This will never happen at own capital
+		var upcoming_enemies_force: Dictionary = ai_get_upcoming_enemies_strength_at(cell_pos, player_number)
+		#Fix: help bots to avoid leaving cells unprotected when an upcoming troop is going to spawn.
+		enemies_close_force.damage+=upcoming_enemies_force.damage
+		enemies_close_force.health+=upcoming_enemies_force.health
 	
 	if is_capital(cell_pos): #Extra force to protect owns capital
 		var minimum_recruits_force_at_capital: float = float(Game.get_bot_minimum_capital_troops(player_number))
@@ -1133,6 +1176,9 @@ func ai_get_neighbor_player_enemies(tile_pos: Vector2, player_number: int) -> Ar
 		if cell_owner != player_number and !Game.are_player_allies(player_number, cell_owner):
 			enemy_cells.append(neighbor)
 	return enemy_cells
+
+func ai_get_upcoming_enemies_strength_at(tile_pos: Vector2, player_number: int) -> Dictionary:
+	return { health = get_enemies_upcoming_troops_health(tile_pos, player_number), damage = get_enemies_upcoming_troops_damage(tile_pos, player_number) }
 
 func ai_get_enemies_strength_close_to(tile_pos: Vector2, player_number: int, cells_to_ignore: Array = []) -> Dictionary:
 	var neighbors: Array = get_neighbors(tile_pos)

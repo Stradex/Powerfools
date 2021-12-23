@@ -38,7 +38,9 @@ func init_button_signals():
 	$ActionsMenu/InGameTileActions/VBoxContainer/Cancelar.connect("pressed", self, "hide_ingame_actions")
 	$ActionsMenu/TilesActions/VBoxContainer/HBoxContainer/Cancelar.connect("pressed", self, "hide_tiles_actions")
 	$ActionsMenu/TilesActions/VBoxContainer/HBoxContainer/Aceptar.connect("pressed", self, "accept_tiles_actions")
-
+	$ActionsMenu/InGameMenu/VBoxContainer/Salir.connect("pressed", self, "gui_show_confirmation_window")
+	$ActionsMenu/ConfirmationExit/VBoxContainer/HBoxContainer/ConfirmExit.connect("pressed", world_game_node, "exit_game")
+	$ActionsMenu/ConfirmationExit/VBoxContainer/HBoxContainer/Cancel.connect("pressed", self, "gui_leave_confirmation_menu")
 func init_menu_graphics():
 	close_all_windows()
 	init_tile_coordinates()
@@ -99,7 +101,20 @@ func close_all_windows() -> void:
 	$ActionsMenu/EditTile.visible = false
 	$ActionsMenu/WaitingPlayers.visible = false
 	$ActionsMenu/EditPlayer.visible = false
+	$ActionsMenu/ConfirmationExit.visible = false
 	$TilesCoordinates.visible = false
+
+func gui_leave_confirmation_menu():
+	if !world_game_node.can_interact_with_menu():
+		return
+	close_all_windows()
+	$ActionsMenu/InGameMenu.visible = true
+
+func gui_show_confirmation_window():
+	if !world_game_node.can_interact_with_menu():
+		return
+	close_all_windows()
+	$ActionsMenu/ConfirmationExit.visible = true
 
 func show_game_coords() -> void:
 	$TilesCoordinates.visible = true
@@ -202,13 +217,17 @@ func hide_wait_for_player() -> void:
 	$HUD/GameInfo/HBoxContainer3/FinishTurn.visible = true
 
 func is_a_menu_open() -> bool:
-	return $ActionsMenu/EditTile.visible or $ActionsMenu/ExtrasMenu.visible or $ActionsMenu/InGameTileActions.visible or $ActionsMenu/TilesActions.visible or $ActionsMenu/BuildingsMenu.visible or $ActionsMenu/InGameMenu.visible
+	return $ActionsMenu/ConfirmationExit.visible or $ActionsMenu/EditTile.visible or $ActionsMenu/ExtrasMenu.visible or $ActionsMenu/InGameTileActions.visible or $ActionsMenu/TilesActions.visible or $ActionsMenu/BuildingsMenu.visible or $ActionsMenu/InGameMenu.visible
 
 func gui_recruit_troops():
+	if !world_game_node.can_interact_with_menu():
+		return
 	world_game_node.execute_recruit_troops()
 	$ActionsMenu/InGameTileActions.visible = false
 	
 func gui_buy_building():
+	if !world_game_node.can_interact_with_menu():
+		return
 	var selectionIndex: int = $ActionsMenu/BuildingsMenu/VBoxContainer/BuildingsList.selected
 	var selectedBuildTypeId: int = int($ActionsMenu/BuildingsMenu/VBoxContainer/BuildingsList.get_item_id(selectionIndex))
 	if selectedBuildTypeId< 0:
@@ -218,17 +237,21 @@ func gui_buy_building():
 
 func gui_exit_build_window():
 	close_all_windows()
-	$ActionsMenu/ExtrasMenu.visible = true
+	$ActionsMenu/InGameTileActions.visible = true
 
 func gui_exit_ingame_menu_window():
 	close_all_windows()
 
-func gui_open_ingame_menu_window():
+func gui_open_ingame_menu_window(is_local_player: bool):
 	close_all_windows()
 	if Game.Network.is_client():
 		$ActionsMenu/InGameMenu/VBoxContainer/GuardarPartida.visible = false
 	else:
 		$ActionsMenu/InGameMenu/VBoxContainer/GuardarPartida.visible = true
+	if !is_local_player:
+		$ActionsMenu/InGameMenu/VBoxContainer/Deshacer.visible = false
+	else:
+		$ActionsMenu/InGameMenu/VBoxContainer/Deshacer.visible = true
 	$ActionsMenu/InGameMenu.visible = true
 
 func open_lobby_window():
@@ -239,6 +262,8 @@ func open_lobby_window():
 		$ActionsMenu/WaitingPlayers/VBoxContainer/HBoxContainer.visible = true
 
 func gui_open_build_window():
+	if !world_game_node.can_interact_with_menu():
+		return
 	close_all_windows()
 	$ActionsMenu/BuildingsMenu.visible = true
 	world_game_node.execute_open_build_window()

@@ -2,6 +2,7 @@ class_name TilesTypesObject
 extends Object
 
 var TilesTypes: Array
+const TILES_FILES_NAME: String = "tiles.json"
 
 var InvalidTile: Dictionary = {
 	name = "invalid",
@@ -67,3 +68,20 @@ func getImg(tileTypeID: int) -> String:
 
 func getList() -> Array:
 	return TilesTypes.duplicate(true) #gives a copy so no one can fuck up the original list
+
+func load_from_file(folder: String, fileSystemObj: Object) -> void:
+	var tilesImportedData: Dictionary = fileSystemObj.get_data_from_json(folder + "/" + TILES_FILES_NAME)
+	assert(tilesImportedData.has('tiles'))
+	for troopDict in tilesImportedData['tiles']:
+		add({
+			name = troopDict["name"],
+			next_stage = troopDict["next_stage"],
+			improve_prize = troopDict["improve_prize"],
+			turns_to_improve = troopDict["turns_to_improve"],
+			gold_to_produce = troopDict["gold_to_produce"],
+			sell_prize = troopDict["sell_prize"],
+			conquer_gain = troopDict["conquer_gain"],
+			tile_img = troopDict["tile_img"],
+			min_civil_to_produce_gold = troopDict["min_civil_to_produce_gold"],
+			max_civil_to_produce_gold = troopDict["max_civil_to_produce_gold"]
+		})

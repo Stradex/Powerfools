@@ -4,14 +4,18 @@ const VERSION: String = "0.1.1" #Major, Minor, build count
 const PORT: int = 27666
 const MAX_PLAYERS: int = 8
 const SNAPSHOT_DELAY: float = 1.0/30.0 #msec to sec
+const CONFIG_FILE: String = "game_config.cfg";
 const MAPS_FOLDER: String = "res://scenes/"
 const START_MAP: String = "WorldGame.tscn"
+const MENU_NODE: String = "res://scenes/MainMenu.tscn"
 const SCREEN_WIDTH: int = 1280
 const SCREEN_HEIGHT: int = 720
 const TILE_SIZE: int = 80
 const GAME_FPS: int = 4 # we really don't need to much higher FPS, this is mostly for game logic, not graphic stuff
 const DATA_FILES_FOLDER: String = "data";
+const CONFIG_SETTINGS_FILE: String = "config.json"
 const DEBUG_MODE: bool = true
+const BOT_NET_ID: int = -1
 
 var current_turn: int = 0
 onready var troopTypes: TroopTypesObject = TroopTypesObject.new()
@@ -20,6 +24,7 @@ onready var tileTypes: TilesTypesObject = TilesTypesObject.new()
 onready var Network: NetworkBase = NetworkBase.new()
 onready var FileSystem: FileSystemBase = FileSystemBase.new();
 onready var Util: UtilObject = UtilObject.new()
+onready var Config: ConfigObject = ConfigObject.new()
 var Boop_Object = preload("res://scripts/Netcode/Boop.gd");
 
 var tilesObj: TileGameObject
@@ -31,9 +36,6 @@ var current_game_status: int = -1
 var current_player_turn: int = -1
 var interactTileSelected: Vector2 = Vector2(-1, -1)
 var nextInteractTileSelected: Vector2 = Vector2(-1, -1)
-
-var local_name: String = "player"
-var local_pin: int = 0
 
 var bot_difficulties_stats: Array = []
 
@@ -65,6 +67,8 @@ var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready():
 	rng.randomize()
+	Config.load_from_file(CONFIG_FILE)
+	Engine.set_target_fps(Config.get_value("max_fps"))
 	init_bots_stats()
 	init_players()
 	init_tiles_types()
@@ -72,7 +76,10 @@ func _ready():
 	init_buildings_types()
 	Network.ready()
 	clear_players_data()
-	
+	update_settings()
+
+func save_settings():
+	Config.save_to_file(CONFIG_FILE);
 
 func init_bots_stats():
 	bot_difficulties_stats.clear()
@@ -128,79 +135,12 @@ func init_players():
 
 func init_tiles_types():
 	tileTypes.clearList()
-	#Adding tiles START
-	tileTypes.add({
-		name = "vacio",
-		next_stage = "rural",
-		improve_prize = 15,
-		turns_to_improve = 2,
-		gold_to_produce = 0,
-		strength_boost = 0,
-		sell_prize = 2,
-		conquer_gain = 2, #edit later
-		tile_img = 'tile_empty',
-		min_civil_to_produce_gold = 0, #minimum amount of civilians to produce gold
-		max_civil_to_produce_gold = 0  #maximum amount of civilians to produce gold
-	})
-	tileTypes.add({
-		name = "rural",
-		next_stage = "ciudad",
-		improve_prize = 30,
-		turns_to_improve = 3,
-		gold_to_produce = 1,
-		strength_boost = 0,
-		sell_prize = 5,
-		conquer_gain = 5, #edit later
-		tile_img = 'tile_rural',
-		min_civil_to_produce_gold = 500, #minimum amount of civilians to produce gold
-		max_civil_to_produce_gold = 2000  #maximum amount of civilians to produce gold
-	})
-	tileTypes.add({
-		name = "ciudad",
-		next_stage = "metropolis",
-		improve_prize = 60,
-		turns_to_improve = 6,
-		gold_to_produce = 2,
-		strength_boost = 0.1,
-		sell_prize = 10,
-		conquer_gain = 15, #edit later
-		tile_img = 'tile_city',
-		min_civil_to_produce_gold = 1000, #minimum amount of civilians to produce gold
-		max_civil_to_produce_gold = 5000  #maximum amount of civilians to produce gold
-	})
-	tileTypes.add({
-		name = "metropolis",
-		next_stage = "", #leave empty if there is no more improvements left
-		improve_prize = 0,
-		turns_to_improve = 0,
-		gold_to_produce = 3,
-		strength_boost = 0.2,
-		sell_prize = 30,
-		conquer_gain = 50, #edit later
-		tile_img = 'tile_metropolis',
-		min_civil_to_produce_gold = 2500, #minimum amount of civilians to produce gold
-		max_civil_to_produce_gold = 10000  #maximum amount of civilians to produce gold
-	})
-	tileTypes.add({
-		name = "capital",
-		next_stage = "", #leave empty if there is no more improvements left
-		improve_prize = 0,
-		turns_to_improve = 0,
-		gold_to_produce = 4,
-		strength_boost = 0.25,
-		sell_prize = -1,
-		conquer_gain = 100, #edit later
-		tile_img = 'tile_capital',
-		min_civil_to_produce_gold = 5000, #minimum amount of civilians to produce gold
-		max_civil_to_produce_gold = 20000  #maximum amount of civilians to produce gold
-	})
-	#Adding tiles END
+	tileTypes.load_from_file(DATA_FILES_FOLDER, FileSystem)
+	#tileTypes.load_from_file(DATA_FILES_FOLDER, FileSystem)
 
 func init_buildings_types():
 	buildingTypes.clearList()
 	buildingTypes.load_from_file(DATA_FILES_FOLDER, FileSystem, troopTypes)
-	#Adding buildings START
-	#Adding builinds END
 
 func init_troops_types():
 	troopTypes.clearList()
@@ -210,20 +150,27 @@ func clear_players_data():
 	for i in range(playersData.size()):
 		playersData[i].netid = -1
 		playersData[i].alive = false
+		playersData[i].pin_code = 0
+
+func get_player_number_by_pin_code(pin_code: int) -> int:
+	for i in range(playersData.size()):
+		if playersData[i].pin_code == pin_code:
+			return i
+	return -1
 
 func start_new_game(is_mp_game: bool = false):
 	current_player_turn = 0
 	if !is_mp_game:
-		init_player(0, Game.Network.SERVER_NETID, "Stradex", 555, true, 1) #human
-		init_player(1, Game.Network.SERVER_NETID, "bot", 1, true, 2) #bot - team 1
-		#init_player(2, Game.Network.SERVER_NETID, "bot", 1, true, 2) #bot - team 1
-		#init_player(2, Game.Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
+		init_player(0, Game.Network.SERVER_NETID, "Stradex", 555, false, 1) #human
+		init_player(1, Game.Network.SERVER_NETID, "bot", 1, true, 1) #bot - team 1
+		init_player(2, Game.Network.SERVER_NETID, "bot", 1, true, 2) #bot - team 2
+		init_player(3, Game.Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
 		#init_player(3, Game.Network.SERVER_NETID, "bot", 4, true, 2) #bot - team 2
 		#init_player(4, Game.Network.SERVER_NETID, "bot", 4, true, 2) #bot - team 2
-		set_bot_difficulty(0, BOT_DIFFICULTY.NIGHTMARE)
-		set_bot_difficulty(1, BOT_DIFFICULTY.HARD)
-		#set_bot_difficulty(2, BOT_DIFFICULTY.HARD)
-		#set_bot_difficulty(2, BOT_DIFFICULTY.EASY)
+		#set_bot_difficulty(0, BOT_DIFFICULTY.NIGHTMARE)
+		set_bot_difficulty(1, BOT_DIFFICULTY.NIGHTMARE)
+		set_bot_difficulty(2, BOT_DIFFICULTY.HARD)
+		set_bot_difficulty(3, BOT_DIFFICULTY.EASY)
 		#set_bot_difficulty(3, BOT_DIFFICULTY.EASY)
 		#set_bot_difficulty(4, BOT_DIFFICULTY.EASY)
 	#else:
@@ -369,14 +316,28 @@ func is_current_player_a_bot() -> bool:
 	return playersData[current_player_turn].isBot
 
 remote func change_to_map(map_name: String):
-	var full_map_path: String = self.MAPS_FOLDER + map_name;
-	get_tree().call_deferred("change_scene", full_map_path);
+	var full_map_path: String = self.MAPS_FOLDER + map_name
+	get_tree().call_deferred("change_scene", full_map_path)
+
+func go_to_main_menu():
+	get_tree().call_deferred("change_scene", MENU_NODE)
 
 func pause() -> void:
 	get_tree().paused = true
 	
 func unpause() -> void:
 	get_tree().paused = false
+
+func load_player_settings() -> void:
+	var file_name: String = DATA_FILES_FOLDER + "/" + CONFIG_SETTINGS_FILE
+	if FileSystem.file_exists(file_name):
+		return
+	else:
+		return
+
+func update_settings():
+	OS.window_fullscreen = Config.get_value("fullscreen")
+	OS.set_window_size(Config.get_value("resolution"))
 
 func get_max_float(numbers_array: Array) -> float:
 	var new_array: Array = numbers_array.duplicate(true)

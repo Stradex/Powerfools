@@ -77,7 +77,7 @@ cell_size = Vector2( 80, 80 )
 format = 1
 
 [node name="SelectionTiles" type="TileMap" parent="Tiles"]
-modulate = Color( 1, 1, 1, 0.533333 )
+modulate = Color( 1, 1, 1, 0.423529 )
 light_mask = -2147483647
 z_index = 5
 tile_set = ExtResource( 2 )
@@ -286,10 +286,10 @@ __meta__ = {
 [node name="VBoxContainer" type="VBoxContainer" parent="UI/ActionsMenu/InGameMenu"]
 anchor_right = 1.0
 anchor_bottom = 1.0
-margin_left = 539.0
-margin_top = 308.0
-margin_right = 709.0
-margin_bottom = 390.0
+margin_left = 535.0
+margin_top = 269.0
+margin_right = 705.0
+margin_bottom = 485.0
 custom_constants/separation = 12
 __meta__ = {
 "_edit_use_anchors_": false
@@ -374,6 +374,34 @@ margin_right = 165.0
 margin_bottom = 43.0
 custom_fonts/font = SubResource( 1 )
 text = "CANCELAR"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Salir" type="TextureButton" parent="UI/ActionsMenu/InGameMenu/VBoxContainer"]
+margin_top = 201.0
+margin_right = 210.0
+margin_bottom = 256.0
+texture_normal = ExtResource( 5 )
+texture_pressed = ExtResource( 6 )
+texture_hover = ExtResource( 7 )
+texture_focused = ExtResource( 7 )
+
+[node name="CenterContainer" type="CenterContainer" parent="UI/ActionsMenu/InGameMenu/VBoxContainer/Salir"]
+margin_right = 210.0
+margin_bottom = 56.0
+mouse_filter = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="UI/ActionsMenu/InGameMenu/VBoxContainer/Salir/CenterContainer"]
+margin_left = 69.0
+margin_top = 12.0
+margin_right = 141.0
+margin_bottom = 43.0
+custom_fonts/font = SubResource( 1 )
+text = "SALIR"
 __meta__ = {
 "_edit_use_anchors_": false
 }
@@ -505,6 +533,107 @@ margin_right = 154.0
 margin_bottom = 43.0
 custom_fonts/font = SubResource( 1 )
 text = "ADD BOT"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ConfirmationExit" type="Control" parent="UI/ActionsMenu"]
+visible = false
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_right = 1240.0
+margin_bottom = 679.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ColorRect" type="ColorRect" parent="UI/ActionsMenu/ConfirmationExit"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_right = 3.0
+margin_bottom = 2.0
+color = Color( 0, 0, 0, 0.435294 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="VBoxContainer" type="VBoxContainer" parent="UI/ActionsMenu/ConfirmationExit"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 366.0
+margin_top = 316.0
+margin_right = -422.0
+margin_bottom = -296.0
+custom_constants/separation = 12
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="YouSure" type="RichTextLabel" parent="UI/ActionsMenu/ConfirmationExit/VBoxContainer"]
+margin_right = 492.0
+margin_bottom = 40.0
+rect_min_size = Vector2( 0, 40 )
+custom_fonts/normal_font = SubResource( 2 )
+text = "¿Seguro que queres salir al menu?"
+scroll_active = false
+
+[node name="HBoxContainer" type="HBoxContainer" parent="UI/ActionsMenu/ConfirmationExit/VBoxContainer"]
+margin_top = 52.0
+margin_right = 492.0
+margin_bottom = 107.0
+custom_constants/separation = 65
+
+[node name="ConfirmExit" type="TextureButton" parent="UI/ActionsMenu/ConfirmationExit/VBoxContainer/HBoxContainer"]
+margin_right = 210.0
+margin_bottom = 55.0
+texture_normal = ExtResource( 5 )
+texture_pressed = ExtResource( 6 )
+texture_hover = ExtResource( 7 )
+texture_focused = ExtResource( 7 )
+
+[node name="CenterContainer" type="CenterContainer" parent="UI/ActionsMenu/ConfirmationExit/VBoxContainer/HBoxContainer/ConfirmExit"]
+margin_right = 210.0
+margin_bottom = 56.0
+mouse_filter = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="UI/ActionsMenu/ConfirmationExit/VBoxContainer/HBoxContainer/ConfirmExit/CenterContainer"]
+margin_left = 38.0
+margin_top = 12.0
+margin_right = 172.0
+margin_bottom = 43.0
+custom_fonts/font = SubResource( 1 )
+text = "CONFIRMAR"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Cancel" type="TextureButton" parent="UI/ActionsMenu/ConfirmationExit/VBoxContainer/HBoxContainer"]
+margin_left = 275.0
+margin_right = 485.0
+margin_bottom = 55.0
+texture_normal = ExtResource( 5 )
+texture_pressed = ExtResource( 6 )
+texture_hover = ExtResource( 7 )
+texture_focused = ExtResource( 7 )
+
+[node name="CenterContainer" type="CenterContainer" parent="UI/ActionsMenu/ConfirmationExit/VBoxContainer/HBoxContainer/Cancel"]
+margin_right = 210.0
+margin_bottom = 56.0
+mouse_filter = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="UI/ActionsMenu/ConfirmationExit/VBoxContainer/HBoxContainer/Cancel/CenterContainer"]
+margin_left = 45.0
+margin_top = 12.0
+margin_right = 165.0
+margin_bottom = 43.0
+custom_fonts/font = SubResource( 1 )
+text = "CANCELAR"
 __meta__ = {
 "_edit_use_anchors_": false
 }

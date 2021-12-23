@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=2]
+[gd_scene load_steps=9 format=2]
 
 [ext_resource path="res://assets/graphics/functiles/tile_hover.png" type="Texture" id=1]
 [ext_resource path="res://assets/graphics/functiles/tile_off.png" type="Texture" id=2]
@@ -7,6 +7,7 @@
 [ext_resource path="res://assets/graphics/functiles/tile_not_allowed.png" type="Texture" id=5]
 [ext_resource path="res://assets/graphics/functiles/tile_not_owned.png" type="Texture" id=6]
 [ext_resource path="res://assets/graphics/functiles/tile_player_enemy.png" type="Texture" id=7]
+[ext_resource path="res://assets/graphics/functiles/tile_ally.png" type="Texture" id=8]
 
 [node name="SelectionTiles" type="Node2D"]
 
@@ -37,3 +38,7 @@ texture = ExtResource( 5 )
 [node name="tile_player_enemy" type="Sprite" parent="."]
 position = Vector2( 542.319, 90.8496 )
 texture = ExtResource( 7 )
+
+[node name="tile_ally" type="Sprite" parent="."]
+position = Vector2( 630.984, 88.1638 )
+texture = ExtResource( 8 )
