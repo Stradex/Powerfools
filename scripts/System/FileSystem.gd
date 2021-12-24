@@ -1,17 +1,13 @@
 class_name FileSystemBase
 extends Object
 
-const SAVEGAMES_FOLDER: String = "saves"
-
 func save_as_json(var path : String, var data_to_save):
-	path = SAVEGAMES_FOLDER + "/" + path
 	var file = File.new()
 	file.open(path, File.WRITE)
 	file.store_var(data_to_save)
 	file.close()
 
 func load_as_dict (var path : String) -> Dictionary:
-	path = SAVEGAMES_FOLDER + "/" + path
 	var file = File.new()
 	file.open(path, File.READ)
 	var theDict = file.get_var()

@@ -30,8 +30,13 @@ onready var id_rock_types: Array = [
 const MINIMUM_CIVILIAN_ICON_COUNT: int = 50 
 const MINIMUM_TROOPS_ICON_COUNT: int = 10
 
+func _ready():
+	var building_types_tiles_folder: String = Game.current_mod + "/graphics/buildings"
+	var terrain_types_tiles_folder: String = Game.current_mod + "/graphics/tiles"
+	$BuildingsTiles.tile_set = Game.TileSetImporter.make_tileset_from_folder(terrain_types_tiles_folder)
+	$BuildingTypesTiles.tile_set = Game.TileSetImporter.make_tileset_from_folder(building_types_tiles_folder)
+
 func update_building_tiles() -> void:
-	
 	var player_mask: int = Game.current_player_turn
 	if Game.Network.is_multiplayer() or Game.is_current_player_a_bot():
 		player_mask = Game.get_local_player_number()

@@ -4,6 +4,7 @@ const VERSION: String = "0.1.1" #Major, Minor, build count
 const PORT: int = 27666
 const MAX_PLAYERS: int = 8
 const SNAPSHOT_DELAY: float = 1.0/30.0 #msec to sec
+const GAME_DEFAULT_MOD: String = "base"
 const CONFIG_FILE: String = "game_config.cfg";
 const MAPS_FOLDER: String = "res://scenes/"
 const START_MAP: String = "WorldGame.tscn"
@@ -13,9 +14,9 @@ const SCREEN_HEIGHT: int = 720
 const TILE_SIZE: int = 80
 const GAME_FPS: int = 4 # we really don't need to much higher FPS, this is mostly for game logic, not graphic stuff
 const DATA_FILES_FOLDER: String = "data";
-const CONFIG_SETTINGS_FILE: String = "config.json"
-const DEBUG_MODE: bool = true
+const DEBUG_MODE: bool = false
 const BOT_NET_ID: int = -1
+var current_mod: String = "base"
 
 var current_turn: int = 0
 onready var troopTypes: TroopTypesObject = TroopTypesObject.new()
@@ -25,6 +26,7 @@ onready var Network: NetworkBase = NetworkBase.new()
 onready var FileSystem: FileSystemBase = FileSystemBase.new();
 onready var Util: UtilObject = UtilObject.new()
 onready var Config: ConfigObject = ConfigObject.new()
+var TileSetImporter: TileSetExternalImporter
 var Boop_Object = preload("res://scripts/Netcode/Boop.gd");
 
 var tilesObj: TileGameObject
@@ -67,6 +69,7 @@ var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready():
 	rng.randomize()
+	TileSetImporter = TileSetExternalImporter.new(FileSystem)
 	Config.load_from_file(CONFIG_FILE)
 	Engine.set_target_fps(Config.get_value("max_fps"))
 	init_bots_stats()
@@ -77,9 +80,10 @@ func _ready():
 	Network.ready()
 	clear_players_data()
 	update_settings()
+	#res://assets/graphics/constructions/
 
 func save_settings():
-	Config.save_to_file(CONFIG_FILE);
+	Config.save_to_file(CONFIG_FILE)
 
 func init_bots_stats():
 	bot_difficulties_stats.clear()
@@ -135,16 +139,15 @@ func init_players():
 
 func init_tiles_types():
 	tileTypes.clearList()
-	tileTypes.load_from_file(DATA_FILES_FOLDER, FileSystem)
-	#tileTypes.load_from_file(DATA_FILES_FOLDER, FileSystem)
+	tileTypes.load_from_file(current_mod, FileSystem)
 
 func init_buildings_types():
 	buildingTypes.clearList()
-	buildingTypes.load_from_file(DATA_FILES_FOLDER, FileSystem, troopTypes)
+	buildingTypes.load_from_file(current_mod, FileSystem, troopTypes)
 
 func init_troops_types():
 	troopTypes.clearList()
-	troopTypes.load_from_file(DATA_FILES_FOLDER, FileSystem)
+	troopTypes.load_from_file(current_mod, FileSystem)
 
 func clear_players_data():
 	for i in range(playersData.size()):
@@ -328,13 +331,6 @@ func pause() -> void:
 func unpause() -> void:
 	get_tree().paused = false
 
-func load_player_settings() -> void:
-	var file_name: String = DATA_FILES_FOLDER + "/" + CONFIG_SETTINGS_FILE
-	if FileSystem.file_exists(file_name):
-		return
-	else:
-		return
-
 func update_settings():
 	OS.window_fullscreen = Config.get_value("fullscreen")
 	OS.set_window_size(Config.get_value("resolution"))
@@ -351,3 +347,6 @@ func get_min_float(numbers_array: Array) -> float:
 
 remote func game_process_rpc(method_name: String, data: Array): 
 	Network.callv(method_name, data);
+
+func get_save_game_folder() -> String:
+	return Game.current_mod + "/saves/"  

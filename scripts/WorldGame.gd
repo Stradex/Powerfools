@@ -18,19 +18,19 @@ extends Node2D
 # Que los aliados pueda ver los edificios que puedan
 # Que los clientes reciban informacion en tiempo real
 # Auto save 1: cada 1 minuto, 2: cada 10 minutos, 3: cada 30 minutos
-# PASO 1: LIMPIAR CODIGO
 # Cuanto terreno tenes info
 # Dificultad experto.
 # Que las tropas no se generen una vez conquistado un territorio
 # Que los bots puedan tener formaciones
 # Que los bots cuando juegan en equipo se ayuden unos a otros
 # No poder robarle talentos a tus aliados del orto jaja
+# Make a modding system similar to idtech engine (base, mod folder, etc...)
 
 const MIN_ACTIONS_PER_TURN: int = 3
 const MININUM_TROOPS_TO_FIGHT: int = 5
 const EXTRA_CIVILIANS_TO_GAIN_CONQUER: int = 500
 const WORLD_GAME_NODE_ID: int = 666 #NODE ID unique
-const AUTOSAVE_INTERVAL: float = 60.0
+const AUTOSAVE_INTERVAL: float = 60.0 #Everyminute
 const PLAYER_DATA_SYNC_INTERVAL: float = 2.0
 const BOT_SECS_TO_EXEC_ACTION: float = 1.0 #seconds for a bot to execute each action (not turn but every single action)
 const BOT_MAX_TURNS_FOR_PLAN: int = 3 #bot can be using same plan as maximum as 3 turns, to avoid bots getting stuck with old plans
@@ -237,13 +237,13 @@ func save_game_as(file_name: String):
 		tiles_data = Game.tilesObj.get_all(true),
 		tile_size = Game.tilesObj.get_size()
 	}
-	Game.FileSystem.save_as_json(file_name, data_to_save)
+	Game.FileSystem.save_as_json(Game.get_save_game_folder() + file_name, data_to_save)
 
 func load_game_from(file_name: String):
 	if Game.Network.is_client():
 		return
 	Game.tilesObj.update_sync_data()
-	var data_to_load: Dictionary = Game.FileSystem.load_as_dict(file_name)
+	var data_to_load: Dictionary = Game.FileSystem.load_as_dict(Game.get_save_game_folder() + file_name)
 	change_game_status(data_to_load.game_current_status) 
 	sync_players_from_load_game(data_to_load.players_data)
 	#TODO: Sync player data CORRECTLY, RIGHT NOW IT ONLY WORKS FOR 2 PLAYERS AND NOTHING MORE!

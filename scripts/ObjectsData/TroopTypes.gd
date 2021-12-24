@@ -7,8 +7,6 @@ var TroopsTypes: Array
 
 var InvalidTroop: Dictionary = {
 	name = "invalid",
-	no_building = false, #the troop does not require building to be made
-	can_be_bought = false, #if the entity can be bought at all or not
 	is_warrior = false, #if the troop should fight at all or not in normal circunstances
 	cost_to_make = 0, #only used in case it does not require building to be deployed
 	damage = Vector2.ZERO, #minimum and maximum damage to do by this troop
@@ -86,8 +84,6 @@ func load_from_file(folder: String, fileSystemObj: Object) -> void:
 	for troopDict in troopsImportedData['troops']:
 		add({
 			name = troopDict["name"],
-			no_building = troopDict["no_building"],
-			can_be_bought = troopDict["can_be_bought"],
 			is_warrior = troopDict["is_warrior"],
 			cost_to_make = troopDict["cost_to_make"],
 			damage = Vector2(troopDict["damage_min"], troopDict["damage_max"]),
