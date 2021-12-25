@@ -342,14 +342,24 @@ func gui_update_tile_info(tile_pos: Vector2) -> void:
 		return
 	
 	$HUD/TileInfo/VBoxContainer/HBoxContainer5/TileName.text = cell_data.name
-	if cell_data.owner == -1:
-		$HUD/TileInfo/VBoxContainer/HBoxContainer/OwnerName.text = "No info"
+	if cell_data.owner == -1: #tribal society
+		if cell_data.tribe_owner != -1:
+			$HUD/TileInfo/VBoxContainer/HBoxContainer/OwnerName.text = Game.tribalTroops.getName(cell_data.tribe_owner)
+		else:
+			$HUD/TileInfo/VBoxContainer/HBoxContainer/OwnerName.text = "No info"
 	else:
 		$HUD/TileInfo/VBoxContainer/HBoxContainer/OwnerName.text = str(Game.playersData[cell_data.owner].civilizationName)
 	$HUD/TileInfo/VBoxContainer/HBoxContainer2/Amount.text = str(floor(cell_data.gold))
 	
-	$HUD/TileInfo/VBoxContainer/HBoxContainer6/StrengthText.text = str(Game.tilesObj.get_strength(tile_pos, player_mask))
-	$HUD/TileInfo/VBoxContainer/HBoxContainer7/GainsText.text = str(stepify(Game.tilesObj.get_cell_gold_gain_and_losses(tile_pos, player_mask), 0.1))
+	if cell_data.owner != player_mask and !Game.tilesObj.player_has_troops_in_cell(tile_pos, player_mask):
+		$HUD/TileInfo/VBoxContainer/HBoxContainer6/StrengthText.text = str(Game.tilesObj.get_strength(tile_pos, cell_data.owner))
+		if cell_data.owner == -1:
+			$HUD/TileInfo/VBoxContainer/HBoxContainer7/GainsText.text = "No info"
+		else:
+			$HUD/TileInfo/VBoxContainer/HBoxContainer7/GainsText.text = str(stepify(Game.tilesObj.get_cell_gold_gain_and_losses(tile_pos, cell_data.owner), 0.1))
+	else:
+		$HUD/TileInfo/VBoxContainer/HBoxContainer6/StrengthText.text = str(Game.tilesObj.get_strength(tile_pos, player_mask))
+		$HUD/TileInfo/VBoxContainer/HBoxContainer7/GainsText.text = str(stepify(Game.tilesObj.get_cell_gold_gain_and_losses(tile_pos, player_mask), 0.1))
 	
 	var populationStr: String = ""
 	var isEnemyPopulation: bool = false

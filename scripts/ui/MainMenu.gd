@@ -30,6 +30,7 @@ onready var BTN_Options: TextureButton = $Buttons/Options
 onready var BTN_ApplyOptions: TextureButton = $Options/Apply
 onready var BTN_Mods: TextureButton = $Buttons/Mods
 onready var FullScreenCheckBox: CheckBox = $Options/HBoxContainer/FullScreen
+onready var BTN_CancelJoin: TextureButton = $JoiningServer/CancelJoin
 
 var ip_to_join: String = "127.0.0.1"
 
@@ -49,6 +50,7 @@ func _ready():
 	BTN_Mods.connect("pressed", self, "ui_open_mods_tab")
 	BTN_ModsCancel.connect("pressed", self, "ui_go_to_menu")
 	BTN_ModsApply.connect("pressed", self, "ui_change_mod")
+	BTN_CancelJoin.connect("pressed", self, "ui_cancel_join")
 	ui_mods_list.clear()
 	update_resolution_list()
 	ui_go_to_menu()
@@ -58,7 +60,11 @@ func update_resolution_list() -> void:
 	for res in resolutions:
 		ResolutionOptions.add_item(res)
 	ResolutionOptions.select(0)
-	
+
+func ui_cancel_join() -> void:
+	$MultiplayerMenu.visible = true
+	$JoiningServer.visible = false
+
 func get_string_from_resoltion(res_vec: Vector2) -> String:
 	return (str(int(res_vec.x)) + "x" + str(int(res_vec.y)));
 
@@ -92,10 +98,10 @@ func ui_go_to_menu():
 	$Buttons.visible = true
 	$Options.visible = false
 	$ModsTab.visible = false
+	$JoiningServer.visible = false
 
 func ui_change_mod() -> void:
-	Game.current_mod = ui_mods_list[ModsList.selected]
-	Game.init_game_data() #reload troop, tiles, buildings, etc.. data
+	Game.switch_to_mod(ui_mods_list[ModsList.selected])
 	ui_go_to_menu()
 
 func ui_open_mods_tab():
@@ -121,6 +127,8 @@ func ui_join_game():
 	var player_name: String = Game.Config.get_value("name")
 	var player_pin: int = int(Game.Config.get_value("pin_code"))
 	Game.Network.join_server(ip_to_join, player_name, player_pin)
+	$MultiplayerMenu.visible = false
+	$JoiningServer.visible = true
 
 func ui_host_game():
 	var player_name: String = Game.Config.get_value("name")

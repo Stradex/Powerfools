@@ -20,21 +20,33 @@ onready var id_debug_tile: int = $DebugTiles.tile_set.find_tile_by_name('tile_pa
 onready var id_enemy_player_tile: int = $OwnedTiles.tile_set.find_tile_by_name('tile_player_enemy')
 onready var id_ally_player_tile: int = $OwnedTiles.tile_set.find_tile_by_name('tile_ally')
 
-onready var id_rock_types: Array = [
-	$BuildingsTiles.tile_set.find_tile_by_name('tile_rock1'),
-	$BuildingsTiles.tile_set.find_tile_by_name('tile_rock2'),
-	$BuildingsTiles.tile_set.find_tile_by_name('tile_rock3'),
-	$BuildingsTiles.tile_set.find_tile_by_name('tile_rock4')
-]
+var id_rock_types: Array = []
 
 const MINIMUM_CIVILIAN_ICON_COUNT: int = 50 
 const MINIMUM_TROOPS_ICON_COUNT: int = 10
 
 func _ready():
+	var base_building_types_tiles_folder: String = Game.GAME_DEFAULT_MOD + "/graphics/buildings"
+	var base_terrain_types_tiles_folder: String = Game.GAME_DEFAULT_MOD + "/graphics/tiles"
 	var building_types_tiles_folder: String = Game.current_mod + "/graphics/buildings"
 	var terrain_types_tiles_folder: String = Game.current_mod + "/graphics/tiles"
-	$BuildingsTiles.tile_set = Game.TileSetImporter.make_tileset_from_folder(terrain_types_tiles_folder)
-	$BuildingTypesTiles.tile_set = Game.TileSetImporter.make_tileset_from_folder(building_types_tiles_folder)
+	
+	var new_buildings_tiles: TileSet = Game.TileSetImporter.make_tileset_from_folder(terrain_types_tiles_folder)
+	var new_buildings_types_tiles: TileSet = Game.TileSetImporter.make_tileset_from_folder(building_types_tiles_folder)
+	if Game.current_mod.to_lower() != Game.GAME_DEFAULT_MOD.to_lower(): #loading a MOD
+		Game.TileSetImporter.append_to_tileset_from_folder(base_terrain_types_tiles_folder, new_buildings_tiles)
+		Game.TileSetImporter.append_to_tileset_from_folder(base_building_types_tiles_folder, new_buildings_types_tiles)
+
+	$BuildingsTiles.tile_set = new_buildings_tiles
+	$BuildingTypesTiles.tile_set = new_buildings_types_tiles
+	id_rock_types.clear()
+	id_rock_types = [
+		$BuildingsTiles.tile_set.find_tile_by_name('tile_rock1'),
+		$BuildingsTiles.tile_set.find_tile_by_name('tile_rock2'),
+		$BuildingsTiles.tile_set.find_tile_by_name('tile_rock3'),
+		$BuildingsTiles.tile_set.find_tile_by_name('tile_rock4')
+	]
+
 
 func update_building_tiles() -> void:
 	var player_mask: int = Game.current_player_turn

@@ -37,7 +37,8 @@ var default_tile: Dictionary = {
 	building_id = -1, #a tile can only hold one building, so choose carefully!
 	troops = [],
 	upcomingTroops = [], #array with all the upcoming troops. DATA: turns to wait, owner, troop_id and amount
-	type_of_rock = -1
+	type_of_rock = -1,
+	tribe_owner = -1, #in case this tile is owned by a tribal society, this holds he ID of the tribal society who owns it (to get the name)
 }
 
 var alphabet: Array = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "N", "Ñ", "O", "P", "Q", "R", "S", "T", "V", "W", "X", "Y", "Z"]
@@ -95,6 +96,11 @@ func cell_has_better_building_than(cellA: Vector2, cellB: Vector2) -> bool:
 
 func is_capital(tile_pos: Vector2) -> bool:
 	return tiles_data[tile_pos.x][tile_pos.y].tile_id == tile_types_obj.getIDByName("capital")
+
+func is_tile_owned_by_tribal_society(tile_pos: Vector2) -> bool:
+	if !is_tile_walkeable(tile_pos):
+		return false
+	return tiles_data[tile_pos.x][tile_pos.y].owner == -1
 
 func player_has_troops_in_cell(tile_pos: Vector2, playerNumber: int) -> bool:
 	for troop in tiles_data[tile_pos.x][tile_pos.y].troops:

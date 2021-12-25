@@ -32,7 +32,6 @@ const WORLD_GAME_NODE_ID: int = 666 #NODE ID unique
 const AUTOSAVE_INTERVAL: float = 60.0 #Everyminute
 const PLAYER_DATA_SYNC_INTERVAL: float = 2.0
 const BOT_SECS_TO_EXEC_ACTION: float = 1.0 #seconds for a bot to execute each action (not turn but every single action)
-const BOT_MAX_TURNS_FOR_PLAN: int = 3 #bot can be using same plan as maximum as 3 turns, to avoid bots getting stuck with old plans
 const BOT_TURNS_TO_RESET_STATS: int = 15
 const EXTRA_CIVILIANS_PER_TURN: int = 200
 
@@ -469,9 +468,11 @@ func move_to_next_player_turn() -> void:
 
 func update_actions_available() -> void:
 	if Game.current_game_status == Game.STATUS.GAME_STARTED:
-		actions_available = int(round(Game.tilesObj.get_number_of_productive_territories(Game.current_player_turn)/5.0 + 0.5))
-		if actions_available < MIN_ACTIONS_PER_TURN:
-			actions_available = MIN_ACTIONS_PER_TURN
+		actions_available = int(round(Game.tilesObj.get_number_of_productive_territories(Game.current_player_turn)/float(Game.gameplay_settings.territories_per_action) + 0.5))
+		if actions_available < Game.gameplay_settings.min_actions_in_game:
+			actions_available = Game.gameplay_settings.min_actions_in_game
+		elif actions_available > Game.gameplay_settings.max_actions_in_game:
+			actions_available = Game.gameplay_settings.max_actions_in_game
 
 func check_if_game_finished() -> bool:
 	var all_player_capitals: Array = Game.tilesObj.get_all_capitals()
@@ -825,14 +826,14 @@ func check_if_player_can_buy_buildings(tile_pos: Vector2, playerNumber: int) -> 
 func allow_player_interact():
 	player_can_interact = true
 
-func give_troops_to_player_and_sync(cell: Vector2, player_number: int, troop_name: String, amount_to_give: int) -> void:
+func give_troops_to_player_and_sync(cell: Vector2, player_number: int, troop_array: Array, multiplier: float = 1.0) -> void:
 	Game.tilesObj.update_sync_data()
-	var extraTroops: Dictionary = {
-		owner = player_number,
-		troop_id = Game.troopTypes.getIDByName(troop_name),
-		amount = amount_to_give
-	}
-	Game.tilesObj.add_troops(cell, extraTroops)
+	for troop in troop_array:
+		Game.tilesObj.add_troops(cell, {
+			owner = player_number,
+			troop_id = Game.troopTypes.getIDByName(troop.troop_name),
+			amount = int(round(float(troop.amount)*multiplier))
+		})
 	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 
 
@@ -846,7 +847,6 @@ func give_player_capital(playerNumber: int, tile_pos: Vector2) ->void:
 	}
 	Game.tilesObj.give_to_a_player(playerNumber, tile_pos, Game.tileTypes.getIDByName("capital"), 0, starting_population)
 	Game.tilesObj.set_name(tile_pos, "Capital")
-	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {cell = tile_pos, cell_data = Game.tilesObj.get_cell(tile_pos)})
 	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 
 func give_player_rural(playerNumber: int, tile_pos: Vector2) ->void:
@@ -858,22 +858,20 @@ func give_player_rural(playerNumber: int, tile_pos: Vector2) ->void:
 		amount = 1000
 	}
 	Game.tilesObj.give_to_a_player(playerNumber, tile_pos, Game.tileTypes.getIDByName("rural"), 0, starting_population)
-	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 
 func add_tribal_society_to_tile(cell: Vector2) -> void:
-	Game.tilesObj.set_cell_gold(cell, round(Game.rng.randf_range(5.0, 20.0)))
-	var troopsToAdd: Dictionary = {
-		owner = -1,
-		troop_id = Game.troopTypes.getIDByName("recluta"),
-		amount = int(Game.rng.randf_range(250.0, 2000.0))
-	}
-	var civiliansToAdd: Dictionary = {
-		owner = -1,
-		troop_id = Game.troopTypes.getIDByName("civil"),
-		amount = int(Game.rng.randf_range(500.0, 5000.0))
-	}
-	Game.tilesObj.add_troops(cell, troopsToAdd)
-	Game.tilesObj.add_troops(cell, civiliansToAdd)
+	var cell_data: Dictionary = Game.tilesObj.get_cell(cell)
+	var tribesAmount: int = Game.tribalTroops.getCount()
+	var tribeId: int = Game.rng.randi_range(0, tribesAmount-1)
+	var tribeDict: Dictionary = Game.tribalTroops.getByID(tribeId)
+	cell_data.tribe_owner = tribeId
+	Game.tilesObj.set_cell_gold(cell, round(Game.rng.randf_range(float(tribeDict.min_gold), float(tribeDict.max_gold))))
+	for troop in tribeDict.troops:
+		Game.tilesObj.add_troops(cell, {
+			owner = -1,
+			troop_id = Game.troopTypes.getIDByName(troop.troop_name),
+			amount = Game.rng.randi_range(troop.min_amount, troop.max_amount)
+		})
 
 func destroy_player(playerNumber: int):
 	for x in range(Game.tile_map_size.x):
@@ -1166,12 +1164,23 @@ func execute_btn_finish_turn():
 	if Game.current_game_status == Game.STATUS.GAME_STARTED:
 		move_to_next_player_turn()
 
+"""
+var gameplay_settings: Dictionary = {
+	min_actions_in_game = 1,
+	max_actions_in_game = 1,
+	territories_per_action = 1,
+	start_points = 1,
+	gold_per_point = 10,
+	troops_to_give_per_point = []
+}
+"""
+
 func execute_give_extra_gold():
 	if !is_local_player_turn() or !have_selection_points_left():
 		return
 	save_player_info()
 	Game.tilesObj.update_sync_data()
-	Game.tilesObj.add_cell_gold(Game.current_tile_selected, 10)
+	Game.tilesObj.add_cell_gold(Game.current_tile_selected, Game.gameplay_settings.gold_per_point)
 	use_selection_point()
 
 func execute_add_extra_troops():
@@ -1179,12 +1188,13 @@ func execute_add_extra_troops():
 		return
 	save_player_info()
 	Game.tilesObj.update_sync_data()
-	var extraTroops: Dictionary = {
-		owner = Game.current_player_turn,
-		troop_id = Game.troopTypes.getIDByName("recluta"),
-		amount = 1000
-	}
-	Game.tilesObj.add_troops(Game.current_tile_selected, extraTroops)
+	var troops_to_add: Array = Game.gameplay_settings.troops_to_give_per_point
+	for troop in troops_to_add:
+		Game.tilesObj.add_troops(Game.current_tile_selected, {
+			owner = Game.current_player_turn,
+			troop_id = Game.troopTypes.getIDByName(troop.troop_name),
+			amount = int(troop.amount)
+		})
 	use_selection_point()
 
 func use_selection_point():
@@ -1192,8 +1202,9 @@ func use_selection_point():
 		return
 	Game.playersData[Game.current_player_turn].selectLeft-=1
 	
-	if Game.Network.is_client() and Game.playersData[Game.current_player_turn].selectLeft >= 0:
-		Game.Network.net_send_event(self.node_id, NET_EVENTS.CLIENT_USE_POINT,  {player_turn = Game.current_player_turn, dictArray = Game.tilesObj.get_sync_data()})
+	if Game.Network.is_client():
+		if Game.playersData[Game.current_player_turn].selectLeft >= 0:
+			Game.Network.net_send_event(self.node_id, NET_EVENTS.CLIENT_USE_POINT,  {player_turn = Game.current_player_turn, dictArray = Game.tilesObj.get_sync_data()})
 		return
 	elif is_local_player_turn() or Game.is_current_player_a_bot():
 		Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })

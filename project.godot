@@ -55,6 +55,11 @@ _global_script_classes=[ {
 "path": "res://scripts/ObjectsData/TileTypes.gd"
 }, {
 "base": "Object",
+"class": "TribalSocietyObject",
+"language": "GDScript",
+"path": "res://scripts/TribalSocietiesTypes.gd"
+}, {
+"base": "Object",
 "class": "TroopTypesObject",
 "language": "GDScript",
 "path": "res://scripts/ObjectsData/TroopTypes.gd"
@@ -79,6 +84,7 @@ _global_script_class_icons={
 "TileGameObject": "",
 "TileSetExternalImporter": "",
 "TilesTypesObject": "",
+"TribalSocietyObject": "",
 "TroopTypesObject": "",
 "UtilObject": "",
 "WorldGameNode": ""

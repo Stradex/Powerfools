@@ -18,6 +18,19 @@ func load_external_tex(path: String) -> ImageTexture:
 	tex_file.close()
 	return imgtex
 
+func append_to_tileset_from_folder(folder_path: String, tile_set: TileSet) -> void:
+	var png_images_in_folder: Array = file_system.list_files_in_directory(folder_path, ".png")
+	var tiles_count: int = tile_set.get_tiles_ids().size()
+	for i in range(png_images_in_folder.size()):
+		var tile_name_str: String = png_images_in_folder[i].get_basename()
+		if tile_set.find_tile_by_name(tile_name_str) != -1: #already exists, do nothing avoid duplicates.
+			continue
+		var path_img: String = folder_path + "/" + png_images_in_folder[i]
+		tile_set.create_tile(tiles_count)
+		tile_set.tile_set_texture(tiles_count, load_external_tex(path_img))
+		tile_set.tile_set_name(tiles_count, tile_name_str)
+		tiles_count+=1
+		
 func make_tileset_from_folder(folder_path: String) -> TileSet:
 	var new_tile_set: TileSet = TileSet.new()
 	var png_images_in_folder: Array = file_system.list_files_in_directory(folder_path, ".png")

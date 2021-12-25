@@ -753,11 +753,12 @@ func bot_execute_give_extra_gold(bot_number: int, cell: Vector2):
 		return
 	game_node.save_player_info()
 	Game.tilesObj.update_sync_data()
-	Game.tilesObj.add_cell_gold(cell, 10.0*Game.get_bot_extra_gold_multiplier(bot_number))
+	Game.tilesObj.add_cell_gold(cell, float(Game.gameplay_settings.gold_per_point)*Game.get_bot_extra_gold_multiplier(bot_number))
 	Game.Network.net_send_event(game_node.node_id, game_node.NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 
 func bot_execute_add_extra_troops(bot_number: int, cell: Vector2):
 	if !Game.is_current_player_a_bot():
 		return
 	game_node.save_player_info()
-	game_node.give_troops_to_player_and_sync(cell, bot_number, "recluta", int(round(1000.0*Game.get_bot_troops_multiplier(bot_number))))
+	var troops_to_add: Array = Game.gameplay_settings.troops_to_give_per_point
+	game_node.give_troops_to_player_and_sync(cell, bot_number, troops_to_add, Game.get_bot_troops_multiplier(bot_number))

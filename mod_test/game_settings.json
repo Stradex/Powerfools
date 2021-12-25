@@ -1,0 +1,21 @@
+{
+	"min_actions_in_game":4,
+	"max_actions_in_game":10,
+	"territories_per_action":5,
+	"start_points":15,
+	"gold_per_point":15,
+	"troops_to_give_per_point": [
+		{
+			"troop_name":"recluta",
+			"amount":1000
+		},
+		{
+			"troop_name":"elite",
+			"amount":500
+		},
+		{
+			"troop_name":"heroes",
+			"amount":250
+		}
+	]
+}

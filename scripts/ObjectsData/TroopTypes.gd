@@ -78,7 +78,9 @@ func getByID(troopID: int) -> Dictionary:
 func getList() -> Array:
 	return TroopsTypes.duplicate(true) #gives a copy so no one can fuck up the original list
 
-func load_from_file(folder: String, fileSystemObj: Object) -> void:
+func load_from_file(folder: String, fileSystemObj: Object) -> bool:
+	if !fileSystemObj.file_exists(folder + "/" + TROOPS_FILES_NAME):
+		return false
 	var troopsImportedData: Dictionary = fileSystemObj.get_data_from_json(folder + "/" + TROOPS_FILES_NAME)
 	assert(troopsImportedData.has('troops'))
 	for troopDict in troopsImportedData['troops']:
@@ -92,3 +94,4 @@ func load_from_file(folder: String, fileSystemObj: Object) -> void:
 			battle_cost_per_turn = troopDict["battle_cost_per_turn"], 
 			health= troopDict["health"] 
 		})
+	return true

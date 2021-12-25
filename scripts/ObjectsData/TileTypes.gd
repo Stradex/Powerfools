@@ -69,7 +69,9 @@ func getImg(tileTypeID: int) -> String:
 func getList() -> Array:
 	return TilesTypes.duplicate(true) #gives a copy so no one can fuck up the original list
 
-func load_from_file(folder: String, fileSystemObj: Object) -> void:
+func load_from_file(folder: String, fileSystemObj: Object) -> bool:
+	if !fileSystemObj.file_exists(folder + "/" + TILES_FILES_NAME):
+		return false
 	var tilesImportedData: Dictionary = fileSystemObj.get_data_from_json(folder + "/" + TILES_FILES_NAME)
 	assert(tilesImportedData.has('tiles'))
 	for troopDict in tilesImportedData['tiles']:
@@ -85,3 +87,4 @@ func load_from_file(folder: String, fileSystemObj: Object) -> void:
 			min_civil_to_produce_gold = troopDict["min_civil_to_produce_gold"],
 			max_civil_to_produce_gold = troopDict["max_civil_to_produce_gold"]
 		})
+	return true

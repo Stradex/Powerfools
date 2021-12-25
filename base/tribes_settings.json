@@ -1,0 +1,38 @@
+{
+	"tribes_types": [
+		{
+			"name":"Germanos",
+			"min_gold":5,
+			"max_gold":25,
+			"troops": [
+				{
+					"troop_name":"civil",
+					"min_amount":600,
+					"max_amount":5000
+				},
+				{
+					"troop_name":"recluta",
+					"min_amount":400,
+					"max_amount":2500
+				}
+			]
+		},
+		{
+			"name":"Galos",
+			"min_gold":3,
+			"max_gold":15,
+			"troops": [
+				{
+					"troop_name":"civil",
+					"min_amount":300,
+					"max_amount":2500
+				},
+				{
+					"troop_name":"recluta",
+					"min_amount":200,
+					"max_amount":1000
+				}
+			]
+		}
+	]
+}

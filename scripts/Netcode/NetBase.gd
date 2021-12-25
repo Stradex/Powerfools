@@ -112,12 +112,17 @@ func server_process_client_question(id_client: int, client_name: String, client_
 	Game.playersData[player_num].pin_code = client_pin
 	print("Update player %s (%d) with netid %d" % [client_name, player_num, id_client])
 	send_rpc("new_client_connected", [clients_connected])
-	Game.rpc_id(id_client, "game_process_rpc", "client_receive_answer", [{player_number = player_num}])
+	Game.rpc_id(id_client, "game_process_rpc", "client_receive_answer", [{player_number = player_num, game_mod = Game.current_mod}])
 
 func client_receive_answer(receive_data: Dictionary):
 	print("player number: %d, uniqueid: %d" % [receive_data.player_number, Game.get_tree().get_network_unique_id()])
 	local_player_id = receive_data.player_number
-	Game.add_player(Game.get_tree().get_network_unique_id(), net_name, net_pin, receive_data.player_number)
+	if !Game.switch_to_mod(receive_data.game_mod): #client does not have the mod!
+		print("[ERROR] Client does not have the mod server is using!")
+		net_disconnect()
+	else:
+		Game.add_player(Game.get_tree().get_network_unique_id(), net_name, net_pin, receive_data.player_number)
+		Game.start_new_game(true)
 
 func new_client_connected(new_clients_list: Array):
 	clients_connected.clear()
@@ -174,7 +179,7 @@ func join_server(ip: String, client_name: String, client_pin: int):
 	var host = NetworkedMultiplayerENet.new()
 	print(host.create_client(ip, SERVER_PORT))
 	Game.get_tree().set_network_peer(host)
-	Game.start_new_game(true)
+	#Game.start_new_game(true)
 	print("Joining to server...")
 
 func stop_networking() -> void:
