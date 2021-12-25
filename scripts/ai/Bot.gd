@@ -32,6 +32,11 @@ func _init(tmp_game_node, tmp_rng):
 	for i in range(bot_territories_to_recover.size()):
 		bot_territories_to_recover[i] = [] #array
 
+func clear():
+	for i in range(bot_territories_to_recover.size()):
+		bot_territories_to_recover[i].clear()
+	bot_territories_to_recover.clear()
+
 func execute_action(game_status: int, player_turn: int):
 	if !Game.is_current_player_a_bot():
 		return

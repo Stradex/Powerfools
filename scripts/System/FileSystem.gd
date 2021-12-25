@@ -14,6 +14,23 @@ func load_as_dict (var path : String) -> Dictionary:
 	file.close()
 	return theDict
 
+func list_directories(path) -> Array:
+	var directories: Array = []
+	var dir = Directory.new()
+	# Not working in export, I need to fix the problem in engine or wait for update.
+	# if !dir.dir_exists(path):
+	# 	return [];
+	dir.open(path)
+	dir.list_dir_begin()
+	while true:
+		var directory = dir.get_next()
+		if directory == "":
+			break
+		if !directory.begins_with(".") and dir.current_is_dir():
+			directories.append(directory)
+	dir.list_dir_end()
+	return directories
+	
 func list_files_in_directory(path, extension: String = "") -> Array:
 	var files: Array = []
 	var dir = Directory.new()

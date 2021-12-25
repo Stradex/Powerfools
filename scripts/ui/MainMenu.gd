@@ -10,6 +10,11 @@ var resolutions: Array = [
 	"2560x1440"
 ]
 
+var ui_mods_list: Array = []
+
+onready var ModsList: OptionButton = $ModsTab/ModsList
+onready var BTN_ModsCancel: TextureButton = $ModsTab/Back
+onready var BTN_ModsApply: TextureButton = $ModsTab/Apply
 onready var ResolutionOptions : OptionButton = $Options/Resolution
 onready var BTN_NewGame : TextureButton = $Buttons/NewGame
 onready var BTN_Multiplayer : TextureButton = $Buttons/Multiplayer
@@ -23,6 +28,7 @@ onready var BTN_PlayerSettings: TextureButton = $MultiplayerMenu/PlayerOptions
 onready var BTN_BackToMenu: TextureButton = $Options/Back
 onready var BTN_Options: TextureButton = $Buttons/Options
 onready var BTN_ApplyOptions: TextureButton = $Options/Apply
+onready var BTN_Mods: TextureButton = $Buttons/Mods
 onready var FullScreenCheckBox: CheckBox = $Options/HBoxContainer/FullScreen
 
 var ip_to_join: String = "127.0.0.1"
@@ -40,6 +46,10 @@ func _ready():
 	BTN_PlayerSettings.connect("pressed", self, "ui_open_player_settings")
 	BTN_Options.connect("pressed", self, "ui_open_options")
 	BTN_ApplyOptions.connect("pressed", self, "ui_apply_options")
+	BTN_Mods.connect("pressed", self, "ui_open_mods_tab")
+	BTN_ModsCancel.connect("pressed", self, "ui_go_to_menu")
+	BTN_ModsApply.connect("pressed", self, "ui_change_mod")
+	ui_mods_list.clear()
 	update_resolution_list()
 	ui_go_to_menu()
 
@@ -81,7 +91,27 @@ func ui_go_to_menu():
 	$PlayerSettingsMenu.visible = false
 	$Buttons.visible = true
 	$Options.visible = false
+	$ModsTab.visible = false
 
+func ui_change_mod() -> void:
+	Game.current_mod = ui_mods_list[ModsList.selected]
+	Game.init_game_data() #reload troop, tiles, buildings, etc.. data
+	ui_go_to_menu()
+
+func ui_open_mods_tab():
+	ModsList.clear()
+	ui_mods_list.clear()
+	var mods_list: Array = Game.get_mods_list()
+	var select_index: int = 0
+	for i in range(mods_list.size()):
+		ui_mods_list.append(mods_list[i])
+		ModsList.add_item(mods_list[i])
+		if Game.current_mod.to_lower() == mods_list[i].to_lower():
+			select_index = i
+	ModsList.select(select_index)
+	$ModsTab.visible = true
+	$Buttons.visible = false
+	
 func ui_open_multiplayer_window():
 	$MultiplayerMenu.visible = true
 	$Buttons.visible = false

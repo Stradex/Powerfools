@@ -33,11 +33,10 @@ __meta__ = {
 }
 
 [node name="Buttons" type="VBoxContainer" parent="."]
-visible = false
 margin_left = 558.0
-margin_top = 380.0
+margin_top = 335.0
 margin_right = 768.0
-margin_bottom = 688.0
+margin_bottom = 658.0
 custom_constants/separation = 12
 __meta__ = {
 "_edit_use_anchors_": false
@@ -102,10 +101,30 @@ __meta__ = {
 "_edit_use_anchors_": false
 }
 
-[node name="ExitGame" type="TextureButton" parent="Buttons"]
+[node name="Mods" type="TextureButton" parent="Buttons"]
 margin_top = 201.0
 margin_right = 210.0
 margin_bottom = 256.0
+texture_normal = ExtResource( 3 )
+texture_pressed = ExtResource( 4 )
+texture_hover = ExtResource( 5 )
+texture_disabled = ExtResource( 5 )
+
+[node name="ModsLabel" type="Label" parent="Buttons/Mods"]
+margin_right = 207.0
+margin_bottom = 55.0
+custom_fonts/font = SubResource( 1 )
+text = "Load Mod"
+align = 1
+valign = 1
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ExitGame" type="TextureButton" parent="Buttons"]
+margin_top = 268.0
+margin_right = 210.0
+margin_bottom = 323.0
 texture_normal = ExtResource( 3 )
 texture_pressed = ExtResource( 4 )
 texture_hover = ExtResource( 5 )
@@ -123,6 +142,7 @@ __meta__ = {
 }
 
 [node name="Options" type="VBoxContainer" parent="."]
+visible = false
 margin_left = 558.0
 margin_top = 380.0
 margin_right = 768.0
@@ -197,6 +217,68 @@ margin_right = 207.0
 margin_bottom = 55.0
 custom_fonts/font = SubResource( 1 )
 text = "GO BACK"
+align = 1
+valign = 1
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ModsTab" type="VBoxContainer" parent="."]
+visible = false
+margin_left = 558.0
+margin_top = 380.0
+margin_right = 768.0
+margin_bottom = 688.0
+custom_constants/separation = 12
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ModsLabel" type="Label" parent="ModsTab"]
+margin_right = 210.0
+margin_bottom = 16.0
+custom_fonts/font = SubResource( 2 )
+text = "Mods:"
+
+[node name="ModsList" type="OptionButton" parent="ModsTab"]
+margin_top = 28.0
+margin_right = 210.0
+margin_bottom = 48.0
+
+[node name="Apply" type="TextureButton" parent="ModsTab"]
+margin_top = 60.0
+margin_right = 210.0
+margin_bottom = 115.0
+texture_normal = ExtResource( 3 )
+texture_pressed = ExtResource( 4 )
+texture_hover = ExtResource( 5 )
+texture_disabled = ExtResource( 5 )
+
+[node name="ApplyLabel" type="Label" parent="ModsTab/Apply"]
+margin_right = 207.0
+margin_bottom = 55.0
+custom_fonts/font = SubResource( 1 )
+text = "APPLY"
+align = 1
+valign = 1
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Back" type="TextureButton" parent="ModsTab"]
+margin_top = 127.0
+margin_right = 210.0
+margin_bottom = 182.0
+texture_normal = ExtResource( 3 )
+texture_pressed = ExtResource( 4 )
+texture_hover = ExtResource( 5 )
+texture_disabled = ExtResource( 5 )
+
+[node name="BackLabel" type="Label" parent="ModsTab/Back"]
+margin_right = 207.0
+margin_bottom = 55.0
+custom_fonts/font = SubResource( 1 )
+text = "CANCEL"
 align = 1
 valign = 1
 __meta__ = {

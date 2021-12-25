@@ -48,10 +48,8 @@ func init_menu_graphics():
 	$ActionsMenu.visible = true
 	$HUD.visible = true
 	$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.clear()
-	$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.add_item("Fácil", 0)
-	$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.add_item("Normal", 1)
-	$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.add_item("Difícil", 2)
-	$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.add_item("Pesadilla", 3)
+	for i in range(Game.bot_difficulties_stats.size()):
+		$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.add_item(Game.bot_difficulties_stats[i].NAME, i)
 	$HUD/GameInfo/Waiting.visible = false
 	$TilesCoordinates.visible = false
 
@@ -149,16 +147,10 @@ func gui_accept_edit_player() -> void:
 		return
 	Game.playersData[player_editing_index].team = int($ActionsMenu/EditPlayer/VBoxContainer/HBoxContainer3/PlayerTeamText.text)
 	if Game.playersData[player_editing_index].isBot:
-		Game.playersData[player_editing_index].bot_stats.difficulty = $ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.selected
-		match Game.playersData[player_editing_index].bot_stats.difficulty:
-			Game.BOT_DIFFICULTY.EASY:
-				Game.playersData[player_editing_index].name = "bot [Fácil]"
-			Game.BOT_DIFFICULTY.NORMAL:
-				Game.playersData[player_editing_index].name = "bot [Normal]"
-			Game.BOT_DIFFICULTY.HARD:
-				Game.playersData[player_editing_index].name = "bot [Difícil]"
-			Game.BOT_DIFFICULTY.NIGHTMARE:
-				Game.playersData[player_editing_index].name = "bot [Pesadilla]"
+		var difficulty_index: int = $ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.selected
+		Game.playersData[player_editing_index].bot_stats.difficulty = difficulty_index
+		var difficulty_name: String = Game.bot_difficulties_stats[difficulty_index].NAME
+		Game.playersData[player_editing_index].name = "bot [" + difficulty_name + "]"
 	gui_close_edit_player()
 
 func gui_close_edit_player() -> void:

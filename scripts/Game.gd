@@ -13,9 +13,9 @@ const SCREEN_WIDTH: int = 1280
 const SCREEN_HEIGHT: int = 720
 const TILE_SIZE: int = 80
 const GAME_FPS: int = 4 # we really don't need to much higher FPS, this is mostly for game logic, not graphic stuff
-const DATA_FILES_FOLDER: String = "data";
 const DEBUG_MODE: bool = false
 const BOT_NET_ID: int = -1
+const BOT_STATS_FILE: String = "bots_difficulties.json"
 var current_mod: String = "base"
 
 var current_turn: int = 0
@@ -47,14 +47,6 @@ enum STATUS {
 	GAME_STARTED #game is going on
 }
 
-enum BOT_DIFFICULTY {
-	EASY,
-	NORMAL,
-	HARD,
-	NIGHTMARE,
-	MAX_DIFFICULTIES
-}
-
 var defaultCivilizationNames: Array = [
 	"Asiria",
 	"Egipto",
@@ -72,54 +64,37 @@ func _ready():
 	TileSetImporter = TileSetExternalImporter.new(FileSystem)
 	Config.load_from_file(CONFIG_FILE)
 	Engine.set_target_fps(Config.get_value("max_fps"))
-	init_bots_stats()
+	init_game_data()
 	init_players()
-	init_tiles_types()
-	init_troops_types()
-	init_buildings_types()
 	Network.ready()
 	clear_players_data()
 	update_settings()
 	#res://assets/graphics/constructions/
 
+func init_game_data():
+	init_bots_stats()
+	init_tiles_types()
+	init_troops_types()
+	init_buildings_types()
+
 func save_settings():
 	Config.save_to_file(CONFIG_FILE)
 
+
 func init_bots_stats():
 	bot_difficulties_stats.clear()
-	bot_difficulties_stats.resize(BOT_DIFFICULTY.MAX_DIFFICULTIES)
-	bot_difficulties_stats[BOT_DIFFICULTY.EASY] = {
-		TROOPS_MULT = 1.0,
-		DISCOUNT_MULT = 1.0,
-		EXTRA_GOLD_MULT = 1.0,
-		GAINS_MULT = 1.0,
-		CAPITAL_MINIMUM_RECRUITS = 1000,
-		MINIMUM_BUILDINGS = 1
-	}
-	bot_difficulties_stats[BOT_DIFFICULTY.NORMAL] = {
-		TROOPS_MULT = 1.2,
-		DISCOUNT_MULT = 0.85,
-		EXTRA_GOLD_MULT = 1.25,
-		GAINS_MULT = 1.1,
-		CAPITAL_MINIMUM_RECRUITS = 2000,
-		MINIMUM_BUILDINGS = 2
-	}
-	bot_difficulties_stats[BOT_DIFFICULTY.HARD] = {
-		TROOPS_MULT = 1.5,
-		DISCOUNT_MULT = 0.65,
-		EXTRA_GOLD_MULT = 1.5,
-		GAINS_MULT = 1.25,
-		CAPITAL_MINIMUM_RECRUITS = 3000,
-		MINIMUM_BUILDINGS = 3
-	}
-	bot_difficulties_stats[BOT_DIFFICULTY.NIGHTMARE] = {
-		TROOPS_MULT = 2.0,
-		DISCOUNT_MULT = 0.5,
-		EXTRA_GOLD_MULT = 2.0,
-		GAINS_MULT = 1.5,
-		CAPITAL_MINIMUM_RECRUITS = 5000,
-		MINIMUM_BUILDINGS = 4
-	}
+	var tilesImportedData: Dictionary = FileSystem.get_data_from_json(current_mod + "/" + BOT_STATS_FILE)
+	assert(tilesImportedData.has('difficulties'))
+	for troopDict in tilesImportedData['difficulties']:
+		bot_difficulties_stats.append({
+			NAME = troopDict["name"],
+			TROOPS_MULT = troopDict["troops_mult"],
+			DISCOUNT_MULT = troopDict["buy_discount_mult"],
+			EXTRA_GOLD_MULT = troopDict["extra_gold_mult"],
+			GAINS_MULT = troopDict["gains_mult"],
+			CAPITAL_MINIMUM_RECRUITS = troopDict["capital_minimum_recruits"],
+			MINIMUM_BUILDINGS = troopDict["minimum_buildings"]
+		})
 
 func init_players():
 	playersData.clear()
@@ -168,19 +143,9 @@ func start_new_game(is_mp_game: bool = false):
 		init_player(1, Game.Network.SERVER_NETID, "bot", 1, true, 1) #bot - team 1
 		init_player(2, Game.Network.SERVER_NETID, "bot", 1, true, 2) #bot - team 2
 		init_player(3, Game.Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
-		#init_player(3, Game.Network.SERVER_NETID, "bot", 4, true, 2) #bot - team 2
-		#init_player(4, Game.Network.SERVER_NETID, "bot", 4, true, 2) #bot - team 2
-		#set_bot_difficulty(0, BOT_DIFFICULTY.NIGHTMARE)
-		set_bot_difficulty(1, BOT_DIFFICULTY.NIGHTMARE)
-		set_bot_difficulty(2, BOT_DIFFICULTY.HARD)
-		set_bot_difficulty(3, BOT_DIFFICULTY.EASY)
+		#set_bot_difficulty(1, BOT_DIFFICULTY.NIGHTMARE)
+		#set_bot_difficulty(2, BOT_DIFFICULTY.HARD)
 		#set_bot_difficulty(3, BOT_DIFFICULTY.EASY)
-		#set_bot_difficulty(4, BOT_DIFFICULTY.EASY)
-	#else:
-	#	init_player(2, Game.Network.SERVER_NETID, "bot", 2, true, 1) #Just for testing only
-	#	init_player(3, Game.Network.SERVER_NETID, "bot", 3, true, 1) #Just for testing only
-	#	init_player(4, Game.Network.SERVER_NETID, "bot", 4, true, 1) #Just for testing only
-		#init_player(5, Game.Network.SERVER_NETID, "bot", 5, true, 1) #Just for testing only
 	change_to_map(START_MAP)
 
 func are_player_allies(playerA: int, playerB: int) -> bool:
@@ -214,7 +179,7 @@ func init_player(player_id: int, net_id: int, player_name: String = "player", pl
 			defensiveness  =  rng.randf_range(0.1, 1.0), #the bigger, the most willing to make a strong defense the bot will be willing to
 			avarice = rng.randf_range(0.1, 1.0),  #the bigger, the most amount of gains and gold the bot will wish to have
 			troops_quality = rng.randf_range(0.1, 1.0), #the bigger, the best kind of troops the bot will want to have
-			difficulty = BOT_DIFFICULTY.HARD,
+			difficulty = 0,
 			path_to_follow = []
 		}
 	else:
@@ -350,3 +315,16 @@ remote func game_process_rpc(method_name: String, data: Array):
 
 func get_save_game_folder() -> String:
 	return Game.current_mod + "/saves/"  
+
+func prepare_new_game() -> void:
+	current_tile_selected = Vector2.ZERO
+	current_game_status = -1
+	current_player_turn = -1
+
+func get_mods_list() -> Array:
+	var directories_list: Array = FileSystem.list_directories("")
+	var mod_list: Array = []
+	for directory in directories_list:
+		if FileSystem.list_files_in_directory(directory, ".json").size() > 0:
+			mod_list.append(directory)
+	return mod_list

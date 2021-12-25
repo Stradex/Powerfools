@@ -24,7 +24,6 @@ extends Node2D
 # Que los bots puedan tener formaciones
 # Que los bots cuando juegan en equipo se ayuden unos a otros
 # No poder robarle talentos a tus aliados del orto jaja
-# Make a modding system similar to idtech engine (base, mod folder, etc...)
 
 const MIN_ACTIONS_PER_TURN: int = 3
 const MININUM_TROOPS_TO_FIGHT: int = 5
@@ -83,6 +82,7 @@ enum NET_EVENTS {
 ###################################################
 
 func _ready():
+	Game.prepare_new_game()
 	init_timers_and_tweens()
 	init_game()
 	$UI.init_gui(self)

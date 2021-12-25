@@ -1,0 +1,40 @@
+{
+	"difficulties": [
+		{
+			"name":"Fácil",
+			"troops_mult":1.0,
+			"buy_discount_mult":1.0,
+			"extra_gold_mult":1.0,
+			"gains_mult":1.0,
+			"capital_minimum_recruits":1000,
+			"minimum_buildings":1
+		},
+		{
+			"name":"Normal",
+			"troops_mult":1.2,
+			"buy_discount_mult":0.85,
+			"extra_gold_mult":1.25,
+			"gains_mult":1.1,
+			"capital_minimum_recruits":2000,
+			"minimum_buildings":2
+		},
+		{
+			"name":"Difícil",
+			"troops_mult":1.5,
+			"buy_discount_mult":0.65,
+			"extra_gold_mult":1.5,
+			"gains_mult":1.25,
+			"capital_minimum_recruits":3000,
+			"minimum_buildings":2
+		},
+		{
+			"name":"Experto",
+			"troops_mult":2.0,
+			"buy_discount_mult":0.5,
+			"extra_gold_mult":2.0,
+			"gains_mult":1.5,
+			"capital_minimum_recruits":5000,
+			"minimum_buildings":4
+		}
+	]
+}

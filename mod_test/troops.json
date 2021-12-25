@@ -2,8 +2,6 @@
 	"troops": [
 		{
 			"name":"civil",
-			"no_building":true,
-			"can_be_bought":false,
 			"is_warrior":false,
 			"cost_to_make":0,
 			"damage_min":0.2,
@@ -15,8 +13,6 @@
 		},
 		{
 			"name":"recluta",
-			"no_building":false,
-			"can_be_bought":true,
 			"is_warrior":true,
 			"cost_to_make":5,
 			"damage_min":1.0,
@@ -28,8 +24,6 @@
 		},
 		{
 			"name":"elite",
-			"no_building":false,
-			"can_be_bought":true,
 			"is_warrior":true,
 			"cost_to_make":15,
 			"damage_min":5.0,
@@ -41,8 +35,6 @@
 		},
 		{
 			"name":"heroes",
-			"no_building":false,
-			"can_be_bought":true,
 			"is_warrior":true,
 			"cost_to_make":30,
 			"damage_min":10.0,
