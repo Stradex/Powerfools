@@ -11,9 +11,10 @@ func load_default():
 	ConfigInfo.set_value("config", "name", "player")
 	ConfigInfo.set_value("config", "pin_code", cfg_rng.randi_range(0, 9999))
 	ConfigInfo.set_value("config", "max_fps", 60)
+	ConfigInfo.set_value("config", "ip_default", "127.0.0.1")
 
 func get_value(key: String):
-	return ConfigInfo.get_value("config", key)
+	return ConfigInfo.get_value("config", key, "")
 
 func set_value(key: String, value):
 	ConfigInfo.set_value("config", key, value)

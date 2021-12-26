@@ -24,6 +24,7 @@ extends Node2D
 # Que los bots puedan tener formaciones
 # Que los bots cuando juegan en equipo se ayuden unos a otros
 # No poder robarle talentos a tus aliados del orto jaja
+# Fixear que la duración de la partida en los clientes dice cero.
 
 const MIN_ACTIONS_PER_TURN: int = 3
 const MININUM_TROOPS_TO_FIGHT: int = 5
@@ -1317,7 +1318,7 @@ func get_tiles_node_transformation() -> Dictionary:
 
 func exit_game(error_msg: String = ""):
 	Game.Network.net_disconnect()
-	Game.go_to_main_menu()
+	Game.go_to_main_menu(error_msg)
 	Game.clear_players_data()
 
 func client_update_player_data(playerData, force: bool) -> void:

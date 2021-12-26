@@ -32,10 +32,12 @@ onready var BTN_Mods: TextureButton = $Buttons/Mods
 onready var FullScreenCheckBox: CheckBox = $Options/HBoxContainer/FullScreen
 onready var BTN_CancelJoin: TextureButton = $JoiningServer/CancelJoin
 onready var BTN_AcceptJoinFailed: TextureButton = $ErrorJoining/HBoxContainer/OK
-
-var ip_to_join: String = "127.0.0.1"
+onready var BTN_Reconnect: TextureButton = $ErrorJoining/HBoxContainer/Reconnect
 
 func _ready():
+	var cfg_ip_cached: String = Game.Config.get_value("ip_default")
+	if cfg_ip_cached.length() > 1:
+		Game.cache_ip_to_connect = cfg_ip_cached
 	BTN_NewGame.connect("pressed", self, "ui_start_sp_game")
 	BTN_Multiplayer.connect("pressed", self, "ui_open_multiplayer_window")
 	BTN_ExitGame.connect("pressed", self, "ui_exit_game")
@@ -53,11 +55,14 @@ func _ready():
 	BTN_ModsApply.connect("pressed", self, "ui_change_mod")
 	BTN_CancelJoin.connect("pressed", self, "ui_cancel_join")
 	BTN_AcceptJoinFailed.connect("pressed", self, "ui_cancel_join")
+	BTN_Reconnect.connect("pressed", self, "ui_reconnect")
 	Game.connect("error_joining_server", self, "ui_failed_to_join")
-	
 	ui_mods_list.clear()
 	update_resolution_list()
 	ui_go_to_menu()
+	if Game.error_message_to_show.length() > 1:
+		ui_failed_to_join(Game.error_message_to_show)
+		Game.error_message_to_show = ""
 
 func update_resolution_list() -> void:
 	ResolutionOptions.clear()
@@ -134,15 +139,23 @@ func ui_open_mods_tab():
 	$Buttons.visible = false
 	
 func ui_open_multiplayer_window():
+	$MultiplayerMenu/IPTextBox.text = Game.cache_ip_to_connect
 	$MultiplayerMenu.visible = true
 	$Buttons.visible = false
 
 func ui_join_game():
-	ip_to_join = $MultiplayerMenu/IPTextBox.text
+	Game.cache_ip_to_connect = $MultiplayerMenu/IPTextBox.text
 	var player_name: String = Game.Config.get_value("name")
 	var player_pin: int = int(Game.Config.get_value("pin_code"))
-	Game.Network.join_server(ip_to_join, player_name, player_pin)
+	Game.Network.join_server(Game.cache_ip_to_connect, player_name, player_pin)
 	$MultiplayerMenu.visible = false
+	$JoiningServer.visible = true
+
+func ui_reconnect():
+	var player_name: String = Game.Config.get_value("name")
+	var player_pin: int = int(Game.Config.get_value("pin_code"))
+	Game.Network.join_server(Game.cache_ip_to_connect, player_name, player_pin)
+	close_all_menus()
 	$JoiningServer.visible = true
 
 func ui_host_game():

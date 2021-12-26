@@ -66,8 +66,10 @@ func _on_server_shutdown():
 func _on_player_joined_ok():
 	print("player connected")
 	if !Game.is_network_master():
+		Game.Config.set_value("ip_default", Game.cache_ip_to_connect)
 		Game.rpc_id(SERVER_NETID, "game_process_rpc", "server_process_client_question", [Game.get_tree().get_network_unique_id(), net_name, net_pin])
-
+		Game.save_settings()
+		
 func _on_player_connected(id):
 	print("player connected...")
 	if is_server():

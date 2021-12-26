@@ -42,6 +42,8 @@ var interactTileSelected: Vector2 = Vector2(-1, -1)
 var nextInteractTileSelected: Vector2 = Vector2(-1, -1)
 var bot_difficulties_stats: Array = []
 var tribes_types: Array = []
+var cache_ip_to_connect: String = "127.0.0.1"
+var error_message_to_show: String = ""
 
 var gameplay_settings: Dictionary = {
 	min_actions_in_game = 1,
@@ -354,9 +356,9 @@ remote func change_to_map(map_name: String):
 	get_tree().call_deferred("change_scene", full_map_path)
 
 func go_to_main_menu(error_msg: String = ""):
+	error_message_to_show = error_msg
 	get_tree().call_deferred("change_scene", MENU_NODE)
-	if error_msg.length() > 1:
-		emit_signal("error_joining_server", error_msg)
+
 
 func pause() -> void:
 	get_tree().paused = true

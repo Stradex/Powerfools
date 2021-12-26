@@ -286,8 +286,8 @@ margin_bottom = 83.0
 alignment = 1
 
 [node name="OK" type="TextureButton" parent="ErrorJoining/HBoxContainer"]
-margin_left = 535.0
-margin_right = 745.0
+margin_left = 428.0
+margin_right = 638.0
 margin_bottom = 55.0
 texture_normal = ExtResource( 3 )
 texture_pressed = ExtResource( 4 )
@@ -298,7 +298,27 @@ texture_disabled = ExtResource( 5 )
 margin_right = 207.0
 margin_bottom = 55.0
 custom_fonts/font = SubResource( 1 )
-text = "OK"
+text = "GO BACK"
+align = 1
+valign = 1
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Reconnect" type="TextureButton" parent="ErrorJoining/HBoxContainer"]
+margin_left = 642.0
+margin_right = 852.0
+margin_bottom = 55.0
+texture_normal = ExtResource( 3 )
+texture_pressed = ExtResource( 4 )
+texture_hover = ExtResource( 5 )
+texture_disabled = ExtResource( 5 )
+
+[node name="ReconnectLabel" type="Label" parent="ErrorJoining/HBoxContainer/Reconnect"]
+margin_right = 207.0
+margin_bottom = 55.0
+custom_fonts/font = SubResource( 1 )
+text = "RECONNECT"
 align = 1
 valign = 1
 __meta__ = {
