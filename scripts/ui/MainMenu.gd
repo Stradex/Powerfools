@@ -31,6 +31,7 @@ onready var BTN_ApplyOptions: TextureButton = $Options/Apply
 onready var BTN_Mods: TextureButton = $Buttons/Mods
 onready var FullScreenCheckBox: CheckBox = $Options/HBoxContainer/FullScreen
 onready var BTN_CancelJoin: TextureButton = $JoiningServer/CancelJoin
+onready var BTN_AcceptJoinFailed: TextureButton = $ErrorJoining/HBoxContainer/OK
 
 var ip_to_join: String = "127.0.0.1"
 
@@ -51,6 +52,9 @@ func _ready():
 	BTN_ModsCancel.connect("pressed", self, "ui_go_to_menu")
 	BTN_ModsApply.connect("pressed", self, "ui_change_mod")
 	BTN_CancelJoin.connect("pressed", self, "ui_cancel_join")
+	BTN_AcceptJoinFailed.connect("pressed", self, "ui_cancel_join")
+	Game.connect("error_joining_server", self, "ui_failed_to_join")
+	
 	ui_mods_list.clear()
 	update_resolution_list()
 	ui_go_to_menu()
@@ -63,6 +67,7 @@ func update_resolution_list() -> void:
 
 func ui_cancel_join() -> void:
 	$MultiplayerMenu.visible = true
+	$ErrorJoining.visible = false
 	$JoiningServer.visible = false
 
 func get_string_from_resoltion(res_vec: Vector2) -> String:
@@ -92,6 +97,15 @@ func ui_open_options():
 	$Buttons.visible = false
 	$Options.visible = true
 
+func close_all_menus():
+	$MultiplayerMenu.visible = false
+	$PlayerSettingsMenu.visible = false
+	$Buttons.visible = false
+	$Options.visible = false
+	$ModsTab.visible = false
+	$JoiningServer.visible = false
+	$ErrorJoining.visible = false
+
 func ui_go_to_menu():
 	$MultiplayerMenu.visible = false
 	$PlayerSettingsMenu.visible = false
@@ -99,6 +113,7 @@ func ui_go_to_menu():
 	$Options.visible = false
 	$ModsTab.visible = false
 	$JoiningServer.visible = false
+	$ErrorJoining.visible = false
 
 func ui_change_mod() -> void:
 	Game.switch_to_mod(ui_mods_list[ModsList.selected])
@@ -161,3 +176,8 @@ func ui_apply_options():
 	Game.save_settings()
 	ui_go_to_menu()
 	Game.update_settings()
+
+func ui_failed_to_join(error_msg: String) -> void:
+	close_all_menus()
+	$ErrorJoining/ErrorLabel.text = error_msg
+	$ErrorJoining.visible = true

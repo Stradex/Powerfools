@@ -2,9 +2,12 @@ extends CanvasLayer
 var world_game_node: Node
 
 var player_editing_index: int = -1
+onready var tween: Tween
 
 func init_gui(gameNode: Node):
 	world_game_node = gameNode
+	tween = Tween.new(); #useful to avoid having to add it manually in each map
+	add_child(tween)
 	init_button_signals()
 	init_menu_graphics()
 
@@ -44,9 +47,11 @@ func init_button_signals():
 func init_menu_graphics():
 	close_all_windows()
 	init_tile_coordinates()
+	$HUD/ServerInfo/HBoxContainer/ErrorMessage.text = ""
 	$GameFinished.visible = false
 	$ActionsMenu.visible = true
 	$HUD.visible = true
+	$HUD/ServerInfo.visible = true
 	$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.clear()
 	for i in range(Game.bot_difficulties_stats.size()):
 		$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.add_item(Game.bot_difficulties_stats[i].NAME, i)
@@ -101,6 +106,15 @@ func close_all_windows() -> void:
 	$ActionsMenu/EditPlayer.visible = false
 	$ActionsMenu/ConfirmationExit.visible = false
 	$TilesCoordinates.visible = false
+
+func clear_error_message() -> void:
+	$HUD/ServerInfo/HBoxContainer/ErrorMessage.text = ""
+
+func show_error_message(error_msg: String) -> void:
+	$HUD/ServerInfo/HBoxContainer/ErrorMessage.text = error_msg
+	tween.stop_all()
+	tween.interpolate_callback(self, 5.0, "clear_error_message")
+	tween.start()
 
 func gui_leave_confirmation_menu():
 	if !world_game_node.can_interact_with_menu():

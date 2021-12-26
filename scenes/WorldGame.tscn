@@ -146,6 +146,7 @@ layer = 2
 script = ExtResource( 14 )
 
 [node name="ActionsMenu" type="Control" parent="UI"]
+visible = false
 margin_right = 40.0
 margin_bottom = 40.0
 __meta__ = {
@@ -1419,7 +1420,6 @@ __meta__ = {
 }
 
 [node name="HUD" type="Control" parent="UI"]
-visible = false
 margin_right = 40.0
 margin_bottom = 40.0
 __meta__ = {
@@ -1586,6 +1586,7 @@ __meta__ = {
 }
 
 [node name="GameInfo" type="Control" parent="UI/HUD"]
+visible = false
 anchor_left = 1.0
 anchor_right = 1.0
 margin_left = -42.0
@@ -1733,6 +1734,7 @@ __meta__ = {
 }
 
 [node name="CivilizationInfo" type="Control" parent="UI/HUD"]
+visible = false
 modulate = Color( 1, 1, 1, 0.486275 )
 anchor_left = 1.0
 anchor_right = 1.0
@@ -1933,7 +1935,6 @@ __meta__ = {
 }
 
 [node name="PreGameInfo" type="Control" parent="UI/HUD"]
-visible = false
 anchor_left = 1.0
 anchor_right = 1.0
 margin_left = 905.0
@@ -1974,7 +1975,6 @@ __meta__ = {
 }
 
 [node name="ServerInfo" type="Control" parent="UI/HUD"]
-visible = false
 anchor_left = 1.0
 anchor_right = 1.0
 margin_left = 905.0
@@ -1986,17 +1986,38 @@ __meta__ = {
 }
 
 [node name="HBoxContainer" type="HBoxContainer" parent="UI/HUD/ServerInfo"]
-anchor_right = 1.0
+anchor_left = -2.768
+anchor_top = 0.173
+anchor_right = 0.92
 anchor_bottom = 1.0
-margin_left = 123.0
+margin_left = 0.0480347
+margin_top = -0.0130005
+margin_right = -0.119995
 __meta__ = {
 "_edit_use_anchors_": false
 }
 
+[node name="ErrorMessage" type="Label" parent="UI/HUD/ServerInfo/HBoxContainer"]
+margin_top = 18.0
+margin_right = 130.0
+margin_bottom = 49.0
+custom_fonts/font = SubResource( 1 )
+text = "Error MSG"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Margin" type="HBoxContainer" parent="UI/HUD/ServerInfo/HBoxContainer"]
+margin_left = 134.0
+margin_right = 1069.0
+margin_bottom = 67.0
+size_flags_horizontal = 3
+
 [node name="PlayerCount" type="Label" parent="UI/HUD/ServerInfo/HBoxContainer"]
-margin_top = 25.0
-margin_right = 147.0
-margin_bottom = 56.0
+margin_left = 1073.0
+margin_top = 18.0
+margin_right = 1220.0
+margin_bottom = 49.0
 custom_fonts/font = SubResource( 1 )
 text = "Jugadores:"
 __meta__ = {
@@ -2004,10 +2025,10 @@ __meta__ = {
 }
 
 [node name="PlayerCountText" type="Label" parent="UI/HUD/ServerInfo/HBoxContainer"]
-margin_left = 151.0
-margin_top = 25.0
-margin_right = 166.0
-margin_bottom = 56.0
+margin_left = 1224.0
+margin_top = 18.0
+margin_right = 1239.0
+margin_bottom = 49.0
 custom_fonts/font = SubResource( 1 )
 text = "0"
 __meta__ = {

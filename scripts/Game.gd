@@ -70,6 +70,9 @@ var defaultCivilizationNames: Array = [
 ]
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
+signal error_joining_server(error_message)
+signal player_reconnects(net_id, player_number)
+
 func _ready():
 	rng.randomize()
 	TileSetImporter = TileSetExternalImporter.new(FileSystem)
@@ -250,6 +253,12 @@ func get_local_player_number() -> int:
 			return i
 	return -1
 
+func get_player_by_netid(var net_id) -> int:
+	for i in range(playersData.size()):
+		if playersData[i].netid == net_id:
+			return i
+	return -1
+
 func get_free_netid() -> int:
 	var new_net_id: int = Network.BOT_NETID
 	var netid_exists: bool = true
@@ -261,7 +270,22 @@ func get_free_netid() -> int:
 				netid_exists = true
 				break
 	return new_net_id
-		
+
+func remove_net_player(netid: int) -> void:
+	var player_id: int = get_player_by_netid(netid)
+	if player_id == -1:
+		return
+	playersData[player_id].name = 'Player ' + str(player_id+1)
+	playersData[player_id].pin_code = 000
+	playersData[player_id].civilizationName = defaultCivilizationNames[player_id]
+	playersData[player_id].alive = false
+	playersData[player_id].isBot = false
+	playersData[player_id].selectLeft = false
+	playersData[player_id].netid = -1
+	playersData[player_id].team = -1
+	playersData[player_id].turns_played = 0
+	playersData[player_id].bot_stats.clear()
+
 func add_player(netid: int, player_name: String, player_pin: int, forceid: int = -1, isBot: bool = false) -> int:
 	
 	if isBot:
@@ -329,8 +353,10 @@ remote func change_to_map(map_name: String):
 	var full_map_path: String = self.MAPS_FOLDER + map_name
 	get_tree().call_deferred("change_scene", full_map_path)
 
-func go_to_main_menu():
+func go_to_main_menu(error_msg: String = ""):
 	get_tree().call_deferred("change_scene", MENU_NODE)
+	if error_msg.length() > 1:
+		emit_signal("error_joining_server", error_msg)
 
 func pause() -> void:
 	get_tree().paused = true
@@ -365,7 +391,7 @@ func prepare_new_game() -> void:
 
 
 func get_mods_list() -> Array:
-	var directories_list: Array = FileSystem.list_directories("")
+	var directories_list: Array = FileSystem.list_directories("./")
 	var mod_list: Array = []
 	for directory in directories_list:
 		if FileSystem.list_files_in_directory(directory, ".json").size() > 0:

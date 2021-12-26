@@ -895,7 +895,7 @@ func recover_sync_data() -> void:
 func update_sync_data() -> void:
 	old_tiles_data = tiles_data.duplicate( true )
 
-func get_sync_data(playerNumber: int = -1) -> Array: #if playerNumber != -1 then only sync ties from that player, useful for secure changes
+func get_sync_data(playerNumber: int = -1, force: bool = false) -> Array: #if playerNumber != -1 then only sync ties from that player, useful for secure changes
 	var cellsToSync: Array = []
 	for x in range(tile_size.x):
 		for y in range(tile_size.y):
@@ -905,15 +905,16 @@ func get_sync_data(playerNumber: int = -1) -> Array: #if playerNumber != -1 then
 				continue
 			if old_tiles_data.size() <= x or old_tiles_data[x].size() <= y:
 				continue
-			if !Game.Util.dicts_are_equal(tiles_data[x][y], old_tiles_data[x][y]):
+			if force or !Game.Util.dicts_are_equal(tiles_data[x][y], old_tiles_data[x][y]):
 				cellsToSync.append({ cell_pos = Vector2(x, y), cell_data = tiles_data[x][y].duplicate( true ) })
 	#print( "get_sync_data: " + str(cellsToSync.size()) )
-	old_tiles_data = tiles_data.duplicate( true )
 	
-	for x in range(tile_size.x):
-		for y in range(tile_size.y):
-			if old_tiles_data[x][y].owner == -1 and !is_next_to_any_player_territory(Vector2(x, y)):
-				old_tiles_data[x][y].owner = -2 #shitty hack to ensure sync in future
+	if !force: #do not do this in case this was a forced sync!
+		old_tiles_data = tiles_data.duplicate( true )
+		for x in range(tile_size.x):
+			for y in range(tile_size.y):
+				if old_tiles_data[x][y].owner == -1 and !is_next_to_any_player_territory(Vector2(x, y)):
+					old_tiles_data[x][y].owner = -2 #shitty hack to ensure sync in future
 	return cellsToSync
 
 func get_sync_neighbors (playerNumber: int) -> Array:

@@ -74,6 +74,7 @@ enum NET_EVENTS {
 	SERVER_SEND_PLAYERS_DATA,
 	SERVER_FORCE_PLAYER_DATA,
 	SERVER_SEND_GAME_ENDED,
+	SERVER_SEND_INFO_MESSAGE,
 	MAX_EVENTS
 }
 ###################################################
@@ -84,6 +85,10 @@ func _ready():
 	Game.prepare_new_game()
 	init_timers_and_tweens()
 	init_game()
+	get_tree().connect("network_peer_connected", self, "_on_player_connected")
+	get_tree().connect("network_peer_disconnected", self, "_on_player_disconnect")
+	get_tree().connect("server_disconnected", self, "_server_disconnected")
+	Game.connect("player_reconnects", self, "_player_reconnects")
 	$UI.init_gui(self)
 	if Game.Network.is_multiplayer():
 		$UI/ActionsMenu/WaitingPlayers.visible = true
@@ -1242,6 +1247,52 @@ func undo_actions():
 # NETCODE #
 ###########
 
+func _server_disconnected():
+	exit_game("Disconnected from server....")
+
+func _player_reconnects(id, player_number):
+	if Game.Network.is_client():
+		return
+	var sync_arrayA: Array = Game.tilesObj.get_sync_data(player_number, true)
+	var sync_arrayB: Array = Game.tilesObj.get_sync_neighbors(player_number)
+	var merged_sync_arrays: Array = Game.tilesObj.merge_sync_arrays(sync_arrayA, sync_arrayB)
+	for i in range(Game.playersData.size()):
+		if i == player_number:
+			continue
+		if !Game.playersData[i].alive:
+			continue
+		if !Game.are_player_allies(player_number, i):
+			continue
+		var sync_array_tmp: Array = Game.tilesObj.get_sync_data(i, true)
+		merged_sync_arrays = Game.tilesObj.merge_sync_arrays(merged_sync_arrays.duplicate(true), sync_array_tmp)
+
+	var message_to_show = Game.playersData[player_number].name + " reconnected..."
+	$UI.show_error_message(message_to_show)
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_INFO_MESSAGE, {msg = message_to_show })
+	Game.Network.server_send_event_id(id, self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = merged_sync_arrays })
+	Game.Network.server_send_event_id(id, self.node_id, NET_EVENTS.SERVER_UPDATE_GAME_INFO, {
+		game_status = Game.current_game_status,
+		player_turn = Game.current_player_turn,
+		select_left = Game.playersData[Game.current_player_turn].selectLeft,
+		actions_left = actions_available
+	})
+	
+func _on_player_connected(id):
+	$UI.show_error_message("Player connected....")
+
+func _on_player_disconnect(id):
+	if Game.Network.is_server():
+		var player_id: int = Game.get_player_by_netid(id)
+		var message_to_show: String = ""
+		if player_id == -1:
+			message_to_show = "A player disconnected..."
+		else:
+			message_to_show = Game.playersData[player_id].name + " disconnected..."
+		$UI.show_error_message(message_to_show)
+		Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_INFO_MESSAGE, {msg = message_to_show })
+	if id == Game.get_tree().get_network_unique_id(): #we disconnected!
+		exit_game("Disconnected from server....")
+
 func server_send_game_info(unreliable: bool = false) -> void:
 	if !Game.Network.is_server():
 		return
@@ -1264,7 +1315,7 @@ func client_send_game_info(unreliable: bool = false) -> void:
 func get_tiles_node_transformation() -> Dictionary:
 	return {scale = $Tiles.scale, position = $Tiles.position}
 
-func exit_game():
+func exit_game(error_msg: String = ""):
 	Game.Network.net_disconnect()
 	Game.go_to_main_menu()
 	Game.clear_players_data()
@@ -1329,6 +1380,8 @@ func client_process_event(eventId : int, eventData) -> void:
 				$Sounds/player_turn.play()
 			Game.playersData[Game.current_player_turn].selectLeft = eventData.select_left
 			actions_available = eventData.actions_left
+		NET_EVENTS.SERVER_SEND_INFO_MESSAGE:
+			$UI.show_error_message(eventData.msg)
 		NET_EVENTS.SERVER_SEND_GAME_ENDED:
 			$UI/GameFinished.visible = true
 		_:

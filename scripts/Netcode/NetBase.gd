@@ -71,15 +71,21 @@ func _on_player_joined_ok():
 func _on_player_connected(id):
 	print("player connected...")
 	if is_server():
-		var client_index:int = add_client(id)
-		var player_number: int = Game.add_player(id, "client", 666)
-		clients_connected[client_index].player_num = player_number
+		if Game.current_game_status == Game.STATUS.LOBBY_WAIT:
+			var client_index:int = add_client(id)
+			var player_number: int = Game.add_player(id, "client", 666)
+			clients_connected[client_index].player_num = player_number
 
 func _on_player_disconnect(id):
 	print("player disconnected...")
 	if is_server():
+		var player_number: int = find_player_number_by_netid(id)
 		clients_connected.remove(find_client_number_by_netid(id))
 		player_count-=1
+		if Game.current_game_status == Game.STATUS.LOBBY_WAIT:
+			Game.remove_net_player(id)
+		else: #make it a bot or something else until other human player join
+			Game.playersData[player_number].netid = -1 #reset netid to let know server this player is not connected anymore
 
 func add_client(netid: int, num: int = -1) -> int:
 	print("Adding client with at position %d with netid %d" % [clients_connected.size(), netid])
@@ -106,13 +112,32 @@ func find_player_number_by_netid(netid: int):
 			return i
 	return -1
 
-func server_process_client_question(id_client: int, client_name: String, client_pin: int):
+func server_process_client_reconnect(id_client: int):
 	var player_num: int = find_player_number_by_netid(id_client)
+	Game.emit_signal("player_reconnects", id_client, player_num)
+
+func server_process_client_question(id_client: int, client_name: String, client_pin: int):
+	var player_num: int
+	if Game.current_game_status == Game.STATUS.LOBBY_WAIT:
+		player_num = find_player_number_by_netid(id_client)
+	else:
+		player_num = Game.get_player_number_by_pin_code(client_pin)
+		if player_num == -1 or Game.playersData[player_num].netid != -1: #not allowed to join!, this player still in-game!
+			Game.rpc_id(id_client, "game_process_rpc", "client_kicked", [{player_number = player_num}])
+			return
+		#succed
+		
+
 	Game.playersData[player_num].name = client_name
 	Game.playersData[player_num].pin_code = client_pin
+	Game.playersData[player_num].netid = id_client
 	print("Update player %s (%d) with netid %d" % [client_name, player_num, id_client])
 	send_rpc("new_client_connected", [clients_connected])
-	Game.rpc_id(id_client, "game_process_rpc", "client_receive_answer", [{player_number = player_num, game_mod = Game.current_mod}])
+	Game.rpc_id(id_client, "game_process_rpc", "client_receive_answer", [{player_number = player_num, game_mod = Game.current_mod, game_status = Game.current_game_status}])
+
+func client_kicked(receive_data: Dictionary):
+	net_disconnect()
+	Game.emit_signal("error_joining_server", "Not allowed to join server...")
 
 func client_receive_answer(receive_data: Dictionary):
 	print("player number: %d, uniqueid: %d" % [receive_data.player_number, Game.get_tree().get_network_unique_id()])
@@ -120,10 +145,13 @@ func client_receive_answer(receive_data: Dictionary):
 	if !Game.switch_to_mod(receive_data.game_mod): #client does not have the mod!
 		print("[ERROR] Client does not have the mod server is using!")
 		net_disconnect()
+		Game.emit_signal("error_joining_server", "Server is using a mod that you don't not have...")
 	else:
 		Game.add_player(Game.get_tree().get_network_unique_id(), net_name, net_pin, receive_data.player_number)
 		Game.start_new_game(true)
-
+		if receive_data.game_status != Game.STATUS.LOBBY_WAIT: #connected in-game
+			Game.rpc_id(SERVER_NETID, "game_process_rpc", "server_process_client_reconnect", [Game.get_tree().get_network_unique_id()])
+			
 func new_client_connected(new_clients_list: Array):
 	clients_connected.clear()
 	clients_connected = new_clients_list
@@ -282,7 +310,7 @@ func net_send_event(entityId, eventId, eventData=null, unreliable = false) -> vo
 		client_send_event(entityId, eventId, eventData, unreliable)
 	else:
 		server_send_event(entityId, eventId, eventData, unreliable)
-
+		
 func client_send_event(entityId, eventId, eventData=null, unreliable = false) -> void:
 	#print("client sending event...")
 	var eventTime: int = OS.get_ticks_msec()
@@ -302,6 +330,17 @@ func server_send_event(entityId, eventId, eventData=null, unreliable = false, sa
 			send_rpc_unreliable("client_process_event", [entityId, eventId, eventTime, eventData])
 		else:
 			send_rpc("client_process_event", [entityId, eventId, eventTime, eventData])
+
+func server_send_event_id(clientId, entityId, eventId, eventData=null, unreliable = false, saveEvent = false) -> void:
+	#print("server sending event...")
+	var eventTime: int = OS.get_ticks_msec()
+	if is_server():
+		if saveEvent:
+			save_event_to_list(entityId, eventId, eventData, unreliable)
+		if unreliable: # When it is not vital to the event to reach the server (not recommended unless necessary)
+			send_rpc_unreliable_id(clientId, "client_process_event", [entityId, eventId, eventTime, eventData])
+		else:
+			send_rpc_id(clientId, "client_process_event", [entityId, eventId, eventTime, eventData])
 
 func server_process_event(entityId, eventId, eventTime, eventData) -> void:
 	if !is_server():
