@@ -292,7 +292,6 @@ func sync_players_from_load_game(load_player_data: Array) -> void:
 	if !Game.Network.is_multiplayer():
 		return
 	var player_data_ordered: bool = false
-	
 	while !player_data_ordered: #set players first
 		player_data_ordered = true
 		for i in range(load_player_data.size()):

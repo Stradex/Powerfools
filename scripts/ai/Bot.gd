@@ -159,6 +159,12 @@ func bot_process_game(bot_number: int) -> void:
 	
 	current_bot_lacks_strength = false #reset
 	
+	if bot_in_danger and type_of_attitude == BOT_ACTIONS.GREEDY:
+		if rng.randi_range(0, 100) <= 50:
+			type_of_attitude = BOT_ACTIONS.OFFENSIVE
+		else:
+			type_of_attitude = BOT_ACTIONS.DEFENSIVE
+	
 	match type_of_attitude:
 		BOT_ACTIONS.OFFENSIVE:
 			#print("[BOT] Playing ofensive")

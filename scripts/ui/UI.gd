@@ -470,9 +470,9 @@ func gui_update_tile_info(tile_pos: Vector2) -> void:
 		player_mask = Game.get_local_player_number()
 	var cell_data: Dictionary = Game.tilesObj.get_cell(tile_pos)
 	if Game.current_game_status == Game.STATUS.PRE_GAME:
-		$HUD/GameInfo/HBoxContainer2/TurnText.text = "PRE-GAME: " + str(Game.playersData[Game.current_player_turn].civilizationName)
+		$HUD/PreGameInfo/HBoxContainer4/TurnText.text = str(Game.playersData[Game.current_player_turn].civilizationName) + " (" + str(Game.playersData[Game.current_player_turn].name) + ")"
 	elif Game.current_game_status == Game.STATUS.GAME_STARTED:
-		$HUD/GameInfo/HBoxContainer2/TurnText.text = str(Game.playersData[Game.current_player_turn].civilizationName)
+		$HUD/GameInfo/HBoxContainer2/TurnText.text = str(Game.playersData[Game.current_player_turn].civilizationName) + " (" + str(Game.playersData[Game.current_player_turn].name) + ")"
 	else:
 		$HUD/GameInfo/HBoxContainer2/TurnText.text = "??"
 

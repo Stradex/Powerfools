@@ -1434,7 +1434,6 @@ __meta__ = {
 }
 
 [node name="HUD" type="Control" parent="UI"]
-visible = false
 margin_right = 40.0
 margin_bottom = 40.0
 __meta__ = {
@@ -1988,6 +1987,38 @@ __meta__ = {
 "_edit_use_anchors_": false
 }
 
+[node name="HBoxContainer4" type="HBoxContainer" parent="UI/HUD/PreGameInfo"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = -935.0
+margin_top = 6.0
+margin_right = -1068.0
+margin_bottom = 6.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Turn" type="Label" parent="UI/HUD/PreGameInfo/HBoxContainer4"]
+margin_top = 25.0
+margin_right = 87.0
+margin_bottom = 56.0
+custom_fonts/font = SubResource( 1 )
+text = "Turno:"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="TurnText" type="Label" parent="UI/HUD/PreGameInfo/HBoxContainer4"]
+margin_left = 91.0
+margin_top = 25.0
+margin_right = 203.0
+margin_bottom = 56.0
+custom_fonts/font = SubResource( 1 )
+text = "Untitled"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
 [node name="ServerInfo" type="Control" parent="UI/HUD"]
 anchor_left = 1.0
 anchor_right = 1.0
@@ -2122,6 +2153,7 @@ custom_fonts/font = SubResource( 8 )
 text = "0"
 
 [node name="GameStats" type="Control" parent="UI"]
+visible = false
 margin_right = 1283.0
 margin_bottom = 715.0
 __meta__ = {
