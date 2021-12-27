@@ -492,9 +492,9 @@ func start_player_turn(player_number: int):
 	update_actions_available()
 	server_send_game_info()
 	update_population_stats()
-	var best_battle: int = get_best_battle()
-	if best_battle != -1:
-		print("Mejor pelea: " + str(battle_stats[best_battle]))
+	#var best_battle: int = get_best_battle()
+	#if best_battle != -1:
+	#	print("Mejor pelea: " + str(battle_stats[best_battle]))
 	if Game.current_game_status == Game.STATUS.GAME_STARTED:
 		Game.playersData[player_number].turns_played+=1
 		if Game.is_current_player_a_bot():
