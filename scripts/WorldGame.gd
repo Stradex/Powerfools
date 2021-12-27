@@ -25,6 +25,9 @@ extends Node2D
 # Que los bots cuando juegan en equipo se ayuden unos a otros
 # No poder robarle talentos a tus aliados del orto jaja
 # Fixear que la duración de la partida en los clientes dice cero.
+# Estadisticas: Todas las batallas (equipos en batalla, cantidad de tropas, tropas al finalizar la batalla) [TOP 10]
+# sEGUNDA Vez que se entra crashea
+# Que los civiles aparezcan arriba de todo cuando pones tile info
 
 const MIN_ACTIONS_PER_TURN: int = 3
 const MININUM_TROOPS_TO_FIGHT: int = 5
@@ -32,6 +35,7 @@ const EXTRA_CIVILIANS_TO_GAIN_CONQUER: int = 500
 const WORLD_GAME_NODE_ID: int = 666 #NODE ID unique
 const AUTOSAVE_INTERVAL: float = 60.0 #Everyminute
 const PLAYER_DATA_SYNC_INTERVAL: float = 2.0
+const GAME_STATS_SYNC_INTERVAL: float = 3.0
 const BOT_SECS_TO_EXEC_ACTION: float = 1.0 #seconds for a bot to execute each action (not turn but every single action)
 const BOT_TURNS_TO_RESET_STATS: int = 15
 const EXTRA_CIVILIANS_PER_TURN: int = 200
@@ -51,9 +55,17 @@ onready var server_tween: Tween
 onready var net_sync_timer: Timer
 onready var autosave_timer: Timer
 onready var playerdata_sync_timer: Timer
+onready var gamestats_sync_timer: Timer
 onready var bot_actions_timer: Timer # to emulate that the bot takes time to execute actions
 var NetBoop = Game.Boop_Object.new(self);
 
+var players_stats: Array = []
+var battle_stats: Array = []
+var client_stats: Dictionary = {
+	battles_won = 0,
+	battles_lost = 0,
+	battles_total = 0
+}
 var saved_player_info: Dictionary = {
 	points_to_select_left = 0,
 	actions_left = 0
@@ -76,6 +88,7 @@ enum NET_EVENTS {
 	SERVER_FORCE_PLAYER_DATA,
 	SERVER_SEND_GAME_ENDED,
 	SERVER_SEND_INFO_MESSAGE,
+	SERVER_SEND_GAMESTATS_DATA,
 	MAX_EVENTS
 }
 ###################################################
@@ -152,6 +165,10 @@ func _input(event):
 	elif Input.is_action_just_released("toggle_coords"):
 		$UI.hide_game_coords()	
 
+	if Input.is_action_just_pressed("toggle_stats"):
+		$UI.ui_open_game_stats()
+	elif Input.is_action_just_released("toggle_stats"):
+		$UI.ui_close_game_stats()
 	
 	if Input.is_action_just_pressed("debug_key"):
 		debug_key_pressed()
@@ -174,8 +191,8 @@ func _input(event):
 				game_interact()
 
 func debug_key_pressed():
-	var player_current_turn: int = Game.current_player_turn
-	var tile_selected: Vector2 = Game.current_tile_selected
+	if Game.Network.is_server():
+		save_game_as("partida.json")
 
 ###########################
 # INIT STUFF
@@ -189,16 +206,21 @@ func init_timers_and_tweens() -> void:
 	playerdata_sync_timer = Timer.new()
 	playerdata_sync_timer.set_wait_time(PLAYER_DATA_SYNC_INTERVAL)
 	playerdata_sync_timer.connect("timeout", self, "on_playerdata_sync_timeout")
+	gamestats_sync_timer = Timer.new()
+	gamestats_sync_timer.set_wait_time(GAME_STATS_SYNC_INTERVAL)
+	gamestats_sync_timer.connect("timeout", self, "on_gamestats_sync_timeout")
 	bot_actions_timer = Timer.new()
 	bot_actions_timer.set_wait_time(BOT_SECS_TO_EXEC_ACTION)
 	bot_actions_timer.connect("timeout", self, "on_bot_actions_timeout")
 	add_child(tween)
 	add_child(net_sync_timer)
 	add_child(playerdata_sync_timer)
+	add_child(gamestats_sync_timer)
 	add_child(bot_actions_timer)
 	net_sync_timer.start()
 	playerdata_sync_timer.start()
 	bot_actions_timer.start()
+	gamestats_sync_timer.start()
 	
 	if !Game.Network.is_multiplayer() or Game.Network.is_server():
 		autosave_timer = Timer.new()
@@ -240,7 +262,9 @@ func save_game_as(file_name: String):
 		game_points_to_select_left = Game.playersData[Game.current_player_turn].selectLeft,
 		players_data = Game.playersData.duplicate(true),
 		tiles_data = Game.tilesObj.get_all(true),
-		tile_size = Game.tilesObj.get_size()
+		tile_size = Game.tilesObj.get_size(),
+		game_player_stats = players_stats.duplicate(true),
+		game_battle_stats = battle_stats.duplicate(true)
 	}
 	Game.FileSystem.save_as_json(Game.get_save_game_folder() + file_name, data_to_save)
 
@@ -253,8 +277,12 @@ func load_game_from(file_name: String):
 	sync_players_from_load_game(data_to_load.players_data)
 	#TODO: Sync player data CORRECTLY, RIGHT NOW IT ONLY WORKS FOR 2 PLAYERS AND NOTHING MORE!
 	Game.tilesObj.set_all(data_to_load.tiles_data, data_to_load.tile_size)
+	players_stats = data_to_load.game_player_stats.duplicate(true)
+	battle_stats = data_to_load.game_battle_stats.duplicate(true)
+	init_player_stats()
 	Game.current_player_turn = data_to_load.game_current_player_turn
-	Game.playersData[Game.current_player_turn].selectLeft = data_to_load.game_points_to_select_left
+	for player in Game.playersData:
+		player.selectLeft = 0
 	actions_available = data_to_load.game_actions_available
 	server_send_game_info()
 	Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = Game.tilesObj.get_sync_data() })
@@ -303,6 +331,31 @@ func on_playerdata_sync_timeout():
 		return
 	Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_PLAYERS_DATA, {playerDataArray = Game.playersData.duplicate(true) }, true) #Unreliable, to avoid overflow of netcode
 
+func on_gamestats_sync_timeout():
+	
+	if Game.Network.is_client() or Game.current_game_status == Game.STATUS.LOBBY_WAIT:
+		return
+
+	for i in range(Game.playersData.size()): #sending to all clients different messages
+		if i == Game.get_local_player_number():
+			continue
+		if !Game.playersData[i].alive:
+			continue
+		if Game.playersData[i].isBot:
+			continue
+		if Game.playersData[i].netid == -1:
+			continue
+		var tmpLastBattleId: int = get_lastest_battle(i)
+		var tmpLastBattle = null
+		if tmpLastBattleId != -1:
+			tmpLastBattle = battle_stats[tmpLastBattleId]
+		Game.Network.server_send_event_id(Game.playersData[i].netid, self.node_id, NET_EVENTS.SERVER_SEND_GAMESTATS_DATA, {
+			lastBattleID = tmpLastBattleId,
+			lastBattle = tmpLastBattle,
+			totalKilledInBattle = get_total_killed_in_battle(i),
+			battlesTotal = get_total_battles(i),
+			battlesWon = get_total_battles_won(i)
+		}, true) #Unreliable, to avoid overflow of netcode
 ##################
 #	BOT STUFF	 #
 ##################
@@ -387,6 +440,7 @@ func change_game_status(new_status: int) -> void:
 			$UI/HUD/PreGameInfo.visible = true
 			$UI/ActionsMenu/WaitingPlayers.visible = false
 		Game.STATUS.GAME_STARTED:
+			init_player_stats()
 			$UI/HUD/PreGameInfo.visible = false
 			$UI/HUD/GameInfo.visible = true
 			$UI/ActionsMenu/WaitingPlayers.visible = false
@@ -433,11 +487,15 @@ func start_player_turn(player_number: int):
 		$Sounds/player_turn.play()
 	if Game.Network.is_client():
 		return
+
 	Game.tilesObj.save_sync_data()
 	save_player_info()
 	update_actions_available()
 	server_send_game_info()
-	
+	update_population_stats()
+	var best_battle: int = get_best_battle()
+	if best_battle != -1:
+		print("Mejor pelea: " + str(battle_stats[best_battle]))
 	if Game.current_game_status == Game.STATUS.GAME_STARTED:
 		Game.playersData[player_number].turns_played+=1
 		if Game.is_current_player_a_bot():
@@ -561,6 +619,10 @@ func update_tile_owner(cell: Vector2) -> void:
 func process_tile_battles(tile_pos: Vector2) -> void:
 	if !Game.tilesObj.is_cell_in_battle(tile_pos):
 		return
+	append_battle_stats(tile_pos)
+	var battle_stats_id: int = get_battle_stats_id(tile_pos)
+	assert(battle_stats_id != -1)
+	battle_stats[battle_stats_id].duration += 1
 	var damageMultiplier: float = Game.rng.randf_range(0.25, 1.0) #some battles can last more than others
 	#Step 1: calculate Damage to do by each army
 	var damageToDoArray: Array = []
@@ -609,6 +671,9 @@ func process_tile_battles(tile_pos: Vector2) -> void:
 			var troopsToKill: int = round(damageToApplyToThisTroop/individualTroopHealth)
 			if troopsToKill > troopDict.amount:
 				troopsToKill = troopDict.amount
+				
+			update_killed_in_battle(troopDict.owner, troopDict.troop_id, troopsToKill)
+			update_battle_stats(tile_pos, troopDict.owner, troopDict.troop_id, troopsToKill)
 			Game.tilesObj.set_troops_amount_in_cell(tile_pos, troopDict.owner, troopDict.troop_id, troopDict.amount-troopsToKill)
 			
 			if !Game.troopTypes.getByID(troopDict.troop_id).is_warrior: #adding to the Civilians Killed array for future slaves in case of battle is finished this round
@@ -625,6 +690,7 @@ func process_tile_battles(tile_pos: Vector2) -> void:
 			i+=1
 	#Step4: Check if battle is over
 	if !Game.tilesObj.is_cell_in_battle(tile_pos):
+		finish_battle_stats(tile_pos)
 		var playerWhoWonId: int = Game.tilesObj.get_strongest_player_in_cell(tile_pos) #give the cell to the strongest ally
 		
 		var slaves_to_gain: int = 0
@@ -1244,9 +1310,411 @@ func undo_actions():
 	elif Game.Network.is_client():
 		client_send_game_info()
 
+###############
+# STATS STUFF #
+###############
+
+func init_player_stats() -> void:
+	if Game.Network.is_client():
+		return #only server calculate this, and send info to clients at the end of the game...
+	if players_stats.size() > 0:
+		return #already initialized
+	for player in Game.playersData:
+		if !player.alive:
+			players_stats.append(null)
+			continue
+		players_stats.append({
+			killed_in_battle = [], #array with data of type of troops killed
+			peak_population = [], #array with the peak of population you had 
+			current_population = []
+			#battles = []
+		})
+
+func update_population_stats() -> void:
+	if Game.Network.is_client():
+		return #only server calculate this, and send info to clients at the end of the game...
+	for i in range(Game.playersData.size()):
+		if !Game.playersData[i].alive:
+			continue
+		if players_stats.size() <= i:
+			continue
+		if typeof(players_stats[i]) == TYPE_NIL:
+			continue
+		var total_population: Array = Game.tilesObj.get_civ_population_info(i)
+		players_stats[i].current_population = total_population
+		for troopDict in total_population:
+			var should_append: bool = true
+			for peakDict in players_stats[i].peak_population:
+				if peakDict.troop_id == troopDict.troop_id:
+					should_append = false
+					if peakDict.amount < troopDict.amount:
+						peakDict = troopDict.duplicate(true)
+			if should_append:
+				players_stats[i].peak_population.append(troopDict.duplicate(true))
+
+func update_killed_in_battle(player_number: int, t_id: int, amount_killed: int) -> void:
+	if player_number < 0:
+		return #not a player, probably tribal society
+	for killedDict in players_stats[player_number].killed_in_battle:
+		if killedDict.troop_id == t_id:
+			killedDict.amount += amount_killed
+			return
+	players_stats[player_number].killed_in_battle.append({troop_id = t_id, amount = amount_killed})
+
+func get_total_killed_in_battle(player_number: int) -> Array:
+	if players_stats.size() <= player_number or typeof(players_stats[player_number].killed_in_battle) == TYPE_NIL:
+		return []
+	return players_stats[player_number].killed_in_battle
+
+func get_total_battles_lost(player_number: int) -> int:
+	return get_total_battles(player_number) - get_total_battles_won(player_number)
+	
+func get_total_battles_won(player_number: int) -> int:
+	var battles_won: int = 0
+	for i in range(battle_stats.size()):
+		if typeof(battle_stats[i]) == TYPE_NIL:
+			continue
+		if battle_stats[i].in_progress: #only calculate this from already finished battles!
+			continue
+		if !is_player_a_winner_in_battle_stats(i, player_number):
+			continue
+		battles_won+=1
+	return battles_won
+
+func get_total_battles(player_number: int) -> int:
+	var battle_count: int = 0
+	for i in range(battle_stats.size()):
+		if typeof(battle_stats[i]) == TYPE_NIL:
+			continue
+		if battle_stats[i].in_progress: #only calculate this from already finished battles!
+			continue
+		if !is_player_in_battle_stats(i, player_number):
+			continue
+		battle_count+=1
+	return battle_count
+
+func finish_battle_stats(tile_pos: Vector2) -> void:
+	var battle_id: int = get_battle_stats_id(tile_pos)
+	assert(battle_id != -1)
+	battle_stats[battle_id].remaining = Game.tilesObj.get_troops_clean(tile_pos).duplicate(true)
+	battle_stats[battle_id].in_progress = false #battle finished
+
+func check_if_battle_stats_already_exists(tile_pos: Vector2) -> bool:
+	for battle in battle_stats:
+		if typeof(battle) == TYPE_NIL:
+			continue
+		if !battle.in_progress:
+			continue
+		if battle.pos == tile_pos:
+			return true
+	return false
+
+func get_battle_stats_id(tile_pos: Vector2) -> int:
+	for i in range(battle_stats.size()):
+		if typeof(battle_stats[i]) == TYPE_NIL:
+			continue
+		if !battle_stats[i].in_progress:
+			continue
+		if battle_stats[i].pos == tile_pos:
+			return i
+	return -1
+
+func update_battle_stats(tile_pos: Vector2, victim: int, t_id: int, amount_killed: int) -> void:
+	var battle_id: int = get_battle_stats_id(tile_pos)
+	assert(battle_id != -1)
+	for killedDict in battle_stats[battle_id].killed:
+		if killedDict.troop_id != t_id:
+			continue
+		if killedDict.owner != victim:
+			continue
+		killedDict.amount += amount_killed
+		return
+	battle_stats[battle_id].killed.append({
+		troop_id = t_id,
+		owner = victim,
+		amount = amount_killed
+	})
+
+func append_battle_stats(tile_pos: Vector2) -> void:
+	if !Game.tilesObj.is_cell_in_battle(tile_pos) or check_if_battle_stats_already_exists(tile_pos):
+		return
+	battle_stats.append({
+		pos = tile_pos,
+		in_progress = true,
+		duration = 0, #turns the battle lasted
+		killed = [],
+		remaining = [] #troops that survived the battle
+	})
+
+func get_players_in_battle_stats(battle_id: int) -> Array:
+	var all_dict: Array = Game.Util.array_addition(battle_stats[battle_id].killed, battle_stats[battle_id].remaining, true) #allow duplicates
+	var players_in_battle: Array = []
+	
+	for troopDict in all_dict:
+		if troopDict.amount <= 0:
+			continue
+		if players_in_battle.find(troopDict.owner) == -1:
+			players_in_battle.append(troopDict.owner)
+	return players_in_battle
+
+func get_battle_stats_strength(battle_id: int) -> float:
+	var all_dict: Array = Game.Util.array_addition(battle_stats[battle_id].killed, battle_stats[battle_id].remaining, true) #allow duplicates
+	var total_force: float = 0.0
+	for troopDict in all_dict:
+		if troopDict.amount <= 0:
+			continue
+		var troopsHealth: float = Game.troopTypes.getByID(troopDict.troop_id).health*troopDict.amount
+		var troopsDamage: float = troopDict.amount*(Game.troopTypes.getByID(troopDict.troop_id).damage.x + Game.troopTypes.getByID(troopDict.troop_id).damage.y)/2.0
+		total_force+=troopsHealth+troopsDamage
+	return total_force
+
+func get_teams_data_from_battle_stats(battle_id: int) -> Array:
+	var all_dict: Array = Game.Util.array_addition(battle_stats[battle_id].killed, battle_stats[battle_id].remaining, true) #allow duplicates
+	var teams_data: Array = []
+	
+	for troopDict in all_dict:
+		if troopDict.amount <= 0:
+			continue
+		var troopsHealth: float = Game.troopTypes.getByID(troopDict.troop_id).health*troopDict.amount
+		var troopsDamage: float = troopDict.amount*(Game.troopTypes.getByID(troopDict.troop_id).damage.x + Game.troopTypes.getByID(troopDict.troop_id).damage.y)/2.0
+		var should_append_player: bool = true
+		var team_id: int = -1
+		for i in range(teams_data.size()):
+			for player_num in teams_data[i].players:
+				if Game.are_player_allies(player_num, troopDict.owner):
+					team_id = i
+				if player_num == troopDict.owner:
+					should_append_player = false
+					break
+
+		if team_id == -1: #make new team and append player
+			teams_data.append({
+				players = [troopDict.owner],
+				strength = troopsHealth + troopsDamage
+			})
+			continue
+		if should_append_player:
+			teams_data[team_id].players.append(troopDict.owner)
+		teams_data[team_id].strength += troopsHealth + troopsDamage
+		
+	return teams_data
+
+#the lower the value, the best comeback
+func battle_comeback_points(battle_id: int, player_number: int = -1) -> float:
+	var teams_data: Array = get_teams_data_from_battle_stats(battle_id)
+	var winner_team: int = -1
+	for remainingDict in battle_stats[battle_id].remaining:
+		if remainingDict.amount <= 0:
+			continue
+		for i in range(teams_data.size()):
+			if teams_data[i].players.find(remainingDict.owner) != -1:
+				winner_team = i
+				break
+		if winner_team != -1:
+			break
+	assert(winner_team != -1)
+	var max_enemy_strength: float = -1.0
+	for i in range(teams_data.size()):
+		if i == winner_team:
+			continue
+		if max_enemy_strength == -1.0:
+			max_enemy_strength = teams_data[i].strength
+		
+		if teams_data[i].strength > max_enemy_strength:
+			max_enemy_strength = teams_data[i].strength
+	if teams_data[winner_team].strength <= 0:
+		return 0.0
+	return teams_data[winner_team].strength/max_enemy_strength #the lower the value,the better the comeback
+
+#1.0 being perfectly balanced - 0.0 being totally unbalanced
+func calculate_battle_balance_points(battle_id: int) -> float:
+	var teams_data: Array = get_teams_data_from_battle_stats(battle_id)
+	var max_strength: float = -1.0
+	var min_strength: float = -1.0
+	for team in teams_data:
+		if max_strength == -1.0:
+			max_strength = team.strength
+		if min_strength == -1.0:
+			min_strength = team.strength
+		
+		if team.strength > max_strength:
+			max_strength = team.strength
+		if team.strength < min_strength:
+			min_strength = team.strength
+	if min_strength <= 0.0:
+		return 0.0 #total unbalanced
+	return min_strength/max_strength
+
+func is_player_a_winner_in_battle_stats(battle_id: int, player_number: int) -> bool:
+	if !is_player_in_battle_stats(battle_id, player_number):
+		return false
+	for troopDict in battle_stats[battle_id].remaining:
+		if Game.are_player_allies(troopDict.owner, player_number):
+			return true
+	return false
+
+func is_player_in_battle_stats(battle_id: int, player_number: int) -> bool:
+	var all_dict: Array = Game.Util.array_addition(battle_stats[battle_id].killed, battle_stats[battle_id].remaining, true) #allow duplicates
+	for troopDict in all_dict:
+		if troopDict.owner == player_number:
+			return true
+	return false
+
+func get_battle_points(battle_id:int, max_balance_points:float, max_duration:float, max_players:float, max_force:float, max_comeback:float, player_number: int=-1, imprimir: bool = false) -> float:
+	var balance_ratio: float = (calculate_battle_balance_points(battle_id)/max_balance_points)*0.85
+	var duration_ratio: float = (float(battle_stats[battle_id].duration)/max_duration)
+	var players_ratio: float = float(get_players_in_battle_stats(battle_id).size())/max_players
+	var force_ratio: float = (get_battle_stats_strength(battle_id)/max_force)
+	var comeback_ratio: float = max_comeback/battle_comeback_points(battle_id, player_number)*0.85
+
+	return (balance_ratio+duration_ratio+players_ratio+force_ratio+comeback_ratio)/5.0
+
+func get_lastest_battle(player_number: int) -> int:
+	var lastest_battle: int = -1
+	for i in range(battle_stats.size()):
+		if typeof(battle_stats[i]) == TYPE_NIL:
+			continue
+		if battle_stats[i].in_progress: #only calculate this from already finished battles!
+			continue
+		if player_number != -1 and !is_player_in_battle_stats(i, player_number):
+			continue
+		lastest_battle = i
+	return lastest_battle
+
+func get_best_battle(player_number: int = -1) -> int:
+	var best_battle: int = -1
+	var most_balanced_battle = get_most_balanced_battle(player_number)
+	var longest_battle = get_longest_battle(player_number)
+	var battle_with_most_players = get_battle_with_most_players(player_number)
+	var battle_with_biggest_force = get_battle_with_biggest_force(player_number)
+	var battle_with_best_comeback = get_battle_with_best_comeback(player_number)
+	
+	if most_balanced_battle == -1 or longest_battle == -1 or battle_with_most_players == -1 or battle_with_biggest_force == -1 or battle_with_best_comeback == -1:
+		return -1
+	
+	var max_balance_points: float = calculate_battle_balance_points(most_balanced_battle)
+	var max_duration: float =  float(battle_stats[longest_battle].duration)
+	var max_players: float = float(get_players_in_battle_stats(battle_with_most_players).size())
+	var max_force: float = get_battle_stats_strength(battle_with_biggest_force)
+	var max_comeback: float = battle_comeback_points(battle_with_best_comeback, player_number)
+	if max_comeback <= 0.0:
+		max_comeback == 0.01 #avoid bug
+	
+	var current_best_ratio: float = 0.0
+	for i in range(battle_stats.size()):
+		if typeof(battle_stats[i]) == TYPE_NIL:
+			continue
+		if battle_stats[i].in_progress: #only calculate this from already finished battles!
+			continue
+		if player_number != -1 and !is_player_in_battle_stats(i, player_number):
+			continue
+		var total_ratio: float = get_battle_points(i, max_balance_points, max_duration, max_players, max_force, max_comeback, player_number)
+		if best_battle == -1:
+			current_best_ratio = total_ratio
+			best_battle = i
+			continue
+		if total_ratio > current_best_ratio:
+			best_battle = i
+			current_best_ratio = total_ratio
+
+	return best_battle
+#Get battle where all the forces (including remaning) are the most equal
+func get_most_balanced_battle(player_number: int = -1) -> int:
+	var most_balanced_battle: int = -1
+	for i in range(battle_stats.size()):
+		if typeof(battle_stats[i]) == TYPE_NIL:
+			continue
+		if battle_stats[i].in_progress: #only calculate this from already finished battles!
+			continue
+		if player_number != -1 and !is_player_in_battle_stats(i, player_number):
+			continue
+		if most_balanced_battle == -1:
+			most_balanced_battle = i
+			continue
+		if calculate_battle_balance_points(i) > calculate_battle_balance_points(most_balanced_battle):
+			most_balanced_battle = i
+	return most_balanced_battle 
+
+func get_longest_battle(player_number: int = -1) -> int:
+	var longest_battle_id: int = -1
+	for i in range(battle_stats.size()):
+		if typeof(battle_stats[i]) == TYPE_NIL:
+			continue
+		if battle_stats[i].in_progress: #only calculate this from already finished battles!
+			continue
+		if player_number != -1 and !is_player_in_battle_stats(i, player_number):
+			continue
+		if longest_battle_id == -1:
+			longest_battle_id = i
+			continue
+		if battle_stats[i].duration > battle_stats[longest_battle_id].duration:
+			longest_battle_id = i
+	return longest_battle_id
+
+func get_battle_with_most_players(player_number: int = -1) -> int:
+	var battle_with_most_players: int = -1
+	for i in range(battle_stats.size()):
+		if typeof(battle_stats[i]) == TYPE_NIL:
+			continue
+		if battle_stats[i].in_progress: #only calculate this from already finished battles!
+			continue
+		if player_number != -1 and !is_player_in_battle_stats(i, player_number):
+			continue
+		if battle_with_most_players == -1:
+			battle_with_most_players = i
+			continue
+		if get_players_in_battle_stats(i).size() > get_players_in_battle_stats(battle_with_most_players).size():
+			battle_with_most_players = i
+	return battle_with_most_players
+	
+func get_battle_with_biggest_force(player_number: int = -1) -> int:
+	var battle_with_biggest_force: int = -1
+	for i in range(battle_stats.size()):
+		if typeof(battle_stats[i]) == TYPE_NIL:
+			continue
+		if battle_stats[i].in_progress: #only calculate this from already finished battles!
+			continue
+		if player_number != -1 and !is_player_in_battle_stats(i, player_number):
+			continue
+		if battle_with_biggest_force == -1:
+			battle_with_biggest_force = i
+			continue
+		if get_battle_stats_strength(i) > get_battle_stats_strength(battle_with_biggest_force):
+			battle_with_biggest_force = i
+	return battle_with_biggest_force
+
+func get_battle_with_best_comeback(player_number: int = -1) -> int:
+	var battle_with_best_comeback: int = -1
+	for i in range(battle_stats.size()):
+		if typeof(battle_stats[i]) == TYPE_NIL:
+			continue
+		if battle_stats[i].in_progress: #only calculate this from already finished battles!
+			continue
+		if player_number != -1 and !is_player_in_battle_stats(i, player_number):
+			continue
+		if battle_with_best_comeback == -1:
+			battle_with_best_comeback = i
+			continue
+		if battle_comeback_points(i) < battle_comeback_points(battle_with_best_comeback):
+			battle_with_best_comeback = i
+	return battle_with_best_comeback
+
 ###########
 # NETCODE #
 ###########
+
+func net_client_stats_init():
+	if players_stats.size() > 0:
+		return #already initialized
+	for player in Game.playersData:
+		if !player.alive:
+			players_stats.append(null)
+			continue
+		players_stats.append({
+			killed_in_battle = [], #array with data of type of troops killed
+			peak_population = [], #array with the peak of population you had 
+			current_population = []
+		})
 
 func _server_disconnected():
 	exit_game("Disconnected from server....")
@@ -1385,5 +1853,17 @@ func client_process_event(eventId : int, eventData) -> void:
 			$UI.show_error_message(eventData.msg)
 		NET_EVENTS.SERVER_SEND_GAME_ENDED:
 			$UI/GameFinished.visible = true
+			$UI.open_finish_game_screen((OS.get_ticks_msec() - game_start_time)/60000.0)
+		NET_EVENTS.SERVER_SEND_GAMESTATS_DATA:
+			net_client_stats_init()
+			var local_player_num: int = Game.get_local_player_number()
+			players_stats[local_player_num].killed_in_battle = eventData.totalKilledInBattle.duplicate(true)
+			var last_battle_id: int = eventData.lastBattleID
+			if last_battle_id >= 0:
+				battle_stats.resize(last_battle_id+1)
+				battle_stats[last_battle_id] = eventData.lastBattle.duplicate(true)
+			client_stats.battles_won = eventData.battlesWon
+			client_stats.battles_total = eventData.battlesTotal
+			client_stats.battles_lost = eventData.battlesTotal - eventData.battlesWon
 		_:
 			print("Warning: Received unkwown event")

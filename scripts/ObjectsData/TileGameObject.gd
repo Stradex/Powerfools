@@ -655,6 +655,14 @@ func get_troops(tile_pos: Vector2, read_only: bool = false) -> Array:
 		return tiles_data[tile_pos.x][tile_pos.y].troops.duplicate(true)
 	return tiles_data[tile_pos.x][tile_pos.y].troops
 
+func get_troops_clean(tile_pos: Vector2) -> Array:
+	var cleaned_array: Array = []
+	for troopDict in tiles_data[tile_pos.x][tile_pos.y].troops:
+		if troopDict.amount <= 0:
+			continue
+		cleaned_array.append(troopDict.duplicate(true))
+	return cleaned_array
+
 func get_cell(tile_pos: Vector2, read_only: bool = false) -> Dictionary:
 	if read_only:
 		return tiles_data[tile_pos.x][tile_pos.y].duplicate(true)

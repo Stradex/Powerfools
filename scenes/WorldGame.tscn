@@ -1,4 +1,4 @@
-[gd_scene load_steps=29 format=2]
+[gd_scene load_steps=33 format=2]
 
 [ext_resource path="res://scripts/WorldGame.gd" type="Script" id=1]
 [ext_resource path="res://tilesResources/SelectionTiles.tres" type="TileSet" id=2]
@@ -20,9 +20,13 @@
 [ext_resource path="res://assets/graphics/screens/ending_screen.png" type="Texture" id=18]
 [ext_resource path="res://assets/fonts/PixelOperatorMono8-Bold.ttf" type="DynamicFontData" id=19]
 [ext_resource path="res://assets/sfx/player_turn.ogg" type="AudioStream" id=20]
+[ext_resource path="res://assets/fonts/PixelOperator8-Bold.ttf" type="DynamicFontData" id=21]
+[ext_resource path="res://assets/fonts/PixelOperatorHB8.ttf" type="DynamicFontData" id=22]
 
 [sub_resource type="DynamicFont" id=1]
 size = 30
+outline_size = 2
+outline_color = Color( 0, 0, 0, 1 )
 font_data = ExtResource( 4 )
 
 [sub_resource type="DynamicFont" id=2]
@@ -52,6 +56,16 @@ font_data = ExtResource( 8 )
 [sub_resource type="DynamicFont" id=8]
 size = 25
 font_data = ExtResource( 19 )
+
+[sub_resource type="DynamicFont" id=9]
+size = 20
+outline_size = 2
+outline_color = Color( 0, 0, 0, 1 )
+font_data = ExtResource( 21 )
+
+[sub_resource type="DynamicFont" id=10]
+size = 20
+font_data = ExtResource( 22 )
 
 [node name="World" type="Node2D"]
 script = ExtResource( 1 )
@@ -139,7 +153,7 @@ tile_data = PoolIntArray( 262139, 0, 0 )
 
 [node name="player_turn" type="AudioStreamPlayer" parent="Sounds"]
 stream = ExtResource( 20 )
-volume_db = -6.0
+volume_db = -10.0
 
 [node name="UI" type="CanvasLayer" parent="."]
 layer = 2
@@ -1420,6 +1434,7 @@ __meta__ = {
 }
 
 [node name="HUD" type="Control" parent="UI"]
+visible = false
 margin_right = 40.0
 margin_bottom = 40.0
 __meta__ = {
@@ -1427,7 +1442,6 @@ __meta__ = {
 }
 
 [node name="TileInfo" type="Control" parent="UI/HUD"]
-visible = false
 modulate = Color( 1, 1, 1, 0.486275 )
 margin_right = 242.0
 margin_bottom = 399.0
@@ -2095,22 +2109,381 @@ margin_right = 885.0
 margin_bottom = 65.0
 
 [node name="Duration" type="Label" parent="UI/GameFinished/CenterContainer/HBoxContainer"]
-anchor_left = -0.0397456
-anchor_top = 0.0384615
-anchor_right = -0.0397456
-anchor_bottom = 0.0384615
 margin_right = 600.0
 margin_bottom = 26.0
 custom_fonts/font = SubResource( 8 )
 text = "Duración de la partida: "
 
 [node name="DurationText" type="Label" parent="UI/GameFinished/CenterContainer/HBoxContainer"]
-anchor_left = -0.0397456
-anchor_top = 0.0384615
-anchor_right = -0.0397456
-anchor_bottom = 0.0384615
 margin_left = 604.0
 margin_right = 629.0
 margin_bottom = 26.0
 custom_fonts/font = SubResource( 8 )
 text = "0"
+
+[node name="GameStats" type="Control" parent="UI"]
+margin_right = 1283.0
+margin_bottom = 715.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ColorRect2" type="ColorRect" parent="UI/GameStats"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_right = 8.0
+margin_bottom = -2.0
+color = Color( 0, 0, 0, 0.619608 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="VBoxContainer" type="VBoxContainer" parent="UI/GameStats"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="HBoxContainer3" type="HBoxContainer" parent="UI/GameStats/VBoxContainer"]
+margin_right = 1283.0
+margin_bottom = 25.0
+rect_min_size = Vector2( 0, 25 )
+
+[node name="HBoxContainer" type="HBoxContainer" parent="UI/GameStats/VBoxContainer"]
+margin_top = 29.0
+margin_right = 1283.0
+margin_bottom = 636.0
+size_flags_vertical = 3
+
+[node name="Margin1" type="VBoxContainer" parent="UI/GameStats/VBoxContainer/HBoxContainer"]
+margin_right = 30.0
+margin_bottom = 607.0
+rect_min_size = Vector2( 30, 0 )
+
+[node name="BattlesStats" type="VBoxContainer" parent="UI/GameStats/VBoxContainer/HBoxContainer"]
+margin_left = 34.0
+margin_right = 622.0
+margin_bottom = 607.0
+size_flags_horizontal = 3
+
+[node name="Title2" type="HBoxContainer" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats"]
+margin_right = 588.0
+margin_bottom = 50.0
+rect_min_size = Vector2( 0, 50 )
+alignment = 1
+
+[node name="Label" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats/Title2"]
+margin_left = 49.0
+margin_top = 14.0
+margin_right = 538.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "Estadísticas última batalla"
+align = 1
+
+[node name="Lugar" type="HBoxContainer" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats"]
+margin_top = 54.0
+margin_right = 588.0
+margin_bottom = 104.0
+rect_min_size = Vector2( 0, 50 )
+
+[node name="Lugar" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats/Lugar"]
+margin_top = 14.0
+margin_right = 115.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "Lugar:"
+align = 1
+
+[node name="LugarText" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats/Lugar"]
+margin_left = 119.0
+margin_top = 14.0
+margin_right = 328.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "Stalingrado"
+align = 1
+
+[node name="Result" type="HBoxContainer" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats"]
+margin_top = 108.0
+margin_right = 588.0
+margin_bottom = 158.0
+rect_min_size = Vector2( 0, 50 )
+
+[node name="Resultado" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats/Result"]
+margin_top = 14.0
+margin_right = 189.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "Resultado:"
+align = 1
+
+[node name="ResultadoText" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats/Result"]
+margin_left = 193.0
+margin_top = 14.0
+margin_right = 331.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "Derrota"
+align = 1
+
+[node name="Dur" type="HBoxContainer" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats"]
+margin_top = 162.0
+margin_right = 588.0
+margin_bottom = 212.0
+rect_min_size = Vector2( 0, 50 )
+
+[node name="Duracion" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats/Dur"]
+margin_top = 14.0
+margin_right = 170.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "Duración:"
+align = 1
+
+[node name="DuractionText" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats/Dur"]
+margin_left = 174.0
+margin_top = 14.0
+margin_right = 322.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "2 turnos"
+align = 1
+
+[node name="Ene" type="HBoxContainer" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats"]
+margin_top = 216.0
+margin_right = 588.0
+margin_bottom = 266.0
+rect_min_size = Vector2( 0, 50 )
+
+[node name="Enemigos" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats/Ene"]
+margin_top = 14.0
+margin_right = 173.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "Enemigos:"
+align = 1
+
+[node name="EnemigosText" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats/Ene"]
+margin_left = 177.0
+margin_top = 14.0
+margin_right = 559.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "Egipto, Persia, italia"
+align = 1
+
+[node name="Ally" type="HBoxContainer" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats"]
+margin_top = 270.0
+margin_right = 588.0
+margin_bottom = 320.0
+rect_min_size = Vector2( 0, 50 )
+
+[node name="Aliados" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats/Ally"]
+margin_top = 14.0
+margin_right = 146.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "Aliados:"
+align = 1
+
+[node name="AliadosText" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats/Ally"]
+margin_left = 150.0
+margin_top = 14.0
+margin_right = 507.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "Italia, Persia, etc.."
+align = 1
+
+[node name="BajasScroll" type="ScrollContainer" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats"]
+margin_top = 324.0
+margin_right = 588.0
+margin_bottom = 607.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="HBajas" type="HBoxContainer" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats/BajasScroll"]
+margin_right = 588.0
+margin_bottom = 283.0
+rect_min_size = Vector2( 0, 50 )
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Equipo1" type="VBoxContainer" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats/BajasScroll/HBajas"]
+margin_right = 250.0
+margin_bottom = 283.0
+rect_min_size = Vector2( 250, 0 )
+
+[node name="Titulo1" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats/BajasScroll/HBajas/Equipo1"]
+margin_right = 250.0
+margin_bottom = 21.0
+custom_fonts/font = SubResource( 10 )
+text = "Asiria"
+align = 1
+
+[node name="Titulo2" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/BattlesStats/BajasScroll/HBajas/Equipo1"]
+margin_top = 25.0
+margin_right = 250.0
+margin_bottom = 46.0
+custom_fonts/font = SubResource( 10 )
+text = "Reclutas:"
+
+[node name="Margin3" type="VBoxContainer" parent="UI/GameStats/VBoxContainer/HBoxContainer"]
+margin_left = 626.0
+margin_right = 656.0
+margin_bottom = 607.0
+rect_min_size = Vector2( 30, 0 )
+
+[node name="CivStats" type="VBoxContainer" parent="UI/GameStats/VBoxContainer/HBoxContainer"]
+margin_left = 660.0
+margin_right = 1249.0
+margin_bottom = 607.0
+size_flags_horizontal = 3
+
+[node name="Title" type="HBoxContainer" parent="UI/GameStats/VBoxContainer/HBoxContainer/CivStats"]
+margin_right = 589.0
+margin_bottom = 50.0
+rect_min_size = Vector2( 0, 50 )
+alignment = 1
+
+[node name="Label" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/CivStats/Title"]
+margin_left = 88.0
+margin_top = 14.0
+margin_right = 501.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "Estadísticas generales"
+align = 1
+
+[node name="Batallas" type="HBoxContainer" parent="UI/GameStats/VBoxContainer/HBoxContainer/CivStats"]
+margin_top = 54.0
+margin_right = 589.0
+margin_bottom = 104.0
+rect_min_size = Vector2( 0, 50 )
+
+[node name="Batallas" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/CivStats/Batallas"]
+margin_top = 14.0
+margin_right = 165.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "Batallas:"
+align = 1
+
+[node name="BatallasText" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/CivStats/Batallas"]
+margin_left = 169.0
+margin_top = 14.0
+margin_right = 189.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "0"
+align = 1
+
+[node name="Victorias" type="HBoxContainer" parent="UI/GameStats/VBoxContainer/HBoxContainer/CivStats"]
+margin_top = 108.0
+margin_right = 589.0
+margin_bottom = 158.0
+rect_min_size = Vector2( 0, 50 )
+
+[node name="Victorias" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/CivStats/Victorias"]
+margin_top = 14.0
+margin_right = 183.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "Victorias:"
+align = 1
+
+[node name="VictoriasText" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/CivStats/Victorias"]
+margin_left = 187.0
+margin_top = 14.0
+margin_right = 207.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "0"
+align = 1
+
+[node name="Derrotas" type="HBoxContainer" parent="UI/GameStats/VBoxContainer/HBoxContainer/CivStats"]
+margin_top = 162.0
+margin_right = 589.0
+margin_bottom = 212.0
+rect_min_size = Vector2( 0, 50 )
+
+[node name="Derrotas" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/CivStats/Derrotas"]
+margin_top = 14.0
+margin_right = 173.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "Derrotas:"
+align = 1
+
+[node name="DerrotasText" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/CivStats/Derrotas"]
+margin_left = 177.0
+margin_top = 14.0
+margin_right = 197.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "0"
+align = 1
+
+[node name="Territorios" type="HBoxContainer" parent="UI/GameStats/VBoxContainer/HBoxContainer/CivStats"]
+margin_top = 216.0
+margin_right = 589.0
+margin_bottom = 266.0
+rect_min_size = Vector2( 0, 50 )
+
+[node name="Territorios" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/CivStats/Territorios"]
+margin_top = 14.0
+margin_right = 223.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "Territorios:"
+align = 1
+
+[node name="TerritoriosText" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/CivStats/Territorios"]
+margin_left = 227.0
+margin_top = 14.0
+margin_right = 247.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "0"
+align = 1
+
+[node name="BajasTitle" type="HBoxContainer" parent="UI/GameStats/VBoxContainer/HBoxContainer/CivStats"]
+margin_top = 270.0
+margin_right = 589.0
+margin_bottom = 320.0
+rect_min_size = Vector2( 0, 50 )
+
+[node name="Label2" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/CivStats/BajasTitle"]
+margin_top = 14.0
+margin_right = 257.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "Bajas totales:"
+align = 1
+
+[node name="Bajas" type="HBoxContainer" parent="UI/GameStats/VBoxContainer/HBoxContainer/CivStats"]
+margin_top = 324.0
+margin_right = 589.0
+margin_bottom = 374.0
+rect_min_size = Vector2( 0, 50 )
+
+[node name="BajasText" type="Label" parent="UI/GameStats/VBoxContainer/HBoxContainer/CivStats/Bajas"]
+margin_top = 14.0
+margin_right = 224.0
+margin_bottom = 35.0
+custom_fonts/font = SubResource( 9 )
+text = "Reclutas: ..."
+
+[node name="Margin2" type="VBoxContainer" parent="UI/GameStats/VBoxContainer/HBoxContainer"]
+margin_left = 1253.0
+margin_right = 1283.0
+margin_bottom = 607.0
+rect_min_size = Vector2( 30, 0 )
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="UI/GameStats/VBoxContainer"]
+margin_top = 640.0
+margin_right = 1283.0
+margin_bottom = 715.0
+rect_min_size = Vector2( 0, 75 )

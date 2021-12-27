@@ -198,7 +198,7 @@ func start_new_game(is_mp_game: bool = false):
 func are_player_allies(playerA: int, playerB: int) -> bool:
 	if playerA == playerB:
 		return true
-	if playerA < 0 or playerB < 0:
+	if playerA < 0 or playerB < 0: #tribal society
 		return false
 	if playersData[playerA].team == -1 or playersData[playerB].team == -1:
 		return false

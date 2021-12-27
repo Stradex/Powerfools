@@ -57,6 +57,7 @@ func init_menu_graphics():
 		$ActionsMenu/EditPlayer/VBoxContainer/DifficultyPanel/BotDifficulty.add_item(Game.bot_difficulties_stats[i].NAME, i)
 	$HUD/GameInfo/Waiting.visible = false
 	$TilesCoordinates.visible = false
+	$GameStats.visible = false
 
 func init_tile_coordinates():
 	var dynamic_font = DynamicFont.new()
@@ -95,6 +96,133 @@ func init_tile_coordinates():
 ###################################
 #	BUTTONS & SIGNALS
 ###################################
+
+func ui_open_game_stats() -> void:
+	if Game.Network.is_client():
+		world_game_node.net_client_stats_init()
+	$ActionsMenu.visible = false
+	$HUD.visible = false
+	$GameStats.visible = true
+	
+	var player_mask: int = Game.current_player_turn
+	if Game.Network.is_multiplayer() or Game.is_current_player_a_bot():
+		player_mask = Game.get_local_player_number()
+		
+	if !Game.Network.is_client():
+		var battles_count: int = world_game_node.get_total_battles(player_mask)
+		var battles_won: int = world_game_node.get_total_battles_won(player_mask)
+		var battles_lost: int = battles_count - battles_won
+		world_game_node.client_stats.battles_won = battles_won
+		world_game_node.client_stats.battles_total = battles_count
+		world_game_node.client_stats.battles_lost = battles_lost
+
+	$GameStats/VBoxContainer/HBoxContainer/CivStats/Batallas/BatallasText.text = str(world_game_node.client_stats.battles_total)
+	$GameStats/VBoxContainer/HBoxContainer/CivStats/Victorias/VictoriasText.text = str(world_game_node.client_stats.battles_won)
+	$GameStats/VBoxContainer/HBoxContainer/CivStats/Derrotas/DerrotasText.text = str(world_game_node.client_stats.battles_lost)
+	$GameStats/VBoxContainer/HBoxContainer/CivStats/Territorios/TerritoriosText.text = str(Game.tilesObj.get_player_tiles_count(player_mask))
+	
+	var total_killed_in_battle: Array = world_game_node.get_total_killed_in_battle(player_mask)
+	var killedStr: String = ""
+	for troopDict in total_killed_in_battle:
+		killedStr += "* " + str(Game.troopTypes.getName(troopDict.troop_id)) + ": " + str(troopDict.amount) + "\n"
+	$GameStats/VBoxContainer/HBoxContainer/CivStats/Bajas/BajasText.text = killedStr
+
+	#update battle stuff
+	var best_battle: int = world_game_node.get_lastest_battle(player_mask)
+	if best_battle == -1:
+		$GameStats/VBoxContainer/HBoxContainer/BattlesStats.visible = false
+		return
+	$GameStats/VBoxContainer/HBoxContainer/BattlesStats.visible = true	
+	var battle_data: Dictionary = world_game_node.battle_stats[best_battle]
+	var game_coords: Dictionary = Game.tilesObj.get_all_tile_coords()
+	$GameStats/VBoxContainer/HBoxContainer/BattlesStats/Lugar/LugarText.text = str(Game.tilesObj.get_name(battle_data.pos)) + " [" + game_coords.coords[battle_data.pos.x][battle_data.pos.y] + "]"
+	if world_game_node.is_player_a_winner_in_battle_stats(best_battle, player_mask):
+		$GameStats/VBoxContainer/HBoxContainer/BattlesStats/Result/ResultadoText.text = "Victoria"
+	else:
+		$GameStats/VBoxContainer/HBoxContainer/BattlesStats/Result/ResultadoText.text = "Derrota"
+	$GameStats/VBoxContainer/HBoxContainer/BattlesStats/Dur/DuractionText.text = str(battle_data.duration) + " turnos"
+	var enemigos_str: String = ""
+	var aliados_str: String = ""
+	var players_in_battle: Array = world_game_node.get_players_in_battle_stats(best_battle)
+	for player_num in players_in_battle:
+		var first_enemy: bool = enemigos_str.length() < 2
+		var first_ally: bool = aliados_str.length() < 2
+		if player_num < 0:
+			if !first_enemy:
+				enemigos_str+=", "
+			enemigos_str += "Tribus"
+			continue
+		if Game.are_player_allies(player_num, player_mask):
+			if !first_ally:
+				aliados_str+=", "
+			aliados_str+= Game.playersData[player_num].civilizationName
+		else:
+			if !first_enemy:
+				enemigos_str+=", "
+			enemigos_str += Game.playersData[player_num].civilizationName
+	$GameStats/VBoxContainer/HBoxContainer/BattlesStats/Ene/EnemigosText.text = enemigos_str
+	$GameStats/VBoxContainer/HBoxContainer/BattlesStats/Ally/AliadosText.text = aliados_str
+	
+	var HBOXkilledInBattle: HBoxContainer = $GameStats/VBoxContainer/HBoxContainer/BattlesStats/BajasScroll/HBajas
+	
+	for obj in HBOXkilledInBattle.get_children(): 
+		HBOXkilledInBattle.remove_child(obj)
+		obj.queue_free()
+	"""
+	teams_data.append({
+		players = [troopDict.owner],
+		strength = troopsHealth + troopsDamage
+	})
+	"""
+	var teams_in_battle: Array = world_game_node.get_teams_data_from_battle_stats(best_battle)
+	for team in teams_in_battle:
+		var new_vbox: VBoxContainer = VBoxContainer.new()
+		new_vbox.alignment = BoxContainer.ALIGN_BEGIN
+		new_vbox.rect_min_size.x = 290.0
+		var label: Label = create_tmp_label()
+		label.align = Label.ALIGN_CENTER
+		for player_num in team.players:
+			if player_num == -1:
+				label.text += "Tribus\n"
+			else:
+				label.text += Game.playersData[player_num].civilizationName + "\n"
+			new_vbox.add_child(label)
+			label = create_tmp_label()
+			label.align = Label.ALIGN_LEFT
+			label.text += "Bajas:\n"
+			for killedDict in battle_data.killed:
+				if killedDict.owner == player_num:
+					label.text += str(Game.troopTypes.getName(killedDict.troop_id)) + ": " + str(killedDict.amount) + "\n"
+			new_vbox.add_child(label)
+			if !world_game_node.is_player_a_winner_in_battle_stats(best_battle, player_num):
+				continue
+			label = create_tmp_label()
+			label.align = Label.ALIGN_LEFT
+			label.text += "Sup.:\n"
+			for remainingDict in battle_data.remaining:
+				if remainingDict.owner == player_num:
+					label.text += str(Game.troopTypes.getName(remainingDict.troop_id)) + ": " + str(remainingDict.amount) + "\n"
+			new_vbox.add_child(label)
+		HBOXkilledInBattle.add_child(new_vbox)
+
+func create_tmp_label() -> Label:
+	var dynamic_font = DynamicFont.new()
+	dynamic_font.font_data = load("res://assets/fonts/PixelOperatorMono8-Bold.ttf")
+	dynamic_font.size = 19
+	dynamic_font.outline_size = 2
+	dynamic_font.outline_color = Color( 0, 0, 0, 0.75 )
+	dynamic_font.use_filter = true
+	var label: Label = Label.new()
+	label.align = Label.ALIGN_CENTER
+	label.add_font_override("font", dynamic_font)
+	label.text = ""
+	return label
+
+func ui_close_game_stats() -> void:
+	$ActionsMenu.visible = true
+	$HUD.visible = true
+	$GameStats.visible = false
+
 func close_all_windows() -> void:
 	$ActionsMenu/InGameTileActions.visible = false
 	$ActionsMenu/ExtrasMenu.visible = false
@@ -132,6 +260,7 @@ func show_game_coords() -> void:
 	$TilesCoordinates.visible = true
 	$ActionsMenu.visible = false
 	$HUD.visible = false
+	$GameStats.visible = false
 
 func hide_game_coords() -> void:
 	$TilesCoordinates.visible = false

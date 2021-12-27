@@ -349,8 +349,10 @@ func server_process_event(entityId, eventId, eventTime, eventData) -> void:
 		return
 	if entityId < netentities.size() && netentities[entityId] && netentities[entityId].is_inside_tree():
 		if netentities[entityId].has_method("server_process_event"):
-			netentities[entityId].NetBoop.update_event_data({event_id = eventId, event_time = eventTime, event_data = eventData})
-			netentities[entityId].server_process_event(eventId, netentities[entityId].NetBoop.get_event_data(eventId))
+			#No se una verga de programación Dejar esto así
+			#netentities[entityId].NetBoop.update_event_data({event_id = eventId, event_time = eventTime, event_data = eventData})
+			#netentities[entityId].server_process_event(eventId, netentities[entityId].NetBoop.get_event_data(eventId))
+			netentities[entityId].server_process_event(eventId, eventData)
 			
 func client_process_event(entityId, eventId, eventTime, eventData) -> void:
 	if !is_client():
