@@ -2,20 +2,19 @@ class_name BotObject
 extends Object
 
 #TODO: Limpiar codigo
-
 const BOT_MIN_WARRIORS_DESIRED: int = 3000
 const BOT_MIN_WARRIORS_TO_MOVE: int = 250
 const BOT_MINIMUM_GOLD_TO_USE: float = 10.0
 const BOT_MINIMUM_GOLD_DESIRED: float = 25.0
 const BOT_MAX_GOLD_TO_SAVE: float = 225.0
 const BOT_MIMINUM_GOLD_GAINS_DESIRED: float = 2.0
+
 var bot_territories_to_recover: Array = [] #list with all of he territories a bot lost
 var current_bot_lacks_strength: bool = false
 var last_walk: Dictionary = {
 	from = Vector2(-1, -1),
 	to = Vector2(-1, -1)
 }
-
 enum BOT_ACTIONS {
 	DEFENSIVE,
 	OFFENSIVE,
@@ -207,17 +206,36 @@ func bot_try_to_increase_army(bot_number: int, bot_is_having_debt: bool, bot_in_
 		return false
 	if game_node.actions_available <= 2: #always leave two actions as minimum to move troops or other stuff.
 		return false 
-	if Game.tilesObj.ai_get_distance_from_capital_to_player_enemy(bot_number) <= 3.0:
+	if Game.tilesObj.ai_get_distance_from_capital_to_player_enemy(bot_number) <= 2.0: #we have problems at home!
 		return false
 		
 	return bot_try_to_recruit_troops(bot_number)
 
+func bot_try_to_help_ally(bot_number: int, bot_is_having_debt: bool, bot_in_danger: bool, available_gold: float, type_of_attitude: int) -> bool:
+	if bot_in_danger:
+		return false
+	if available_gold < BOT_MINIMUM_GOLD_TO_USE:
+		return false
+	if bot_is_having_debt:
+		return false
+
+	var ally_is_in_danger: bool = Game.tilesObj.ai_get_all_ally_cells_in_danger(bot_number).size() > 0
+	if !ally_is_in_danger:
+		return false
+	
+	print("Ally is in danger!")
+	return bot_try_to_attack_enemy(bot_number, type_of_attitude, false)
+	
 func bot_play_agressive(bot_number: int, player_capital_pos: Vector2, bot_is_having_debt: bool, bot_in_danger: bool, available_gold: float ) -> bool:
 	if bot_try_to_defend_own_capital(bot_number, player_capital_pos):
+		return true
+	elif game_node.actions_available >= 3 and bot_try_buy_or_upgrade(bot_number, BOT_ACTIONS.OFFENSIVE, bot_in_danger, available_gold):
 		return true
 	elif bot_try_to_attack_enemy_capital(bot_number, player_capital_pos, false, BOT_ACTIONS.OFFENSIVE):
 		return true
 	elif bot_try_to_increase_army(bot_number, bot_is_having_debt, bot_in_danger, available_gold):
+		return true
+	elif bot_try_to_help_ally(bot_number, bot_is_having_debt, bot_in_danger, available_gold, BOT_ACTIONS.OFFENSIVE):
 		return true
 	elif bot_try_to_attack_enemy(bot_number, BOT_ACTIONS.OFFENSIVE, false):
 		return true
@@ -240,11 +258,15 @@ func bot_play_agressive(bot_number: int, player_capital_pos: Vector2, bot_is_hav
 func bot_play_defensive(bot_number: int, player_capital_pos: Vector2, bot_is_having_debt: bool, bot_in_danger: bool, available_gold: float ) -> bool:
 	if bot_try_to_defend_own_capital(bot_number, player_capital_pos):
 		return true
+	elif game_node.actions_available >= 3 and bot_try_buy_or_upgrade(bot_number, BOT_ACTIONS.OFFENSIVE, bot_in_danger, available_gold):
+		return true
 	elif bot_try_to_increase_army(bot_number, bot_is_having_debt, bot_in_danger, available_gold):
 		return true
 	elif bot_try_to_defend_own_territory(bot_number, player_capital_pos):
 		return true
 	elif bot_try_to_recover_territory(bot_number, player_capital_pos, false):
+		return true
+	elif bot_try_to_help_ally(bot_number, bot_is_having_debt, bot_in_danger, available_gold, BOT_ACTIONS.DEFENSIVE):
 		return true
 	elif !bot_is_having_debt and bot_try_buy_or_upgrade(bot_number, BOT_ACTIONS.DEFENSIVE, bot_in_danger, available_gold):
 		return true
@@ -269,9 +291,13 @@ func bot_play_defensive(bot_number: int, player_capital_pos: Vector2, bot_is_hav
 func bot_play_greedy(bot_number: int, player_capital_pos: Vector2, bot_is_having_debt: bool, bot_in_danger: bool, available_gold: float ) -> bool:
 	if bot_try_to_defend_own_capital(bot_number, player_capital_pos):
 		return true
+	elif game_node.actions_available >= 3 and bot_try_buy_or_upgrade(bot_number, BOT_ACTIONS.OFFENSIVE, bot_in_danger, available_gold):
+		return true
 	elif bot_try_to_increase_army(bot_number, bot_is_having_debt, bot_in_danger, available_gold):
 		return true
 	elif bot_try_to_recover_territory(bot_number, player_capital_pos, false):
+		return true
+	elif bot_try_to_help_ally(bot_number, bot_is_having_debt, bot_in_danger, available_gold, BOT_ACTIONS.GREEDY):
 		return true
 	elif !bot_is_having_debt and bot_try_buy_or_upgrade(bot_number, BOT_ACTIONS.GREEDY, bot_in_danger, available_gold): #try this in case we don't have any debt at all
 		return true
@@ -364,7 +390,7 @@ func bot_try_to_attack_enemy_capital(bot_number: int, player_capital_pos: Vector
 	
 	return false
 
-func bot_try_to_attack_enemy(bot_number: int, type_of_attitude: int, force_attack: int) -> bool:
+func bot_try_to_attack_enemy(bot_number: int, type_of_attitude: int, force_attack: bool) -> bool:
 	var cell_to_attack: Vector2 = bot_get_cell_to_attack(bot_number, type_of_attitude)
 	if !Game.tilesObj.ai_have_strength_to_conquer(cell_to_attack, bot_number) and !force_attack:
 		current_bot_lacks_strength = true #to try to recruit troops again
@@ -442,9 +468,9 @@ func bot_try_buy_or_upgrade(bot_number: int, type_of_attitude: int, bot_in_dange
 	if bot_available_gold_to_use <= BOT_MINIMUM_GOLD_TO_USE: #avoid buying stuff in case bot does not have good money
 		return false
 
-	if bot_is_lacking_recruit_buildings(bot_number, type_of_attitude) and bot_gains >= BOT_MIMINUM_GOLD_GAINS_DESIRED and !bot_is_lacking_troops(bot_number, type_of_attitude):
+	if bot_is_lacking_recruit_buildings(bot_number, type_of_attitude) and bot_gains >= BOT_MIMINUM_GOLD_GAINS_DESIRED and (!bot_in_danger or !bot_is_lacking_troops(bot_number, type_of_attitude)) :
 		print("[BOT] is lacking buildings...")
-		return bot_try_to_make_a_building(bot_number)
+		return bot_try_to_make_a_building(bot_number) or bot_try_to_recruit_troops(bot_number)
 	elif bot_gains >= BOT_MIMINUM_GOLD_GAINS_DESIRED and bot_is_lacking_troops(bot_number, type_of_attitude):
 		print("[BOT] is lacking troops...")
 		if allow_recruit:
@@ -523,27 +549,38 @@ func bot_get_cell_to_attack(bot_number: int, type_of_attitude: int) -> Vector2:
 	var cell_to_attack: Vector2 = Vector2(-1, -1)
 	var bot_in_danger: bool = Game.tilesObj.ai_get_all_cells_in_danger(bot_number).size() > 0
 	var capital_in_danger: bool = bot_capital_in_danger(bot_number)
-	
+	var ally_is_in_danger: bool = Game.tilesObj.ai_get_all_ally_cells_in_danger(bot_number).size() > 0
 	match type_of_attitude:
 		BOT_ACTIONS.GREEDY:
-			
 			if capital_in_danger:
 				cell_to_attack = Game.tilesObj.ai_get_closest_to_capital_player_enemy_cell(bot_number)
 			if bot_in_danger and cell_to_attack == Vector2(-1, -1):
 				cell_to_attack = Game.tilesObj.ai_get_strongest_capable_of_conquer_player_enemy_cell(bot_number)
+			if ally_is_in_danger and cell_to_attack == Vector2(-1, -1):
+				cell_to_attack = Game.tilesObj.ai_get_strongest_to_ally_capable_of_conquer_player_enemy_cell(bot_number)
+				print("helping ally")
 			if cell_to_attack == Vector2(-1, -1):
 				cell_to_attack =  Game.tilesObj.ai_get_richest_enemy_cell(bot_number)
 			if cell_to_attack == Vector2(-1, -1):
 				cell_to_attack = Game.tilesObj.ai_get_richest_enemy_cell(bot_number, true) #use allies territories
 		BOT_ACTIONS.DEFENSIVE:
+			if capital_in_danger:
+				cell_to_attack = Game.tilesObj.ai_get_closest_to_capital_player_enemy_cell(bot_number)
 			if bot_in_danger and !capital_in_danger:
 				cell_to_attack = Game.tilesObj.ai_get_strongest_capable_of_conquer_player_enemy_cell(bot_number)
+			if ally_is_in_danger and cell_to_attack == Vector2(-1, -1):
+				cell_to_attack = Game.tilesObj.ai_get_strongest_to_ally_capable_of_conquer_player_enemy_cell(bot_number)
+				print("helping ally")
 			if cell_to_attack == Vector2(-1, -1):
 				cell_to_attack = Game.tilesObj.ai_get_closest_to_capital_player_enemy_cell(bot_number)
 			if cell_to_attack == Vector2(-1, -1):
 				cell_to_attack = Game.tilesObj.ai_get_closest_to_capital_enemy_cell(bot_number)
 		BOT_ACTIONS.OFFENSIVE:
-			cell_to_attack = Game.tilesObj.ai_get_strongest_capable_of_conquer_player_enemy_cell(bot_number)
+			if ally_is_in_danger and !capital_in_danger and !bot_in_danger:
+				cell_to_attack = Game.tilesObj.ai_get_strongest_to_ally_capable_of_conquer_player_enemy_cell(bot_number)
+				print("helping ally")
+			if cell_to_attack == Vector2(-1, -1):
+				cell_to_attack = Game.tilesObj.ai_get_strongest_capable_of_conquer_player_enemy_cell(bot_number)
 			if cell_to_attack == Vector2(-1, -1):
 				cell_to_attack = Game.tilesObj.ai_get_weakest_player_enemy_cell(bot_number)
 			if cell_to_attack == Vector2(-1, -1):
@@ -711,12 +748,18 @@ func bot_process_pre_game(bot_number: int):
 		bot_execute_give_extra_gold(bot_number, player_capital_pos)
 		return
 		
-	if Game.tilesObj.get_total_gold_gain_and_losses(bot_number) <= 0:
+	var type_of_action_to_make: int = bot_get_type_of_action_to_make(bot_number)
+	if Game.tilesObj.get_total_gold_gain_and_losses(bot_number) <= 0.0:
 		get_extra_troops_action = false
+	elif bot_capital_in_danger(bot_number):
+		get_extra_troops_action = true
+		if rng.randi_range(0, 100) >= 50:
+			type_of_action_to_make = BOT_ACTIONS.DEFENSIVE
+		else:
+			type_of_action_to_make = BOT_ACTIONS.OFFENSIVE
 	else:
 		get_extra_troops_action = rng.randi_range(0, 100) >= 50
-	
-	var type_of_action_to_make: int = bot_get_type_of_action_to_make(bot_number)
+
 	match type_of_action_to_make:
 		BOT_ACTIONS.DEFENSIVE:
 			if get_extra_troops_action:

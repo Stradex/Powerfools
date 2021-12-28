@@ -13,7 +13,7 @@ const SCREEN_WIDTH: int = 1280
 const SCREEN_HEIGHT: int = 720
 const TILE_SIZE: int = 80
 const GAME_FPS: int = 4 # we really don't need to much higher FPS, this is mostly for game logic, not graphic stuff
-const DEBUG_MODE: bool = true
+const DEBUG_MODE: bool = false
 const BOT_NET_ID: int = -1
 const BOT_STATS_FILE: String = "bots_difficulties.json"
 const GAMEPLAY_SETTINGS_FILE: String = "game_settings.json"
@@ -186,13 +186,15 @@ func get_player_number_by_pin_code(pin_code: int) -> int:
 func start_new_game(is_mp_game: bool = false):
 	current_player_turn = 0
 	if !is_mp_game:
-		init_player(0, Network.SERVER_NETID, "Stradex", 555, false, 1) #human
+		init_player(0, Network.SERVER_NETID, "Stradex", 555, true, 1) #human
 		init_player(1, Network.SERVER_NETID, "bot", 1, true, 1) #bot - team 1
 		init_player(2, Network.SERVER_NETID, "bot", 1, true, 2) #bot - team 2
 		init_player(3, Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
-		#set_bot_difficulty(1, BOT_DIFFICULTY.NIGHTMARE)
-		#set_bot_difficulty(2, BOT_DIFFICULTY.HARD)
-		#set_bot_difficulty(3, BOT_DIFFICULTY.EASY)
+		init_player(4, Network.SERVER_NETID, "bot", 3, true, 3) #bot - team 2
+		init_player(5, Network.SERVER_NETID, "bot", 3, true, 3) #bot - team 2
+		init_player(6, Network.SERVER_NETID, "bot", 3, true, 4) #bot - team 2
+		init_player(7, Network.SERVER_NETID, "bot", 3, true, 4) #bot - team 2
+		
 	change_to_map(START_MAP)
 
 func are_player_allies(playerA: int, playerB: int) -> bool:

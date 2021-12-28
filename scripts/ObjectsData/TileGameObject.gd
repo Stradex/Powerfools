@@ -972,7 +972,7 @@ func ai_get_cell_available_force(cell_pos: Vector2, player_number: int) -> float
 	var available_damage: float = get_own_troops_damage(cell_pos, player_number, true)
 	var enemies_close_force: Dictionary = ai_get_enemies_strength_close_to(cell_pos, player_number)
 
-	if is_capital(cell_pos): #Extra force to protect owns capital
+	if Game.is_player_a_bot(player_number) and is_capital(cell_pos): #Extra force to protect owns capital
 		var minimum_recruits_force_at_capital: float = float(Game.get_bot_minimum_capital_troops(player_number))
 		var minimum_health_to_defend: float = float(troop_types_obj.getByID(troop_types_obj.getIDByName("recluta")).health)*minimum_recruits_force_at_capital
 		var minimum_damage_to_defend: float = troop_types_obj.getAverageDamage(troop_types_obj.getIDByName("recluta"))*minimum_recruits_force_at_capital
@@ -994,7 +994,7 @@ func ai_get_cell_available_force_to_attack(cell_pos: Vector2, cell_to_attack: Ve
 	var available_damage: float = get_own_troops_damage(cell_pos, player_number, true)
 	var enemies_close_force: Dictionary = ai_get_enemies_strength_close_to(cell_pos, player_number, [cell_to_attack])
 
-	if is_capital(cell_pos): #Extra force to protect owns capital
+	if Game.is_player_a_bot(player_number) and is_capital(cell_pos): #Extra force to protect owns capital
 		var minimum_recruits_force_at_capital: float = float(Game.get_bot_minimum_capital_troops(player_number))
 		var minimum_health_to_defend: float = float(troop_types_obj.getByID(troop_types_obj.getIDByName("recluta")).health)*minimum_recruits_force_at_capital
 		var minimum_damage_to_defend: float = troop_types_obj.getAverageDamage(troop_types_obj.getIDByName("recluta"))*minimum_recruits_force_at_capital
@@ -1036,7 +1036,7 @@ func ai_cell_is_in_danger(cell_pos: Vector2, player_number: int, cells_to_ignore
 		enemies_close_force.damage+=upcoming_enemies_force.damage
 		enemies_close_force.health+=upcoming_enemies_force.health
 	
-	if is_capital(cell_pos): #Extra force to protect owns capital
+	if Game.is_player_a_bot(player_number) and is_capital(cell_pos): #Extra force to protect owns capital
 		var minimum_recruits_force_at_capital: float = float(Game.get_bot_minimum_capital_troops(player_number))
 		var minimum_health_to_defend: float = float(troop_types_obj.getByID(troop_types_obj.getIDByName("recluta")).health)*minimum_recruits_force_at_capital
 		var minimum_damage_to_defend: float = troop_types_obj.getAverageDamage(troop_types_obj.getIDByName("recluta"))*minimum_recruits_force_at_capital
@@ -1057,6 +1057,18 @@ func ai_get_outer_territories(player_number: int) -> Array:
 
 func ai_get_inner_territories(player_number: int) -> Array:
 	return Game.Util.array_substract(get_all_player_tiles(player_number), ai_get_outer_territories(player_number))
+
+func ai_get_all_ally_cells_in_danger(player_number: int, cells_to_ignore: Array = []) -> Array:
+	var cells_in_danger: Array = []
+	for i in range(Game.playersData.size()):
+		if i == player_number:
+			continue
+		if !Game.playersData[i].alive:
+			continue
+		if !Game.are_player_allies(i, player_number):
+			continue
+		cells_in_danger = Game.Util.array_addition(cells_in_danger, ai_get_all_cells_in_danger(i, cells_to_ignore))
+	return cells_in_danger
 
 func ai_get_all_cells_in_danger(player_number: int, cells_to_ignore: Array = []) -> Array:
 	var cells_in_danger: Array = []
@@ -1366,7 +1378,21 @@ func ai_get_strongest_capable_of_conquer_player_enemy_cell( player_number: int, 
 		if ai_get_cell_enemy_force(cell, player_number) > ai_get_cell_enemy_force(strongest_cell, player_number):
 			strongest_cell = cell
 	return strongest_cell
-	
+
+func ai_get_strongest_to_ally_capable_of_conquer_player_enemy_cell( player_number: int) -> Vector2:
+	var enemy_cells: Array = Game.Util.array_substract(ai_get_reachable_player_enemy_cells(player_number, true), ai_get_reachable_player_enemy_cells(player_number, false))
+	var strongest_own_ofensive_cell: Vector2 = ai_get_strongest_available_force_own_cell(player_number)
+	var strongest_cell: Vector2 = Vector2(-1, -1)
+	for cell in enemy_cells:
+		if strongest_cell == Vector2(-1, -1):
+			strongest_cell = cell
+			continue
+		if !ai_can_conquer_enemy_pos(strongest_own_ofensive_cell, cell, player_number):
+			continue
+		if ai_get_cell_enemy_force(cell, player_number) > ai_get_cell_enemy_force(strongest_cell, player_number):
+			strongest_cell = cell
+	return strongest_cell
+
 func ai_get_strongest_player_enemy_cell( player_number: int , use_allies_territories_too: bool = false) -> Vector2:
 	var enemy_cells: Array = ai_get_reachable_player_enemy_cells(player_number, use_allies_territories_too)
 	var strongest_cell: Vector2 = Vector2(-1, -1)
