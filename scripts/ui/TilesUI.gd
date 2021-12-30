@@ -19,6 +19,7 @@ onready var id_rock_tile: int = $BuildingsTiles.tile_set.find_tile_by_name('tile
 onready var id_debug_tile: int = $DebugTiles.tile_set.find_tile_by_name('tile_path_debug')
 onready var id_enemy_player_tile: int = $OwnedTiles.tile_set.find_tile_by_name('tile_player_enemy')
 onready var id_ally_player_tile: int = $OwnedTiles.tile_set.find_tile_by_name('tile_ally')
+onready var id_selling_tile: int = $FuncTiles.tile_set.find_tile_by_name('tile_selling')
 
 var id_rock_types: Array = []
 
@@ -66,14 +67,14 @@ func update_building_tiles() -> void:
 			var buildingImgToSet = -1
 			if Game.tilesObj.is_cell_in_battle(Vector2(x, y)):
 				$ConstructionTiles.set_cellv(Vector2(x, y), id_tile_battle)
-			elif tile_cell_data.owner == player_mask and Game.tilesObj.is_upgrading(Vector2(x, y)):
+			elif (tile_cell_data.owner == player_mask or Game.DEBUG_MODE) and Game.tilesObj.is_upgrading(Vector2(x, y)):
 				$ConstructionTiles.set_cellv(Vector2(x, y), id_tile_upgrading)
 			else:
 				$ConstructionTiles.set_cellv(Vector2(x, y), -1)
 			
-			if tile_cell_data.owner == player_mask and Game.tilesObj.is_building(Vector2(x, y)):
+			if (tile_cell_data.owner == player_mask or Game.DEBUG_MODE) and Game.tilesObj.is_building(Vector2(x, y)):
 				$BuildingTypesTiles.set_cellv(Vector2(x, y), id_tile_building_in_progress)
-			elif tile_cell_data.owner == player_mask and tile_cell_data.building_id >= 0:
+			elif (tile_cell_data.owner == player_mask or Game.DEBUG_MODE) and tile_cell_data.building_id >= 0:
 				buildingImgToSet = $BuildingTypesTiles.tile_set.find_tile_by_name(Game.buildingTypes.getImg(tile_cell_data.building_id))
 				$BuildingTypesTiles.set_cellv(Vector2(x, y), buildingImgToSet)
 			else:
@@ -90,10 +91,15 @@ func update_building_tiles() -> void:
 			
 			$CivilianTiles.set_cellv(Vector2(x, y), get_civilians_tile_id(Vector2(x, y), player_mask))
 			$BuildingsTiles.set_cellv(Vector2(x, y), tileImgToSet)
-			if Game.are_player_allies(tile_cell_data.owner, player_mask):
+			if Game.are_player_allies(tile_cell_data.owner, player_mask) or Game.DEBUG_MODE:
 				$TroopsTiles.set_cellv(Vector2(x, y), get_troops_tile_id(Vector2(x, y), player_mask))
 			else:
 				$TroopsTiles.set_cellv(Vector2(x, y), -1)
+			
+			if (tile_cell_data.owner == player_mask or Game.DEBUG_MODE) and tile_cell_data.turns_to_sell > 0:
+				$FuncTiles.set_cellv(Vector2(x, y), id_selling_tile)
+			else:
+				$FuncTiles.set_cellv(Vector2(x, y), -1)
 
 func get_civilians_tile_id(tile_pos: Vector2, playerNumber: int) -> int:
 	var civilianCountInTile: int = Game.tilesObj.get_civilian_count(tile_pos, playerNumber)
@@ -110,7 +116,7 @@ func get_civilians_tile_id(tile_pos: Vector2, playerNumber: int) -> int:
 func get_troops_tile_id(tile_pos: Vector2, playerNumber: int) -> int:
 	var troopsCountInTile: int = Game.tilesObj.get_warriors_count(tile_pos, playerNumber)
 	var upcoming_troops_data: Array = Game.tilesObj.get_upcoming_troops(tile_pos)
-	if upcoming_troops_data.size() > 0 and Game.tilesObj.get_owner(tile_pos) == playerNumber:
+	if upcoming_troops_data.size() > 0 and (Game.tilesObj.get_owner(tile_pos) == playerNumber or Game.DEBUG_MODE):
 		return id_tile_deploying_troops
 	elif troopsCountInTile > MINIMUM_TROOPS_ICON_COUNT:
 		return id_tile_troops
@@ -155,11 +161,6 @@ func get_tile_selected_img_id(tile_pos: Vector2, playerNumber: int) -> int:
 	return id_tile_selected
 
 func update_visibility_tiles() -> void:
-	
-	var player_mask: int = Game.current_player_turn
-	if Game.Network.is_multiplayer() or Game.is_current_player_a_bot():
-		player_mask = Game.get_local_player_number()
-		
 	for x in range(Game.tile_map_size.x):
 		for y in range(Game.tile_map_size.y):
 			$VisibilityTiles.set_cellv(Vector2(x, y), get_visibility_tile_img(Vector2(x, y)))

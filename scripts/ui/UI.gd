@@ -29,7 +29,7 @@ func init_button_signals():
 	$ActionsMenu/InGameMenu/VBoxContainer/Cancelar.connect("pressed", self, "gui_exit_ingame_menu_window")
 	$ActionsMenu/InGameMenu/VBoxContainer/Deshacer.connect("pressed", self, "gui_undo_actions")
 	$ActionsMenu/InGameTileActions/VBoxContainer/Construir.connect("pressed", self, "gui_open_build_window")
-	$ActionsMenu/InGameTileActions/VBoxContainer/VenderTile.connect("pressed", self, "gui_vender_tile")
+	$ActionsMenu/InGameTileActions/VBoxContainer/VenderTile.connect("pressed", world_game_node, "gui_vender_tile")
 	$ActionsMenu/InGameTileActions/VBoxContainer/UrbanizarTile.connect("pressed", world_game_node, "gui_urbanizar_tile")
 	$ActionsMenu/TilesActions/VBoxContainer/HBoxContainer2/TalentosAMover.connect("text_changed", world_game_node, "gold_to_move_text_changed")
 	$ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TropasAMover.connect("text_changed", world_game_node, "troops_to_move_text_changed")
@@ -341,7 +341,10 @@ func gui_change_tile_name() -> void:
 func gui_undo_actions() -> void:
 	world_game_node.undo_actions()
 	gui_exit_ingame_menu_window()
-	
+
+func hide_wait_finish_for_player() -> void:
+	$HUD/GameInfo/Waiting.visible = false
+	$HUD/GameInfo/HBoxContainer3/FinishTurn.visible = false
 
 func show_wait_for_player() -> void:
 	$HUD/GameInfo/Waiting.visible = true
@@ -376,19 +379,22 @@ func gui_exit_build_window():
 
 func gui_exit_ingame_menu_window():
 	close_all_windows()
+	if Game.current_game_status == Game.STATUS.LOBBY_WAIT:
+		open_lobby_window()
 
 func gui_open_ingame_menu_window(is_local_player: bool):
 	close_all_windows()
-	if Game.Network.is_client():
+
+	if Game.Network.is_client() or Game.current_game_status == Game.STATUS.LOBBY_WAIT:
 		$ActionsMenu/InGameMenu/VBoxContainer/GuardarPartida.visible = false
 	else:
 		$ActionsMenu/InGameMenu/VBoxContainer/GuardarPartida.visible = true
-	if !is_local_player:
+	if !is_local_player or Game.current_game_status == Game.STATUS.LOBBY_WAIT:
 		$ActionsMenu/InGameMenu/VBoxContainer/Deshacer.visible = false
 	else:
 		$ActionsMenu/InGameMenu/VBoxContainer/Deshacer.visible = true
+		
 	$ActionsMenu/InGameMenu.visible = true
-
 func open_lobby_window():
 	$ActionsMenu/WaitingPlayers.visible = true
 	if Game.Network.is_client():
@@ -462,6 +468,13 @@ func gui_update_civilization_info() -> void:
 	
 	$HUD/CivilizationInfo/VBoxContainer/HBoxContainer4/TotPopulationText.text = populationStr
 
+func gui_update_game_info()->void:
+	if Game.current_game_status == Game.STATUS.PRE_GAME:
+		$HUD/PreGameInfo/HBoxContainer4/TurnText.text = str(Game.playersData[Game.current_player_turn].civilizationName) + " (" + str(Game.playersData[Game.current_player_turn].name) + ")"
+	elif Game.current_game_status == Game.STATUS.GAME_STARTED:
+		$HUD/GameInfo/HBoxContainer2/TurnText.text = str(Game.playersData[Game.current_player_turn].civilizationName) + " (" + str(Game.playersData[Game.current_player_turn].name) + ")"
+	else:
+		$HUD/GameInfo/HBoxContainer2/TurnText.text = "??"
 
 func gui_update_tile_info(tile_pos: Vector2) -> void:
 	
@@ -469,12 +482,6 @@ func gui_update_tile_info(tile_pos: Vector2) -> void:
 	if Game.Network.is_multiplayer() or Game.is_current_player_a_bot():
 		player_mask = Game.get_local_player_number()
 	var cell_data: Dictionary = Game.tilesObj.get_cell(tile_pos)
-	if Game.current_game_status == Game.STATUS.PRE_GAME:
-		$HUD/PreGameInfo/HBoxContainer4/TurnText.text = str(Game.playersData[Game.current_player_turn].civilizationName) + " (" + str(Game.playersData[Game.current_player_turn].name) + ")"
-	elif Game.current_game_status == Game.STATUS.GAME_STARTED:
-		$HUD/GameInfo/HBoxContainer2/TurnText.text = str(Game.playersData[Game.current_player_turn].civilizationName) + " (" + str(Game.playersData[Game.current_player_turn].name) + ")"
-	else:
-		$HUD/GameInfo/HBoxContainer2/TurnText.text = "??"
 
 	if !allow_show_tile_info(tile_pos, player_mask):
 		$HUD/TileInfo/VBoxContainer/HBoxContainer/OwnerName.text = "No info"

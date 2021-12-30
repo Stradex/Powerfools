@@ -28,6 +28,10 @@ extends Node2D
 # Estadisticas: Todas las batallas (equipos en batalla, cantidad de tropas, tropas al finalizar la batalla) [TOP 10]
 # sEGUNDA Vez que se entra crashea
 # Que los civiles aparezcan arriba de todo cuando pones tile info
+# Edificio, intel. (Podes moverlo solo una vez por turno, que ilumine solo los casilleros de alado)
+# Implementar sistema de lago
+# Fixear bug de que hay que seleccionar algo separado para deseleccionar una accion
+# Que se pueda mover talentos sin necesidad de reclutas
 
 const MIN_ACTIONS_PER_TURN: int = 3
 const MININUM_TROOPS_TO_FIGHT: int = 5
@@ -78,6 +82,7 @@ var actionTileToDo: Dictionary = {
 }
 enum NET_EVENTS {
 	UPDATE_TILE_DATA,
+	UPDATE_TILE_NAME, #To avoid desync problems just send the name when a client changes the name of a tile
 	CLIENT_USE_POINT,
 	CLIENT_USE_ACTION,
 	CLIENT_TURN_END,
@@ -116,31 +121,35 @@ func _process(delta):
 		tween.interpolate_callback(self, 0.25, "allow_player_interact")
 		tween.start()
 
-	if player_in_menu or !player_can_interact:
-		return
-	$Tiles.update_selection_tiles()
+	if !player_in_menu and player_can_interact:
+		$Tiles.update_selection_tiles()
+		
 	time_offset+=delta
 	if (time_offset > 1.0/Game.GAME_FPS):
 		time_offset = 0.0
-		game_on()
-		$UI.update_lobby_info()
-		$UI.update_server_info()
-		$Tiles.update_building_tiles()
-		$UI.gui_update_tile_info(Game.current_tile_selected)
-		$UI.gui_update_civilization_info()
-		$Tiles.update_visibility_tiles()
-		if is_local_player_turn():
-			$UI.hide_wait_for_player()
-		else:
-			$UI.show_wait_for_player()
-		$UI/HUD/GameInfo/HBoxContainer/ActionsLeftText.text = str(actions_available)
-		$UI/HUD/PreGameInfo/HBoxContainer/PointsLeftText.text = str(Game.playersData[Game.current_player_turn].selectLeft)
+		game_frame(player_in_menu or !player_can_interact)
+
+func game_frame(player_in_menu: bool) -> void:
+	$UI.gui_update_game_info()
+	$UI.update_server_info()
+	$UI/HUD/GameInfo/HBoxContainer/ActionsLeftText.text = str(actions_available)
+	$UI/HUD/PreGameInfo/HBoxContainer/PointsLeftText.text = str(Game.playersData[Game.current_player_turn].selectLeft)
+	game_on()
+	$Tiles.update_building_tiles()
+	if player_in_menu:
+		$UI.hide_wait_finish_for_player()
+		return
+
+	$UI.update_lobby_info()
+	$UI.gui_update_tile_info(Game.current_tile_selected)
+	$UI.gui_update_civilization_info()
+	$Tiles.update_visibility_tiles()
+	if is_local_player_turn():
+		$UI.hide_wait_for_player()
+	else:
+		$UI.show_wait_for_player()
 
 func _input(event):
-	if Input.is_action_just_pressed("toggle_tile_info"):
-		$UI/HUD/TileInfo.visible = !$UI/HUD/TileInfo.visible
-	if Input.is_action_just_pressed("toggle_civ_info"):
-		$UI/HUD/CivilizationInfo.visible = !$UI/HUD/CivilizationInfo.visible
 
 	if Input.is_action_just_pressed("zoom_in_hud"):
 		$Tiles.position = Vector2(0.0, 0.0)
@@ -153,12 +162,23 @@ func _input(event):
 
 	if Input.is_action_just_pressed("toggle_ingame_menu"):
 		if !player_in_menu and player_can_interact:
-			$UI.gui_open_ingame_menu_window(is_local_player_turn())
+			if Game.interactTileSelected != Vector2(-1, -1):
+				Game.interactTileSelected = Vector2(-1, -1)
+				Game.nextInteractTileSelected = Vector2(-1, -1)
+			else:
+				$UI.gui_open_ingame_menu_window(is_local_player_turn())
 		else:
 			$UI.close_all_windows()
+			if Game.current_game_status == Game.STATUS.LOBBY_WAIT:
+				$UI.open_lobby_window()
 
 	if player_in_menu or !player_can_interact:
 		return
+
+	if Input.is_action_just_pressed("toggle_tile_info"):
+		$UI/HUD/TileInfo.visible = !$UI/HUD/TileInfo.visible
+	if Input.is_action_just_pressed("toggle_civ_info"):
+		$UI/HUD/CivilizationInfo.visible = !$UI/HUD/CivilizationInfo.visible
 
 	if Input.is_action_just_pressed("toggle_coords"):
 		$UI.show_game_coords()	
@@ -452,16 +472,13 @@ func process_unused_tiles() -> void:
 	if Game.Network.is_client():
 		return
 	
-	#add rocks first
 	Game.tilesObj.pcg_generate_rocks(rng.randf_range(0.25, 0.50))
-	#Game.tilesObj.recover_sync_data()
 	for x in range(Game.tile_map_size.x):
 		for y in range(Game.tile_map_size.y):
 			if !Game.tilesObj.is_owned_by_any_player(Vector2(x, y)) and Game.tilesObj.is_tile_walkeable(Vector2(x, y)):
 				add_tribal_society_to_tile(Vector2(x, y))
 	save_player_info() #Avoid weird bug
 	Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = Game.tilesObj.get_sync_neighbors(Game.current_player_turn) })
-	#Game.tilesObj.save_sync_data()
 
 func game_on() -> void:
 	if Game.Network.is_client():
@@ -570,7 +587,6 @@ func process_turn_end(playerNumber: int) -> void:
 		var next_player_turn: int = Game.get_next_player_turn()
 		var sync_arrayA: Array = Game.tilesObj.get_sync_neighbors(next_player_turn)
 		var sync_arrayB: Array = Game.tilesObj.get_sync_data()
-
 		var merged_sync_arrays: Array = Game.tilesObj.merge_sync_arrays(sync_arrayA, sync_arrayB)
 		if next_player_turn != Game.current_player_turn:
 			var sync_arrayC: Array = Game.tilesObj.get_sync_neighbors(Game.current_player_turn)
@@ -581,6 +597,7 @@ func process_turn_end(playerNumber: int) -> void:
 func process_tiles_turn_end(playerNumber: int) -> void:
 	for x in range(Game.tile_map_size.x):
 		for y in range(Game.tile_map_size.y):
+			process_tile_sell(Vector2(x, y), playerNumber)
 			process_tile_upgrade(Vector2(x, y), playerNumber)
 			process_tile_buildings(Vector2(x, y), playerNumber)
 			process_tile_recruitments(Vector2(x, y), playerNumber)
@@ -588,6 +605,28 @@ func process_tiles_turn_end(playerNumber: int) -> void:
 			update_tile_owner(Vector2(x, y))
 			process_tile_underpopulation(Vector2(x, y), playerNumber)
 
+func process_tile_sell(cell: Vector2, playerNumber: int) -> void:
+	if !Game.tilesObj.belongs_to_player(cell, playerNumber):
+		return
+	var cell_data: Dictionary = Game.tilesObj.get_cell(cell)
+	var tileTypeData = Game.tileTypes.getByID(cell_data.tile_id)
+	
+	if cell_data.turns_to_sell <= 0:
+		return
+	if Game.tilesObj.is_cell_in_battle(cell):
+		cell_data.turns_to_sell=0 #cancel the sell of a territory if a battle starts!
+		return
+
+	cell_data.turns_to_sell-=1
+	if cell_data.turns_to_sell == 0: #tile sold!
+		var capital_pos: Vector2 = Game.tilesObj.get_player_capital_vec2(playerNumber)
+		var gold_at_cell: float = Game.tilesObj.get_cell_gold(cell)
+		Game.tilesObj.add_cell_gold(capital_pos, tileTypeData.sell_prize+gold_at_cell)
+		var troops_backup: Array = Game.tilesObj.get_troops(cell, true) #true = get a duplicate(true) copy
+		Game.tilesObj.clear_cell(cell)
+		Game.tilesObj.set_troops(cell, troops_backup)
+		add_tribal_society_to_tile(cell)
+		
 func process_tile_underpopulation(cell: Vector2, playerNumber: int) -> void:
 	if !Game.tilesObj.belongs_to_player(cell, playerNumber):
 		return
@@ -640,7 +679,7 @@ func process_tile_battles(tile_pos: Vector2) -> void:
 	#Step2: Apply damage to other armies
 	for damageToDo in damageToDoArray:
 		#Calculate how much damage to apply to each troop
-		var enemiesWarriorStrength: Array
+		var enemiesWarriorStrength: Array = []
 		var enemiesTotalStrength: float = 0.0
 		for troopDict in tile_cell_troops:
 			if damageToDo.owner == troopDict.owner:
@@ -782,12 +821,16 @@ func update_gold_stats(playerNumber: int) -> void:
 					negativeBalanceTerritories.append(Vector2(x, y))
 
 	if totalAmountOfGold < 0:
-		if positiveBalanceTerritories.size() <= 0 or totalAmountOfGold < -10:
+		var capitalVec2Coords: Vector2 = Game.tilesObj.get_player_capital_vec2(playerNumber)
+		var gold_to_give: float = 10.0
+		if Game.is_player_a_bot(playerNumber):
+			gold_to_give*=Game.get_bot_gains_multiplier(playerNumber)
+
+		if (positiveBalanceTerritories.size() <= 0 or float(totalAmountOfGold) < -gold_to_give):
 			destroy_player(playerNumber)
 			return
 		#first, remove the capital
 		
-		var capitalVec2Coords: Vector2 = Game.tilesObj.get_player_capital_vec2(playerNumber)
 		var capitalId: int = -1
 		for i in range(positiveBalanceTerritories.size()):
 			if positiveBalanceTerritories[i] == capitalVec2Coords:
@@ -797,9 +840,10 @@ func update_gold_stats(playerNumber: int) -> void:
 		if positiveBalanceTerritories.size() <= 0:
 			destroy_player(playerNumber)
 			return
-		Game.tilesObj.add_cell_gold(capitalVec2Coords, 10.0)
+		Game.tilesObj.add_cell_gold(capitalVec2Coords, gold_to_give)
 		var rndCellToSell: int = rng.randi_range(0, positiveBalanceTerritories.size() -1)
 		Game.tilesObj.clear_cell(positiveBalanceTerritories[rndCellToSell])
+		add_tribal_society_to_tile(positiveBalanceTerritories[rndCellToSell])
 		positiveBalanceTerritories.remove(rndCellToSell)
 		print("PLAYER " + str(playerNumber) + " SOLD A TERRITORY TO AVOID BANKRUNPCY!")
 		
@@ -844,10 +888,14 @@ func can_do_tiles_actions(startTile: Vector2, endTile: Vector2, playerNumber: in
 		return false
 	if !Game.tilesObj.is_next_to_tile(startTile,endTile):
 		return false
-	if !Game.tilesObj.belongs_to_player(endTile, playerNumber) and Game.tilesObj.get_warriors_count(startTile, playerNumber) <= 0: #don't allow civilians to invade
+	if !Game.tilesObj.belongs_to_player(endTile, playerNumber) and Game.tilesObj.get_warriors_count(startTile, playerNumber) <= 0 and !Game.tilesObj.belongs_to_allies(endTile, playerNumber):
+		return false
+	if Game.tilesObj.get_civilian_count(startTile, playerNumber) <= 0 and Game.tilesObj.get_warriors_count(endTile, playerNumber) <= 0: #can't do nothing there is no one in the tile
 		return false
 	if !Game.tilesObj.is_tile_walkeable(startTile) or !Game.tilesObj.is_tile_walkeable(endTile):
 		return false
+	if Game.tilesObj.is_cell_in_battle(startTile) and !Game.tilesObj.belongs_to_player(endTile, playerNumber): #Don't allow troops to attack other enemy territories while in battle!
+		return false 
 	return true
 
 func did_player_lost(playerNumber: int) -> bool:
@@ -867,7 +915,10 @@ func is_recruiting_possible(tile_pos: Vector2, playerNumber: int) -> bool:
 	if tile_cell_data.turns_to_build > 0:
 		return false
 	var currentBuildingType = Game.buildingTypes.getByID(tile_cell_data.building_id)
-	if currentBuildingType.deploy_prize > Game.tilesObj.get_total_gold(playerNumber):
+	var deploy_prize: float = float(currentBuildingType.deploy_prize)
+	if Game.is_player_a_bot(playerNumber):
+		deploy_prize *= Game.get_bot_discount_multiplier(playerNumber)
+	if deploy_prize > Game.tilesObj.get_total_gold(playerNumber):
 		return false
 	if tile_cell_data.upcomingTroops.size() >= 1: 
 		return false
@@ -875,7 +926,6 @@ func is_recruiting_possible(tile_pos: Vector2, playerNumber: int) -> bool:
 
 func check_if_player_can_buy_buildings(tile_pos: Vector2, playerNumber: int) -> bool:
 	var getTotalGoldAvailable: int = Game.tilesObj.get_total_gold(playerNumber)
-	var cellData: Dictionary = Game.tilesObj.get_cell(tile_pos)
 	var buildingTypesList: Array = Game.buildingTypes.getList()
 	for i in range(buildingTypesList.size()):
 		if Game.tilesObj.can_buy_building_at_cell(tile_pos, i, getTotalGoldAvailable, playerNumber):
@@ -960,15 +1010,15 @@ func change_tile_name(tile_pos: Vector2, new_name: String) -> void:
 	var player_mask: int = Game.current_player_turn
 	if Game.Network.is_multiplayer():
 		player_mask = Game.get_local_player_number()
-	if !Game.tilesObj.belongs_to_player(Vector2(tile_pos.x, tile_pos.y), player_mask):
+	if !Game.tilesObj.belongs_to_player(tile_pos, player_mask):
 		return
-	if Game.Network.is_client(): # No need of server to send this, it will be send at the next turn
-		Game.tilesObj.update_sync_data()
+	if Game.tilesObj.get_name(tile_pos) == new_name:
+		return #no need to sync!
+	#if Game.Network.is_client(): # No need of server to send this, it will be send at the next turn
+	#	Game.tilesObj.update_sync_data()
 
-	Game.tilesObj.set_name(Vector2(tile_pos.x, tile_pos.y), new_name)
-	
-	if Game.Network.is_client(): # No need of server to send this, it will be send at the next turn
-		Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data(player_mask) })
+	Game.tilesObj.set_name(tile_pos, new_name)
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_NAME, {cell_pos = tile_pos, cell_name = new_name })
 
 ###################################
 #	UI 
@@ -1023,14 +1073,26 @@ func clear_action_tile_to_do():
 			actionTileToDo.currentTroopId = troopDict.troop_id
 		actionTileToDo.troopsToMove.append( { troop_id = troopDict.troop_id, amountToMove = 0})
 
+func is_action_tile_to_do_empty():
+	if actionTileToDo.goldToSend > 0.0:
+		return false
+	for toMoveTroopDict in actionTileToDo.troopsToMove:
+		if toMoveTroopDict.amountToMove > 0.0:
+			return false
+	return true
+
 func update_tiles_actions_data():
-	$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer2/TalentosDisponibles.text = str(Game.tilesObj.get_cell_gold(Game.interactTileSelected))
+	var cell_gold: float = floor(Game.tilesObj.get_cell_gold(Game.interactTileSelected))
+	if cell_gold < 0.0:
+		cell_gold = 0.0
+	$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer2/TalentosDisponibles.text = str(cell_gold)
 	$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer2/TalentosAMover.text = str(actionTileToDo.goldToSend)
 	
 	$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.clear()
 	var troops_array: Array = Game.tilesObj.get_troops(Game.interactTileSelected)
 	var troops_to_show_array: Array = []
 	# Add always warriors first
+
 	for troopDict in troops_array:
 		if troopDict.owner != Game.current_player_turn:
 			continue
@@ -1041,25 +1103,30 @@ func update_tiles_actions_data():
 		elif Game.tilesObj.belongs_to_player(Game.nextInteractTileSelected, Game.current_player_turn):
 			troops_to_show_array.push_back({ name = Game.troopTypes.getByID(troopDict.troop_id).name, id = troopDict.troop_id})
 	
+	$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.visible = troops_to_show_array.size() > 0
+	$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TropasAMover.visible = troops_to_show_array.size() > 0
+	$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TropasDisponibles.visible = troops_to_show_array.size() > 0
 	for troopData in troops_to_show_array:
 		$UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.add_item(troopData.name, troopData.id)
-
-	update_troops_move_data($UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.selected)
+	
+	if troops_to_show_array.size() > 0:
+		update_troops_move_data($UI/ActionsMenu/TilesActions/VBoxContainer/HBoxContainer4/TiposTropas.selected)
 
 func game_tile_show_info():
-	if !Game.tilesObj.belongs_to_player(Game.current_tile_selected, Game.current_player_turn):
+	var player_mask: int = Game.current_player_turn
+	if Game.Network.is_multiplayer():
+		player_mask = Game.get_local_player_number()
+		
+	if !Game.tilesObj.belongs_to_player(Game.current_tile_selected, player_mask):
 		return
 	
-	if !is_local_player_turn():
-		$UI/ActionsMenu/InGameTileActions.visible = false
-		return
-	var cell_data: Dictionary = Game.tilesObj.get_cell(Game.current_tile_selected)
-	
-	$UI/ActionsMenu/InGameTileActions/VBoxContainer/VenderTile.visible = Game.tileTypes.canBeSold(cell_data.tile_id)
+	var allowed_to_modify_things: bool = is_local_player_turn() or !Game.Network.is_multiplayer()
+
+	$UI/ActionsMenu/InGameTileActions/VBoxContainer/VenderTile.visible = allowed_to_modify_things and Game.tilesObj.can_cell_be_sold(Game.current_tile_selected)
 	#if tiles_data[current_tile_selected.x][current_tile_selected.y].tile_id ==  Game.tileTypes.getIDByName("capital"):
-	$UI/ActionsMenu/InGameTileActions/VBoxContainer/UrbanizarTile.visible = Game.tilesObj.can_be_upgraded(Game.current_tile_selected, Game.current_player_turn)
-	$UI/ActionsMenu/InGameTileActions/VBoxContainer/Construir.visible = check_if_player_can_buy_buildings(Game.current_tile_selected, Game.current_player_turn)
-	$UI/ActionsMenu/InGameTileActions/VBoxContainer/Reclutar.visible = is_recruiting_possible(Game.current_tile_selected, Game.current_player_turn)
+	$UI/ActionsMenu/InGameTileActions/VBoxContainer/UrbanizarTile.visible = allowed_to_modify_things and Game.tilesObj.can_be_upgraded(Game.current_tile_selected, Game.current_player_turn)
+	$UI/ActionsMenu/InGameTileActions/VBoxContainer/Construir.visible = allowed_to_modify_things and check_if_player_can_buy_buildings(Game.current_tile_selected, Game.current_player_turn)
+	$UI/ActionsMenu/InGameTileActions/VBoxContainer/Reclutar.visible = allowed_to_modify_things and is_recruiting_possible(Game.current_tile_selected, Game.current_player_turn)
 	$UI/ActionsMenu/InGameTileActions.visible = true
 
 #########################
@@ -1079,7 +1146,7 @@ func gui_player_selected(index: int):
 func gui_add_bot():
 	if Game.Network.is_client():
 		return
-	Game.add_player(-1, "bot [D]", Game.BOT_NET_ID, -1, true)
+	Game.add_player(-1, "bot", Game.BOT_NET_ID, -1, true)
 
 func can_execute_action() -> bool:
 	return actions_available > 0
@@ -1128,6 +1195,20 @@ func execute_buy_building(var selectedBuildTypeId: int):
 func execute_open_build_window():
 	update_build_menu()
 
+func gui_vender_tile():
+	if !is_local_player_turn() or !can_execute_action():
+		return
+	if !Game.tilesObj.can_cell_be_sold(Game.current_tile_selected):
+		return
+	var cell_data: Dictionary = Game.tilesObj.get_cell(Game.current_tile_selected)
+	var tileTypeData = Game.tileTypes.getByID(cell_data.tile_id)
+	save_player_info()
+	Game.tilesObj.update_sync_data()
+	cell_data.turns_to_sell = 2 #2 turns to sold
+	action_in_turn_executed()
+	
+	$UI/ActionsMenu/InGameTileActions.visible = false
+	
 func gui_urbanizar_tile():
 	if !is_local_player_turn() or !can_execute_action():
 		return
@@ -1168,7 +1249,7 @@ func update_troops_move_data( var index: int ):
 			break
 
 func execute_accept_tiles_actions():
-	if !is_local_player_turn() or !can_execute_action():
+	if !is_local_player_turn() or !can_execute_action() or is_action_tile_to_do_empty():
 		return
 	save_player_info()
 	Game.tilesObj.update_sync_data()
@@ -1234,17 +1315,6 @@ func execute_btn_finish_turn():
 		return
 	if Game.current_game_status == Game.STATUS.GAME_STARTED:
 		move_to_next_player_turn()
-
-"""
-var gameplay_settings: Dictionary = {
-	min_actions_in_game = 1,
-	max_actions_in_game = 1,
-	territories_per_action = 1,
-	start_points = 1,
-	gold_per_point = 10,
-	troops_to_give_per_point = []
-}
-"""
 
 func execute_give_extra_gold():
 	if !is_local_player_turn() or !have_selection_points_left():
@@ -1819,6 +1889,8 @@ func server_process_event(eventId : int, eventData) -> void:
 			if	Game.current_player_turn == eventData.player_turn and !Game.is_current_player_a_bot():
 				Game.playersData[Game.current_player_turn].selectLeft = eventData.select_left
 				actions_available = eventData.actions_left
+		NET_EVENTS.UPDATE_TILE_NAME:
+			Game.tilesObj.set_name(eventData.cell_pos, eventData.cell_name)
 		_:
 			print("Warning: Received unkwown event");
 			
@@ -1853,6 +1925,8 @@ func client_process_event(eventId : int, eventData) -> void:
 		NET_EVENTS.SERVER_SEND_GAME_ENDED:
 			$UI/GameFinished.visible = true
 			$UI.open_finish_game_screen((OS.get_ticks_msec() - game_start_time)/60000.0)
+		NET_EVENTS.UPDATE_TILE_NAME:
+			Game.tilesObj.set_name(eventData.cell_pos, eventData.cell_name)
 		NET_EVENTS.SERVER_SEND_GAMESTATS_DATA:
 			net_client_stats_init()
 			var local_player_num: int = Game.get_local_player_number()

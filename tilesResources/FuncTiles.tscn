@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://assets/graphics/functiles/tile_selling.png" type="Texture" id=1]
+
+[node name="TroopsTiles" type="Node2D"]
+
+[node name="tile_selling" type="Sprite" parent="."]
+position = Vector2( 43.8511, 44.5124 )
+texture = ExtResource( 1 )

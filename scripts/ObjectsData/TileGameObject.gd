@@ -39,6 +39,7 @@ var default_tile: Dictionary = {
 	upcomingTroops = [], #array with all the upcoming troops. DATA: turns to wait, owner, troop_id and amount
 	type_of_rock = -1,
 	tribe_owner = -1, #in case this tile is owned by a tribal society, this holds he ID of the tribal society who owns it (to get the name)
+	turns_to_sell = 0 #time left to sell cell
 }
 
 var alphabet: Array = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "N", "Ñ", "O", "P", "Q", "R", "S", "T", "V", "W", "X", "Y", "Z"]
@@ -73,6 +74,16 @@ func _init(init_tile_size: Vector2, default_tile_id: int, init_tile_types_obj, i
 ################
 #	BOOLEANS   #
 ################
+
+func can_cell_be_sold(cell: Vector2) -> bool:
+	if is_cell_in_battle(cell):
+		return false
+	if is_capital(cell):
+		return false
+	var cell_data: Dictionary = Game.tilesObj.get_cell(cell)
+	if cell_data.turns_to_sell > 0: #already being sold
+		return false
+	return tile_types_obj.canBeSold(cell_data.tile_id)
 
 func cell_has_building(cell: Vector2) -> bool:
 	return tiles_data[cell.x][cell.y].building_id != -1
@@ -212,8 +223,12 @@ func can_be_upgraded(tile_pos: Vector2, playerNumber: int) -> bool:
 		return false
 	if is_upgrading(tile_pos):
 		return false
+		
 	var tileTypeDict = tile_types_obj.getByID(tiles_data[tile_pos.x][tile_pos.y].tile_id)
-	if get_total_gold(playerNumber) < tileTypeDict.improve_prize:
+	var upgrade_prize: float = float(tileTypeDict.improve_prize)
+	if Game.is_player_a_bot(tiles_data[tile_pos.x][tile_pos.y].owner):
+		upgrade_prize *= Game.get_bot_discount_multiplier(tiles_data[tile_pos.x][tile_pos.y].owner)
+	if get_total_gold(playerNumber) < upgrade_prize:
 		return false
 	
 	return tile_types_obj.canBeUpgraded(tiles_data[tile_pos.x][tile_pos.y].tile_id)
@@ -249,7 +264,10 @@ func can_buy_building_at_cell(tile_pos: Vector2, buildTypeId: int, goldAvailable
 	if tiles_data[tile_pos.x][tile_pos.y].building_id == buildTypeId:
 		return false
 	var currentBuildingTypeSelected = building_types_obj.getByID(buildTypeId)
-	if goldAvailable < currentBuildingTypeSelected.buy_prize:
+	var prize_of_building: float = float(currentBuildingTypeSelected.buy_prize)
+	if Game.is_player_a_bot(tiles_data[tile_pos.x][tile_pos.y].owner):
+		prize_of_building *= Game.get_bot_discount_multiplier(tiles_data[tile_pos.x][tile_pos.y].owner)
+	if goldAvailable < prize_of_building:
 		return false
 	if currentBuildingTypeSelected.max_amount > 0 and get_amount_of_buildings(buildTypeId, playerNumber) >= currentBuildingTypeSelected.max_amount:
 		return false
@@ -305,8 +323,11 @@ func get_cell_gold_gain_and_losses(tile_pos: Vector2, playerNumber: int) -> floa
 	if tiles_data[tile_pos.x][tile_pos.y].owner != playerNumber: #fixme: calculate battle stuff here later
 		return 0.0
 	var goldGains: float = 0
+	var gainsMultiplier: float = 1.0
+	if Game.is_player_a_bot(playerNumber):
+		gainsMultiplier = Game.get_bot_gains_multiplier(playerNumber)
 	if is_producing_gold(tile_pos, playerNumber):
-		goldGains += float(tile_types_obj.getByID(tiles_data[tile_pos.x][tile_pos.y].tile_id).gold_to_produce)
+		goldGains += float(tile_types_obj.getByID(tiles_data[tile_pos.x][tile_pos.y].tile_id).gold_to_produce)*gainsMultiplier
 	for troopDict in tiles_data[tile_pos.x][tile_pos.y].troops:
 		if troopDict.owner != playerNumber:
 			continue
@@ -791,7 +812,6 @@ func remove_troops_index(tile_pos: Vector2, index: int) -> bool:
 	return true
 
 func remove_troops_from_player(tile_pos: Vector2, player_number: int) -> void:
-	var indexes_to_remove: Array = []
 	var troops_data: Array = tiles_data[tile_pos.x][tile_pos.y].troops
 	var removing_completed: bool = false
 	while !removing_completed:
@@ -835,16 +855,15 @@ func give_to_a_player(playerNumber: int, tile_pos: Vector2, tile_type_id: int, a
 
 func update_gold_stats(tile_pos: Vector2, playerNumber: int) ->  void:
 	var gold_multiplier: float = 1.0
-	if Game.is_player_a_bot(playerNumber):
-		gold_multiplier = Game.get_bot_gains_multiplier(playerNumber)
 	var gold_to_give: float = get_cell_gold_gain_and_losses(tile_pos, playerNumber)
-	if gold_to_give >=0:
-		gold_to_give*=gold_multiplier
 	add_cell_gold(tile_pos, gold_to_give)
 
 func queue_upgrade_cell(cell: Vector2) -> void:
 	var tileTypeData = Game.tileTypes.getByID(tiles_data[cell.x][cell.y].tile_id)
-	tiles_data[cell.x][cell.y].gold -= tileTypeData.improve_prize
+	var upgrade_prize: float = float(tileTypeData.improve_prize)
+	if Game.is_player_a_bot(tiles_data[cell.x][cell.y].owner):
+		upgrade_prize *= Game.get_bot_discount_multiplier(tiles_data[cell.x][cell.y].owner)
+	tiles_data[cell.x][cell.y].gold -= upgrade_prize
 	tiles_data[cell.x][cell.y].turns_to_improve_left = tileTypeData.turns_to_improve
 
 func finish_upgrade_cell(tile_pos: Vector2, playerNumber: int) -> void:
@@ -862,7 +881,10 @@ func finish_upgrade_cell(tile_pos: Vector2, playerNumber: int) -> void:
 
 func buy_building(tile_pos: Vector2, var buildTypeId: int):
 	var currentBuildingTypeSelected = building_types_obj.getByID(buildTypeId)
-	tiles_data[tile_pos.x][tile_pos.y].gold -= currentBuildingTypeSelected.buy_prize
+	var prize_of_building: float = float(currentBuildingTypeSelected.buy_prize)
+	if Game.is_player_a_bot(tiles_data[tile_pos.x][tile_pos.y].owner):
+		prize_of_building *= Game.get_bot_discount_multiplier(tiles_data[tile_pos.x][tile_pos.y].owner)
+	tiles_data[tile_pos.x][tile_pos.y].gold -= prize_of_building
 	tiles_data[tile_pos.x][tile_pos.y].turns_to_build = currentBuildingTypeSelected.turns_to_build
 	tiles_data[tile_pos.x][tile_pos.y].building_id = buildTypeId
 
@@ -1029,7 +1051,6 @@ func ai_cell_is_in_danger(cell_pos: Vector2, player_number: int, cells_to_ignore
 	var cell_health: float = get_own_troops_health(cell_pos, player_number)
 	var cell_damage: float = get_own_troops_damage(cell_pos, player_number)
 	var enemies_close_force: Dictionary = ai_get_enemies_strength_close_to(cell_pos, player_number, cells_to_ignore)
-	
 	if !is_capital(cell_pos):  #This will never happen at own capital
 		var upcoming_enemies_force: Dictionary = ai_get_upcoming_enemies_strength_at(cell_pos, player_number)
 		#Fix: help bots to avoid leaving cells unprotected when an upcoming troop is going to spawn.
@@ -1082,8 +1103,12 @@ func ai_get_cells_not_in_danger(player_number: int, cells_to_ignore: Array = [])
 	return Game.Util.array_substract(get_all_player_tiles(player_number), ai_get_all_cells_in_danger(player_number, cells_to_ignore))
 
 func ai_get_cells_available_to_move_troops_towards(player_number: int, pos_to_move: Vector2) -> Array:
+	var cells_to_ignore: Array = [pos_to_move]
 	var cells_with_warriors: Array = get_all_tiles_with_warriors_from_player(player_number)
-	var cells_in_danger: Array = ai_get_all_cells_in_danger(player_number, [pos_to_move])
+	if !belongs_to_allies(pos_to_move, player_number) and !belongs_to_player(pos_to_move, player_number) and is_capital(pos_to_move): #enemy capital
+		var enemy_capital_neighbors: Array = get_walkeable_neighbors(pos_to_move)
+		cells_to_ignore = Game.Util.array_addition(cells_to_ignore, enemy_capital_neighbors)
+	var cells_in_danger: Array = ai_get_all_cells_in_danger(player_number, cells_to_ignore)
 	var cells_in_battle: Array = get_cells_in_battle_with_enemies(player_number)
 	var cells_avilable_to_move_troops: Array = Game.Util.array_substract(cells_with_warriors, cells_in_danger) #all cells with warriors that are not in danger
 	cells_avilable_to_move_troops = Game.Util.array_substract(cells_with_warriors, cells_in_battle) #cells in battle cannot be used

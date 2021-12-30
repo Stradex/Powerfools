@@ -13,7 +13,7 @@ const SCREEN_WIDTH: int = 1280
 const SCREEN_HEIGHT: int = 720
 const TILE_SIZE: int = 80
 const GAME_FPS: int = 4 # we really don't need to much higher FPS, this is mostly for game logic, not graphic stuff
-const DEBUG_MODE: bool = false
+const DEBUG_MODE: bool = true
 const BOT_NET_ID: int = -1
 const BOT_STATS_FILE: String = "bots_difficulties.json"
 const GAMEPLAY_SETTINGS_FILE: String = "game_settings.json"
@@ -188,12 +188,20 @@ func start_new_game(is_mp_game: bool = false):
 	if !is_mp_game:
 		init_player(0, Network.SERVER_NETID, "Stradex", 555, true, 1) #human
 		init_player(1, Network.SERVER_NETID, "bot", 1, true, 1) #bot - team 1
-		init_player(2, Network.SERVER_NETID, "bot", 1, true, 2) #bot - team 2
-		init_player(3, Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
-		init_player(4, Network.SERVER_NETID, "bot", 3, true, 3) #bot - team 2
-		init_player(5, Network.SERVER_NETID, "bot", 3, true, 3) #bot - team 2
-		init_player(6, Network.SERVER_NETID, "bot", 3, true, 4) #bot - team 2
-		init_player(7, Network.SERVER_NETID, "bot", 3, true, 4) #bot - team 2
+		init_player(2, Network.SERVER_NETID, "bot", 1, true, 1) #bot - team 2
+		init_player(3, Network.SERVER_NETID, "bot", 3, true, 1) #bot - team 2
+		init_player(4, Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
+		init_player(5, Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
+		init_player(6, Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
+		init_player(7, Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
+		set_bot_difficulty(0, 3)
+		set_bot_difficulty(1, 3)
+		set_bot_difficulty(2, 3)
+		set_bot_difficulty(3, 3)
+		set_bot_difficulty(4, 3)
+		set_bot_difficulty(5, 3)
+		set_bot_difficulty(6, 3)
+		set_bot_difficulty(7, 3)
 		
 	change_to_map(START_MAP)
 
@@ -348,6 +356,8 @@ func get_bot_gains_multiplier(bot_number: int) -> float:
 	return get_bot_difficulty_stats(bot_number).GAINS_MULT
 
 func is_player_a_bot(playerNumber: int) -> bool:
+	if playerNumber == -1:
+		return false
 	return playersData[playerNumber].isBot
 
 func is_current_player_a_bot() -> bool:

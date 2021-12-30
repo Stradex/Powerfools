@@ -28,7 +28,7 @@
 			"minimum_buildings":2
 		},
 		{
-			"name":"Experto",
+			"name":"Pesadilla",
 			"troops_mult":2.0,
 			"buy_discount_mult":0.5,
 			"extra_gold_mult":2.0,
