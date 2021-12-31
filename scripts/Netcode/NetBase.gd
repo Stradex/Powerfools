@@ -114,6 +114,9 @@ func find_player_number_by_netid(netid: int):
 			return i
 	return -1
 
+func kick_client(netid: int, kick_reason: String = "You have been kicked from the server!"):
+	Game.rpc_id(netid, "game_process_rpc", "client_kicked", [{reason = kick_reason}])
+	
 func server_process_client_reconnect(id_client: int):
 	var player_num: int = find_player_number_by_netid(id_client)
 	Game.emit_signal("player_reconnects", id_client, player_num)
@@ -125,10 +128,8 @@ func server_process_client_question(id_client: int, client_name: String, client_
 	else:
 		player_num = Game.get_player_number_by_pin_code(client_pin)
 		if player_num == -1 or Game.playersData[player_num].netid != -1: #not allowed to join!, this player still in-game!
-			Game.rpc_id(id_client, "game_process_rpc", "client_kicked", [{player_number = player_num}])
+			kick_client(id_client, "Player with same pin code still in-game!, you can't join!")
 			return
-		#succed
-		
 
 	Game.playersData[player_num].name = client_name
 	Game.playersData[player_num].pin_code = client_pin
@@ -139,7 +140,9 @@ func server_process_client_question(id_client: int, client_name: String, client_
 
 func client_kicked(receive_data: Dictionary):
 	net_disconnect()
-	Game.emit_signal("error_joining_server", "Not allowed to join server...")
+	Game.go_to_main_menu(receive_data.reason)
+	Game.emit_signal("error_joining_server", receive_data.reason)
+	Game.clear_players_data()
 
 func client_receive_answer(receive_data: Dictionary):
 	print("player number: %d, uniqueid: %d" % [receive_data.player_number, Game.get_tree().get_network_unique_id()])

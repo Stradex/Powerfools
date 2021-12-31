@@ -1289,6 +1289,8 @@ func execute_accept_tiles_actions():
 	Game.tilesObj.update_sync_data()
 	execute_tile_action()
 	action_in_turn_executed()
+	Game.nextInteractTileSelected = Vector2(-1, -1) #reset
+	Game.interactTileSelected = Vector2(-1, -1) #reset
 	#Game.Network.net_send_event(self.node_id, NET_EVENTS.UPDATE_TILE_DATA, {dictArray = Game.tilesObj.get_sync_data() })
 
 func action_in_turn_executed():
@@ -1895,9 +1897,7 @@ func get_tiles_node_transformation() -> Dictionary:
 	return {scale = $Tiles.scale, position = $Tiles.position}
 
 func exit_game(error_msg: String = ""):
-	Game.Network.net_disconnect()
-	Game.go_to_main_menu(error_msg)
-	Game.clear_players_data()
+	Game.Network.client_kicked({reason = error_msg})
 
 func client_update_player_data(playerData, force: bool) -> void:
 	#SERVER_SEND_GAME_ENDED

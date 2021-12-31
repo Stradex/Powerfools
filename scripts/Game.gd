@@ -285,20 +285,30 @@ func get_free_netid() -> int:
 				break
 	return new_net_id
 
+func kick_player(player_number:int) -> void:
+	if Game.Network.is_client() or playersData[player_number].netid == get_tree().get_network_unique_id():
+		return
+	if !playersData[player_number].isBot and playersData[player_number].netid != get_tree().get_network_unique_id():
+		Game.Network.kick_client(playersData[player_number].netid)
+	remove_player(player_number)
+	
+func remove_player(player_number: int) -> void:
+	playersData[player_number].name = 'Player ' + str(player_number+1)
+	playersData[player_number].pin_code = 000
+	playersData[player_number].civilizationName = defaultCivilizationNames[player_number]
+	playersData[player_number].alive = false
+	playersData[player_number].isBot = false
+	playersData[player_number].selectLeft = false
+	playersData[player_number].netid = -1
+	playersData[player_number].team = -1
+	playersData[player_number].turns_played = 0
+	playersData[player_number].bot_stats.clear()
+	
 func remove_net_player(netid: int) -> void:
 	var player_id: int = get_player_by_netid(netid)
 	if player_id == -1:
 		return
-	playersData[player_id].name = 'Player ' + str(player_id+1)
-	playersData[player_id].pin_code = 000
-	playersData[player_id].civilizationName = defaultCivilizationNames[player_id]
-	playersData[player_id].alive = false
-	playersData[player_id].isBot = false
-	playersData[player_id].selectLeft = false
-	playersData[player_id].netid = -1
-	playersData[player_id].team = -1
-	playersData[player_id].turns_played = 0
-	playersData[player_id].bot_stats.clear()
+	remove_player(player_id)
 
 func add_player(netid: int, player_name: String, player_pin: int, forceid: int = -1, isBot: bool = false) -> int:
 	

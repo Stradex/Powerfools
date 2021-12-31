@@ -44,6 +44,7 @@ func init_button_signals():
 	$ActionsMenu/InGameMenu/VBoxContainer/Salir.connect("pressed", self, "gui_show_confirmation_window")
 	$ActionsMenu/ConfirmationExit/VBoxContainer/HBoxContainer/ConfirmExit.connect("pressed", world_game_node, "exit_game")
 	$ActionsMenu/ConfirmationExit/VBoxContainer/HBoxContainer/Cancel.connect("pressed", self, "gui_leave_confirmation_menu")
+	$ActionsMenu/EditPlayer/VBoxContainer/HBoxContainer4/Kick.connect("pressed", self, "gui_kick_player")
 	$ActionsMenu/EditTile/VBoxContainer/HBoxContainer2/NombreTextEdit.set_max_length(20)
 func init_menu_graphics():
 	close_all_windows()
@@ -239,6 +240,12 @@ func show_error_message(error_msg: String) -> void:
 	tween.stop_all()
 	tween.interpolate_callback(self, 5.0, "clear_error_message")
 	tween.start()
+
+func gui_kick_player():
+	if Game.Network.is_client() or Game.get_local_player_number() == player_editing_index:
+		return
+	Game.kick_player(player_editing_index)
+	gui_close_edit_player()
 
 func gui_leave_confirmation_menu():
 	if !world_game_node.can_interact_with_menu():
