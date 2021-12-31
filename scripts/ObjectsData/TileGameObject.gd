@@ -191,6 +191,13 @@ func is_next_to_allies_territory(cell: Vector2, playerNumber: int) -> bool:
 			return true 
 	return false
 
+func is_next_to_territory_with_own_troops(cell: Vector2, playerNumber: int) -> bool:
+	var neighbors: Array = get_walkeable_neighbors(cell)
+	for neighbor in neighbors:
+		if player_has_troops_in_cell(neighbor, playerNumber):
+			return true 
+	return false
+
 func is_next_to_allies_territory_with_own_troops(cell: Vector2, playerNumber: int) -> bool:
 	var neighbors: Array = get_walkeable_neighbors(cell)
 	for neighbor in neighbors:
@@ -626,9 +633,17 @@ func get_number_of_productive_territories(playerNumber: int) -> int:
 	var productiveTerritoriesCount: int = 0
 	for x in range(tile_size.x):
 		for y in range(tile_size.y):
-			if tiles_data[x][y].owner == playerNumber && has_minimum_civilization(Vector2(x, y), playerNumber):
+			if tiles_data[x][y].owner == playerNumber && is_producing_gold(Vector2(x, y), playerNumber):
 				productiveTerritoriesCount+=1
 	return productiveTerritoriesCount
+
+func get_extra_actions_amount(playerNumber: int) -> float:
+	var player_cells: Array = get_all_player_tiles(playerNumber)
+	var extra_actions_total: float = 0.0
+	for cell in player_cells:
+		var tileTypeDict: Dictionary = get_tile_type_dict(cell)
+		extra_actions_total+=tileTypeDict.extra_actions_to_give
+	return extra_actions_total
 
 func get_neighbors_from_array(cell: Vector2, cell_array: Array, bitmask: int = ALL_DIR, mult: int = 1) -> Array:
 	var neighbors: Array = []
@@ -951,7 +966,7 @@ func get_sync_neighbors (playerNumber: int) -> Array:
 	var cellsToSync: Array = []
 	for x in range(tile_size.x):
 		for y in range(tile_size.y):
-			if tiles_data[x][y].owner != playerNumber and is_next_to_player_territory(Vector2(x, y), playerNumber):
+			if tiles_data[x][y].owner != playerNumber and (is_next_to_player_territory(Vector2(x, y), playerNumber) or is_next_to_territory_with_own_troops(Vector2(x, y), playerNumber)):
 				cellsToSync.append({ cell_pos = Vector2(x, y), cell_data = tiles_data[x][y].duplicate( true ) })
 	#print( "get_sync_neighbors: " + str(cellsToSync.size()) )
 	return cellsToSync
@@ -1341,6 +1356,14 @@ func ai_get_farthest_player_cell_from(cell: Vector2, player_number: int) -> Arra
 			assert(0)
 	
 	return farthest_cells
+
+func ai_enemy_cells_next_to(cell: Vector2, player_number: int) -> Array:
+	var enemy_cells: Array = []
+	var neighbors: Array = get_walkeable_neighbors(cell)
+	for neighbor in neighbors:
+		if tiles_data[neighbor.x][neighbor.y].owner != player_number and !Game.are_player_allies(player_number, tiles_data[neighbor.x][neighbor.y].owner):
+			enemy_cells.append(neighbor)
+	return enemy_cells
 
 func ai_get_reachable_enemy_cells(player_number: int , use_allies_territories_too: bool = false) -> Array:
 	var player_cells: Array = get_all_player_tiles(player_number)

@@ -60,6 +60,7 @@ func _ready():
 	ui_mods_list.clear()
 	update_resolution_list()
 	ui_go_to_menu()
+	$PlayerSettingsMenu/PlayerPinTextBox.only_numbers(0, 999999)
 	if Game.error_message_to_show.length() > 1:
 		ui_failed_to_join(Game.error_message_to_show)
 		Game.error_message_to_show = ""

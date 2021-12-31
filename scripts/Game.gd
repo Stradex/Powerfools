@@ -13,7 +13,7 @@ const SCREEN_WIDTH: int = 1280
 const SCREEN_HEIGHT: int = 720
 const TILE_SIZE: int = 80
 const GAME_FPS: int = 4 # we really don't need to much higher FPS, this is mostly for game logic, not graphic stuff
-const DEBUG_MODE: bool = true
+const DEBUG_MODE: bool = false
 const BOT_NET_ID: int = -1
 const BOT_STATS_FILE: String = "bots_difficulties.json"
 const GAMEPLAY_SETTINGS_FILE: String = "game_settings.json"
@@ -128,7 +128,8 @@ func init_bots_stats():
 			EXTRA_GOLD_MULT = troopDict["extra_gold_mult"],
 			GAINS_MULT = troopDict["gains_mult"],
 			CAPITAL_MINIMUM_RECRUITS = troopDict["capital_minimum_recruits"],
-			MINIMUM_BUILDINGS = troopDict["minimum_buildings"]
+			MINIMUM_BUILDINGS = troopDict["minimum_buildings"],
+			MINIMUM_SAVINGS = troopDict["minimum_savings"]
 		})
 
 func init_players():
@@ -194,14 +195,14 @@ func start_new_game(is_mp_game: bool = false):
 		init_player(5, Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
 		init_player(6, Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
 		init_player(7, Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
-		set_bot_difficulty(0, 3)
-		set_bot_difficulty(1, 3)
-		set_bot_difficulty(2, 3)
-		set_bot_difficulty(3, 3)
-		set_bot_difficulty(4, 3)
-		set_bot_difficulty(5, 3)
-		set_bot_difficulty(6, 3)
-		set_bot_difficulty(7, 3)
+		set_bot_difficulty(0, 0)
+		set_bot_difficulty(1, 0)
+		set_bot_difficulty(2, 0)
+		set_bot_difficulty(3, 0)
+		set_bot_difficulty(4, 0)
+		set_bot_difficulty(5, 0)
+		set_bot_difficulty(6, 0)
+		set_bot_difficulty(7, 0)
 		
 	change_to_map(START_MAP)
 
@@ -355,6 +356,9 @@ func get_bot_extra_gold_multiplier(bot_number: int) -> float:
 func get_bot_gains_multiplier(bot_number: int) -> float:
 	return get_bot_difficulty_stats(bot_number).GAINS_MULT
 
+func get_bot_minimum_savings(bot_number: int) -> float:
+	return float(get_bot_difficulty_stats(bot_number).MINIMUM_SAVINGS)
+	
 func is_player_a_bot(playerNumber: int) -> bool:
 	if playerNumber == -1:
 		return false

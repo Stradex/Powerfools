@@ -44,6 +44,7 @@ func init_button_signals():
 	$ActionsMenu/InGameMenu/VBoxContainer/Salir.connect("pressed", self, "gui_show_confirmation_window")
 	$ActionsMenu/ConfirmationExit/VBoxContainer/HBoxContainer/ConfirmExit.connect("pressed", world_game_node, "exit_game")
 	$ActionsMenu/ConfirmationExit/VBoxContainer/HBoxContainer/Cancel.connect("pressed", self, "gui_leave_confirmation_menu")
+	$ActionsMenu/EditTile/VBoxContainer/HBoxContainer2/NombreTextEdit.set_max_length(20)
 func init_menu_graphics():
 	close_all_windows()
 	init_tile_coordinates()
@@ -168,12 +169,7 @@ func ui_open_game_stats() -> void:
 	for obj in HBOXkilledInBattle.get_children(): 
 		HBOXkilledInBattle.remove_child(obj)
 		obj.queue_free()
-	"""
-	teams_data.append({
-		players = [troopDict.owner],
-		strength = troopsHealth + troopsDamage
-	})
-	"""
+
 	var teams_in_battle: Array = world_game_node.get_teams_data_from_battle_stats(best_battle)
 	for team in teams_in_battle:
 		var new_vbox: VBoxContainer = VBoxContainer.new()
@@ -389,7 +385,7 @@ func gui_open_ingame_menu_window(is_local_player: bool):
 		$ActionsMenu/InGameMenu/VBoxContainer/GuardarPartida.visible = false
 	else:
 		$ActionsMenu/InGameMenu/VBoxContainer/GuardarPartida.visible = true
-	if !is_local_player or Game.current_game_status == Game.STATUS.LOBBY_WAIT:
+	if !is_local_player or Game.current_game_status == Game.STATUS.LOBBY_WAIT or !world_game_node.undo_available:
 		$ActionsMenu/InGameMenu/VBoxContainer/Deshacer.visible = false
 	else:
 		$ActionsMenu/InGameMenu/VBoxContainer/Deshacer.visible = true
@@ -482,15 +478,29 @@ func gui_update_tile_info(tile_pos: Vector2) -> void:
 	if Game.Network.is_multiplayer() or Game.is_current_player_a_bot():
 		player_mask = Game.get_local_player_number()
 	var cell_data: Dictionary = Game.tilesObj.get_cell(tile_pos)
-
-	if !allow_show_tile_info(tile_pos, player_mask):
-		$HUD/TileInfo/VBoxContainer/HBoxContainer/OwnerName.text = "No info"
-		$HUD/TileInfo/VBoxContainer/HBoxContainer2/Amount.text = "No info"
-		$HUD/TileInfo/VBoxContainer/HBoxContainer6/StrengthText.text = "No info"
-		$HUD/TileInfo/VBoxContainer/HBoxContainer7/GainsText.text = "No info"
-		$HUD/TileInfo/VBoxContainer/HBoxContainer4/PopulationText.text = "No info"
+	if !Game.tilesObj.is_tile_walkeable(tile_pos):
+		$HUD/TileInfo/VBoxContainer/HBoxContainer5/TileName.text = "Piedra"
+		$HUD/TileInfo/VBoxContainer/HBoxContainer.visible = false
+		$HUD/TileInfo/VBoxContainer/HBoxContainer2.visible = false
+		$HUD/TileInfo/VBoxContainer/HBoxContainer6.visible = false
+		$HUD/TileInfo/VBoxContainer/HBoxContainer7.visible = false
+		$HUD/TileInfo/VBoxContainer/HBoxContainer4.visible = false
 		return
-	
+	if !allow_show_tile_info(tile_pos, player_mask):
+		$HUD/TileInfo/VBoxContainer/HBoxContainer5/TileName.text = "No info"
+		$HUD/TileInfo/VBoxContainer/HBoxContainer.visible = false
+		$HUD/TileInfo/VBoxContainer/HBoxContainer2.visible = false
+		$HUD/TileInfo/VBoxContainer/HBoxContainer6.visible = false
+		$HUD/TileInfo/VBoxContainer/HBoxContainer7.visible = false
+		$HUD/TileInfo/VBoxContainer/HBoxContainer4.visible = false
+		return
+		
+	$HUD/TileInfo/VBoxContainer/HBoxContainer.visible = true
+	$HUD/TileInfo/VBoxContainer/HBoxContainer2.visible = true
+	$HUD/TileInfo/VBoxContainer/HBoxContainer6.visible = true
+	$HUD/TileInfo/VBoxContainer/HBoxContainer7.visible = true
+	$HUD/TileInfo/VBoxContainer/HBoxContainer4.visible = true
+		
 	$HUD/TileInfo/VBoxContainer/HBoxContainer5/TileName.text = cell_data.name
 	if cell_data.owner == -1: #tribal society
 		if cell_data.tribe_owner != -1:

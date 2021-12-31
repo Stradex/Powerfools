@@ -15,7 +15,8 @@ var InvalidTile: Dictionary = {
 	conquer_gain = 0, #ammount of gold to receive in case of conquering this land
 	tile_img = 'tile_empty', #image name of the tile (look at tileResources)
 	min_civil_to_produce_gold = 0, #minimum amount of civilians to produce gold
-	max_civil_to_produce_gold = 0 #maximum amount of civilians to produce gold
+	max_civil_to_produce_gold = 0, #maximum amount of civilians to produce gold
+	extra_actions_to_give = 0.0 #extra actions to give per territory
 }
 
 func _init():
@@ -85,6 +86,7 @@ func load_from_file(folder: String, fileSystemObj: Object) -> bool:
 			conquer_gain = troopDict["conquer_gain"],
 			tile_img = troopDict["tile_img"],
 			min_civil_to_produce_gold = troopDict["min_civil_to_produce_gold"],
-			max_civil_to_produce_gold = troopDict["max_civil_to_produce_gold"]
+			max_civil_to_produce_gold = troopDict["max_civil_to_produce_gold"],
+			extra_actions_to_give = troopDict["extra_actions_to_give"]
 		})
 	return true

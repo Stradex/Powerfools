@@ -50,7 +50,7 @@ var player_can_interact: bool = true
 var actions_available: int = MIN_ACTIONS_PER_TURN
 var rng: RandomNumberGenerator = RandomNumberGenerator.new();
 var node_id: int = -1
-var undo_available: bool = true
+var undo_available: bool = false
 var turn_number: int = 0
 var game_start_time: float = 0.0
 
@@ -192,7 +192,6 @@ func _input(event):
 	
 	if Input.is_action_just_pressed("debug_key"):
 		debug_key_pressed()
-	
 	if Input.is_action_just_pressed("show_info"):
 		match Game.current_game_status:
 			Game.STATUS.PRE_GAME:
@@ -423,9 +422,26 @@ func game_interact():
 	elif Game.nextInteractTileSelected == Vector2(-1, -1):
 		if can_do_tiles_actions(Game.interactTileSelected, Game.current_tile_selected, Game.current_player_turn):
 			Game.nextInteractTileSelected = Game.current_tile_selected
-			popup_tiles_actions()
+			if Input.is_action_pressed("select_modifier") and Game.tilesObj.get_warriors_count(Game.interactTileSelected, Game.current_player_turn) > 0: #send all
+				move_all_troops_from_to(Game.interactTileSelected, Game.nextInteractTileSelected, Game.current_player_turn)
+			else:
+				popup_tiles_actions()
 		else:
 			Game.interactTileSelected = Vector2(-1, -1)
+
+func move_all_troops_from_to(from: Vector2, to: Vector2, player_number: int) -> void:
+	clear_action_tile_to_do()
+	var troops_array: Array = Game.tilesObj.get_troops(from)
+	for troopDict in troops_array:
+		if troopDict.owner != player_number:
+			continue
+		if !Game.troopTypes.getByID(troopDict.troop_id).is_warrior: # do not move civilians
+			continue
+		for toMoveTroopsDict in actionTileToDo.troopsToMove:
+			if toMoveTroopsDict.troop_id == troopDict.troop_id:
+				toMoveTroopsDict.amountToMove = troopDict.amount
+	print(actionTileToDo.troopsToMove)
+	execute_accept_tiles_actions()
 
 func pre_game_interact():
 	if !is_local_player_turn():
@@ -498,12 +514,13 @@ func pre_game() -> void:
 	change_game_status(Game.STATUS.GAME_STARTED)
 
 func start_player_turn(player_number: int):
+	undo_available = false
 	Game.current_player_turn = player_number
 	if Game.current_player_turn == Game.get_local_player_number():
 		$Sounds/player_turn.play()
 	if Game.Network.is_client():
 		return
-
+	
 	Game.tilesObj.save_sync_data()
 	save_player_info()
 	update_actions_available()
@@ -548,7 +565,8 @@ func move_to_next_player_turn() -> void:
 
 func update_actions_available() -> void:
 	if Game.current_game_status == Game.STATUS.GAME_STARTED:
-		actions_available = int(round(Game.tilesObj.get_number_of_productive_territories(Game.current_player_turn)/float(Game.gameplay_settings.territories_per_action) + 0.5))
+		actions_available = int(round(Game.tilesObj.get_number_of_productive_territories(Game.current_player_turn)/float(Game.gameplay_settings.territories_per_action) + 0.5 + Game.tilesObj.get_extra_actions_amount(Game.current_player_turn)))
+		print(Game.tilesObj.get_extra_actions_amount(Game.current_player_turn))
 		if actions_available < Game.gameplay_settings.min_actions_in_game:
 			actions_available = Game.gameplay_settings.min_actions_in_game
 		elif actions_available > Game.gameplay_settings.max_actions_in_game:
@@ -583,14 +601,25 @@ func process_turn_end(playerNumber: int) -> void:
 		$UI/GameFinished.visible = true
 		$UI.open_finish_game_screen((OS.get_ticks_msec() - game_start_time)/60000.0)
 		return
+	
 	if Game.Network.is_server():
 		var next_player_turn: int = Game.get_next_player_turn()
 		var sync_arrayA: Array = Game.tilesObj.get_sync_neighbors(next_player_turn)
+		for i in range(Game.playersData.size()): #sync allies neighbors too (avoid forest desync bug)
+			if i == next_player_turn:
+				continue
+			if !Game.playersData[i].alive:
+				continue
+			if !Game.are_player_allies(next_player_turn, i):
+				continue
+			sync_arrayA = Game.tilesObj.merge_sync_arrays(sync_arrayA.duplicate(true), Game.tilesObj.get_sync_neighbors(i))
+
 		var sync_arrayB: Array = Game.tilesObj.get_sync_data()
 		var merged_sync_arrays: Array = Game.tilesObj.merge_sync_arrays(sync_arrayA, sync_arrayB)
-		if next_player_turn != Game.current_player_turn:
-			var sync_arrayC: Array = Game.tilesObj.get_sync_neighbors(Game.current_player_turn)
-			merged_sync_arrays = Game.tilesObj.merge_sync_arrays(merged_sync_arrays.duplicate(true), sync_arrayC)
+		
+		if next_player_turn != Game.current_player_turn and !Game.are_player_allies(Game.current_player_turn, next_player_turn): #sync next turn enemy player neighbors
+			merged_sync_arrays = Game.tilesObj.merge_sync_arrays(merged_sync_arrays.duplicate(true), Game.tilesObj.get_sync_neighbors(Game.current_player_turn))
+		
 		Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = merged_sync_arrays })
 	Game.tilesObj.save_sync_data()
 
@@ -604,6 +633,8 @@ func process_tiles_turn_end(playerNumber: int) -> void:
 			process_tile_battles(Vector2(x, y))
 			update_tile_owner(Vector2(x, y))
 			process_tile_underpopulation(Vector2(x, y), playerNumber)
+
+#func process_
 
 func process_tile_sell(cell: Vector2, playerNumber: int) -> void:
 	if !Game.tilesObj.belongs_to_player(cell, playerNumber):
@@ -890,7 +921,7 @@ func can_do_tiles_actions(startTile: Vector2, endTile: Vector2, playerNumber: in
 		return false
 	if !Game.tilesObj.belongs_to_player(endTile, playerNumber) and Game.tilesObj.get_warriors_count(startTile, playerNumber) <= 0 and !Game.tilesObj.belongs_to_allies(endTile, playerNumber):
 		return false
-	if Game.tilesObj.get_civilian_count(startTile, playerNumber) <= 0 and Game.tilesObj.get_warriors_count(endTile, playerNumber) <= 0: #can't do nothing there is no one in the tile
+	if Game.tilesObj.get_civilian_count(startTile, playerNumber) <= 0 and Game.tilesObj.get_warriors_count(startTile, playerNumber) <= 0: #can't do nothing there is no one in the tile
 		return false
 	if !Game.tilesObj.is_tile_walkeable(startTile) or !Game.tilesObj.is_tile_walkeable(endTile):
 		return false
@@ -1261,7 +1292,8 @@ func action_in_turn_executed():
 	if Game.current_game_status != Game.STATUS.GAME_STARTED:
 		return
 	actions_available-=1
-
+	if is_local_player_turn():
+		undo_available = true
 	if is_local_player_turn() or Game.is_current_player_a_bot():
 		if Game.Network.is_client() and is_local_player_turn() :
 			Game.Network.net_send_event(self.node_id, NET_EVENTS.CLIENT_USE_ACTION,  {player_turn = Game.current_player_turn, dictArray = Game.tilesObj.get_sync_data()})
@@ -1341,6 +1373,8 @@ func execute_add_extra_troops():
 func use_selection_point():
 	if Game.Network.is_client() and !is_local_player_turn():
 		return
+	if is_local_player_turn():
+		undo_available = true
 	Game.playersData[Game.current_player_turn].selectLeft-=1
 	
 	if Game.Network.is_client():
@@ -1363,6 +1397,8 @@ func save_player_info():
 	Game.tilesObj.save_tiles_data()
 	
 func undo_actions():
+	if !undo_available:
+		return
 	if !is_local_player_turn():
 		return
 	Game.tilesObj.update_sync_data()
@@ -1378,6 +1414,8 @@ func undo_actions():
 		server_send_game_info()
 	elif Game.Network.is_client():
 		client_send_game_info()
+		
+	undo_available = false
 
 ###############
 # STATS STUFF #
@@ -1794,7 +1832,7 @@ func _player_reconnects(id, player_number):
 	var sync_arrayA: Array = Game.tilesObj.get_sync_data(player_number, true)
 	var sync_arrayB: Array = Game.tilesObj.get_sync_neighbors(player_number)
 	var merged_sync_arrays: Array = Game.tilesObj.merge_sync_arrays(sync_arrayA, sync_arrayB)
-	for i in range(Game.playersData.size()):
+	for i in range(Game.playersData.size()): #sync allies
 		if i == player_number:
 			continue
 		if !Game.playersData[i].alive:
@@ -1914,9 +1952,8 @@ func client_process_event(eventId : int, eventData) -> void:
 				if actions_available > 0 and eventData.actions_left > actions_available:
 					return
 			if is_local_player_turn() and old_player_turn != Game.current_player_turn:
+				undo_available = false #new turn started
 				save_player_info()
-			
-			if Game.get_local_player_number() == Game.current_player_turn and old_player_turn != Game.current_player_turn:
 				$Sounds/player_turn.play()
 			Game.playersData[Game.current_player_turn].selectLeft = eventData.select_left
 			actions_available = eventData.actions_left
