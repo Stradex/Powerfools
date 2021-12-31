@@ -565,7 +565,7 @@ func move_to_next_player_turn() -> void:
 
 func update_actions_available() -> void:
 	if Game.current_game_status == Game.STATUS.GAME_STARTED:
-		actions_available = int(round(Game.tilesObj.get_number_of_productive_territories(Game.current_player_turn)/float(Game.gameplay_settings.territories_per_action) + 0.5 + Game.tilesObj.get_extra_actions_amount(Game.current_player_turn)))
+		actions_available = int(round(Game.tilesObj.get_number_of_productive_territories(Game.current_player_turn)/float(Game.gameplay_settings.territories_per_action) + Game.tilesObj.get_extra_actions_amount(Game.current_player_turn)))
 		print(Game.tilesObj.get_extra_actions_amount(Game.current_player_turn))
 		if actions_available < Game.gameplay_settings.min_actions_in_game:
 			actions_available = Game.gameplay_settings.min_actions_in_game
@@ -856,6 +856,9 @@ func update_gold_stats(playerNumber: int) -> void:
 		var gold_to_give: float = 10.0
 		if Game.is_player_a_bot(playerNumber):
 			gold_to_give*=Game.get_bot_gains_multiplier(playerNumber)
+			if float(totalAmountOfGold) < -gold_to_give:
+				gold_to_give += float(-totalAmountOfGold)
+				print("[BOT] Saving stupid bot from bankrupcy")
 
 		if (positiveBalanceTerritories.size() <= 0 or float(totalAmountOfGold) < -gold_to_give):
 			destroy_player(playerNumber)

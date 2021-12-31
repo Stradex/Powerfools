@@ -1055,8 +1055,8 @@ func ai_get_cell_force(cell_pos: Vector2, player_number: int) -> float:
 	return troops_health+troops_damage
 
 func ai_get_cell_enemy_force(cell_pos: Vector2, player_number: int) -> float:
-	var enemy_health: float = get_enemies_troops_health(cell_pos, player_number)
-	var enemy_damage: float = get_enemies_troops_damage(cell_pos, player_number)
+	var enemy_health: float = get_enemies_troops_health(cell_pos, player_number) - get_own_troops_health(cell_pos, player_number)
+	var enemy_damage: float = get_enemies_troops_damage(cell_pos, player_number) - get_own_troops_damage(cell_pos, player_number)
 	return enemy_health+enemy_damage
 
 func ai_can_conquer_enemy_pos(own_cell_pos: Vector2, enemy_cell_pos: Vector2, player_number: int, enemy_force_multiplier: float = 1.0) -> bool:
@@ -1459,9 +1459,7 @@ func ai_get_weakest_player_enemy_cell( player_number: int , use_allies_territori
 		if weakest_cell == Vector2(-1, -1):
 			weakest_cell = cell
 			continue
-		var cell_owner: int = tiles_data[cell.x][cell.y].owner
-		var weakest_cell_owner: int = tiles_data[weakest_cell.x][weakest_cell.y].owner
-		if get_strength(cell, cell_owner) < get_strength(weakest_cell, weakest_cell_owner):
+		if ai_get_cell_enemy_force(cell, player_number) < ai_get_cell_enemy_force(weakest_cell, player_number):
 			weakest_cell = cell
 	return weakest_cell
 
@@ -1472,9 +1470,7 @@ func ai_get_weakest_enemy_cell(player_number: int, use_allies_territories_too: b
 		if weakest_cell == Vector2(-1, -1):
 			weakest_cell = cell
 			continue
-		var cell_owner: int = tiles_data[cell.x][cell.y].owner
-		var weakest_cell_owner: int = tiles_data[weakest_cell.x][weakest_cell.y].owner
-		if get_strength(cell, cell_owner) < get_strength(weakest_cell, weakest_cell_owner):
+		if ai_get_cell_enemy_force(cell, player_number) < ai_get_cell_enemy_force(weakest_cell, player_number):
 			weakest_cell = cell
 	return weakest_cell
 

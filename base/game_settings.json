@@ -1,7 +1,7 @@
 {
 	"min_actions_in_game":3,
 	"max_actions_in_game":10,
-	"territories_per_action":5,
+	"territories_per_action":6,
 	"start_points":10,
 	"gold_per_point":10,
 	"troops_to_give_per_point": [

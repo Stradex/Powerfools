@@ -51,7 +51,7 @@ func calculateTroopDamage(troopID: int) -> float:
 	var i: int = 0
 	for troopDict in TroopsTypes:
 		if i == troopID:
-			return rand_range(troopDict.damage.x, troopDict.damage.y)
+			return Game.rng.randf_range(troopDict.damage.x, troopDict.damage.y)
 		i+=1
 	return 0.0
 

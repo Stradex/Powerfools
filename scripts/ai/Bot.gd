@@ -271,7 +271,7 @@ func bot_play_agressive(bot_number: int, player_capital_pos: Vector2, bot_is_hav
 		return true
 	elif distance_from_player_to_capital < 3.0 and bot_try_to_recover_territory(bot_number, player_capital_pos, false): #don't let enemies get TOO close to capital so easily!
 		return true
-	elif !bot_is_having_debt and !bot_in_danger and is_lacking_troops and (bot_try_to_recruit_troops(bot_number) or bot_try_to_make_a_building(bot_number)) and game_node.actions_available >= 2:
+	elif !bot_is_having_debt and !bot_in_danger and is_lacking_troops and game_node.actions_available >= 2 and (bot_try_to_recruit_troops(bot_number) or bot_try_to_make_a_building(bot_number)) :
 		return true
 	elif bot_try_to_help_ally(bot_number, bot_is_having_debt, bot_in_danger, available_gold, BOT_ACTIONS.OFFENSIVE):
 		return true
@@ -495,6 +495,16 @@ func bot_try_to_attack_enemy(bot_number: int, type_of_attitude: int, force_attac
 	return bot_move_troops_towards_pos(cell_to_attack, bot_number, force_attack)
 		
 func bot_try_to_defend_own_territory(bot_number: int, player_capital_pos: Vector2) -> bool:
+	var distance_from_player_to_capital: float = Game.tilesObj.ai_get_distance_from_capital_to_player_enemy(bot_number)
+	var cell_to_defend: Vector2
+	if distance_from_player_to_capital <= 3.0:
+		cell_to_defend = Game.tilesObj.ai_get_closest_to_capital_player_enemy_cell(bot_number)
+	else:
+		cell_to_defend = Game.tilesObj.ai_get_strongest_capable_of_conquer_player_enemy_cell(bot_number)
+		
+	if Game.tilesObj.ai_have_strength_to_conquer(cell_to_defend, bot_number) and bot_move_troops_towards_pos(cell_to_defend, bot_number):
+		return true
+	
 	var cells_to_defend: Array = Game.tilesObj.ai_order_cells_by_distance_to(Game.tilesObj.ai_get_all_cells_in_danger(bot_number), player_capital_pos)
 	for cell in cells_to_defend:
 		if bot_move_troops_towards_pos(cell, bot_number): # Try to defend this position
