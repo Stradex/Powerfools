@@ -8,7 +8,8 @@
 			"gains_mult":1.0,
 			"capital_minimum_recruits":1000,
 			"minimum_buildings":1,
-			"minimum_savings":15
+			"minimum_savings":15,
+			"max_savings":75
 		},
 		{
 			"name":"Normal",
@@ -18,7 +19,8 @@
 			"gains_mult":1.1,
 			"capital_minimum_recruits":2000,
 			"minimum_buildings":2,
-			"minimum_savings":30
+			"minimum_savings":30,
+			"max_savings":100
 		},
 		{
 			"name":"Difícil",
@@ -28,7 +30,8 @@
 			"gains_mult":1.25,
 			"capital_minimum_recruits":3000,
 			"minimum_buildings":2,
-			"minimum_savings":50
+			"minimum_savings":50,
+			"max_savings":150
 		},
 		{
 			"name":"Pesadilla",
@@ -38,7 +41,8 @@
 			"gains_mult":1.5,
 			"capital_minimum_recruits":5000,
 			"minimum_buildings":4,
-			"minimum_savings":100
+			"minimum_savings":75,
+			"max_savings":200
 		}
 	]
 }

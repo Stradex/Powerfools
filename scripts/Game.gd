@@ -129,7 +129,8 @@ func init_bots_stats():
 			GAINS_MULT = troopDict["gains_mult"],
 			CAPITAL_MINIMUM_RECRUITS = troopDict["capital_minimum_recruits"],
 			MINIMUM_BUILDINGS = troopDict["minimum_buildings"],
-			MINIMUM_SAVINGS = troopDict["minimum_savings"]
+			MINIMUM_SAVINGS = troopDict["minimum_savings"],
+			MAX_SAVINGS = troopDict["max_savings"]
 		})
 
 func init_players():
@@ -358,7 +359,10 @@ func get_bot_gains_multiplier(bot_number: int) -> float:
 
 func get_bot_minimum_savings(bot_number: int) -> float:
 	return float(get_bot_difficulty_stats(bot_number).MINIMUM_SAVINGS)
-	
+
+func get_bot_max_savings(bot_number: int) -> float:
+	return float(get_bot_difficulty_stats(bot_number).MAX_SAVINGS)
+
 func is_player_a_bot(playerNumber: int) -> bool:
 	if playerNumber == -1:
 		return false
