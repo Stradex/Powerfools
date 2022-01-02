@@ -39,13 +39,15 @@ func _ready():
 		Game.TileSetImporter.append_to_tileset_from_folder(base_building_types_tiles_folder, new_buildings_types_tiles)
 
 	$BuildingsTiles.tile_set = new_buildings_tiles
+	$BuildingsTilesOverlay.tile_set = new_buildings_tiles
 	$BuildingTypesTiles.tile_set = new_buildings_types_tiles
+	$BuildingTypesTilesOverlay.tile_set = new_buildings_types_tiles
 	id_rock_types.clear()
 	id_rock_types = [
-		$BuildingsTiles.tile_set.find_tile_by_name('tile_rock1'),
-		$BuildingsTiles.tile_set.find_tile_by_name('tile_rock2'),
-		$BuildingsTiles.tile_set.find_tile_by_name('tile_rock3'),
-		$BuildingsTiles.tile_set.find_tile_by_name('tile_rock4')
+		$BuildingsTiles.tile_set.find_tile_by_name('_auto1_mountains'),
+		$BuildingsTiles.tile_set.find_tile_by_name('_auto1_mountains'),
+		$BuildingsTiles.tile_set.find_tile_by_name('_auto1_mountains'),
+		$BuildingsTiles.tile_set.find_tile_by_name('_auto1_mountains')
 	]
 
 
@@ -57,13 +59,18 @@ func update_building_tiles() -> void:
 	for x in range(Game.tile_map_size.x):
 		for y in range(Game.tile_map_size.y):
 			var tile_cell_data: Dictionary = Game.tilesObj.get_cell(Vector2(x, y))
-			var tileImgToSet
+			var tileImgToSet=-1
+			var tileImgOverlayToSet=-1
+			
 			if tile_cell_data.owner == Game.tilesObj.ROCK_OWNER_ID:
 				tileImgToSet = id_rock_types[tile_cell_data.type_of_rock]
-				#tileImgToSet = id_rock_tile
 			else:
 				tileImgToSet = $BuildingsTiles.tile_set.find_tile_by_name(Game.tileTypes.getImg(tile_cell_data.tile_id))
-				
+			
+			if tileImgToSet != -1:
+				var overlay_tile_name: String = $BuildingsTiles.tile_set.tile_get_name(tileImgToSet) + "_overlay"
+				tileImgOverlayToSet = $BuildingsTilesOverlay.tile_set.find_tile_by_name(overlay_tile_name)
+			
 			var buildingImgToSet = -1
 			if Game.tilesObj.is_cell_in_battle(Vector2(x, y)):
 				$ConstructionTiles.set_cellv(Vector2(x, y), id_tile_battle)
@@ -91,6 +98,7 @@ func update_building_tiles() -> void:
 			
 			$CivilianTiles.set_cellv(Vector2(x, y), get_civilians_tile_id(Vector2(x, y), player_mask))
 			$BuildingsTiles.set_cellv(Vector2(x, y), tileImgToSet)
+			$BuildingsTilesOverlay.set_cellv(Vector2(x, y), tileImgOverlayToSet)
 			if Game.are_player_allies(tile_cell_data.owner, player_mask) or Game.DEBUG_MODE:
 				$TroopsTiles.set_cellv(Vector2(x, y), get_troops_tile_id(Vector2(x, y), player_mask))
 			else:
@@ -100,6 +108,16 @@ func update_building_tiles() -> void:
 				$FuncTiles.set_cellv(Vector2(x, y), id_selling_tile)
 			else:
 				$FuncTiles.set_cellv(Vector2(x, y), -1)
+
+func update_tiles_bit_masks() -> void:
+	#$FuncTiles.update_bitmask_region()
+	#$TroopsTiles.update_bitmask_region()
+	$BuildingsTiles.update_bitmask_region()
+	#$OwnedTiles.update_bitmask_region()
+	$BuildingTypesTiles.update_bitmask_region()
+	$BuildingTypesTilesOverlay.update_bitmask_region()
+	#$ConstructionTiles.update_bitmask_region()
+	$BuildingsTilesOverlay.update_bitmask_region()
 
 func get_civilians_tile_id(tile_pos: Vector2, playerNumber: int) -> int:
 	var civilianCountInTile: int = Game.tilesObj.get_civilian_count(tile_pos, playerNumber)

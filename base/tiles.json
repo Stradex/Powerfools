@@ -9,7 +9,7 @@
 			"strength_boost":0,
 			"sell_prize":2,
 			"conquer_gain":2,
-			"tile_img":"tile_empty",
+			"tile_img":"_auto1_arboles",
 			"min_civil_to_produce_gold":0,
 			"max_civil_to_produce_gold":0,
 			"extra_actions_to_give":0.0
@@ -23,7 +23,7 @@
 			"strength_boost":0,
 			"sell_prize":5,
 			"conquer_gain":5,
-			"tile_img":"tile_rural",
+			"tile_img":"tile_rural1",
 			"min_civil_to_produce_gold":500,
 			"max_civil_to_produce_gold":2000,
 			"extra_actions_to_give":0.0
@@ -37,7 +37,7 @@
 			"strength_boost":0.1,
 			"sell_prize":10,
 			"conquer_gain":15,
-			"tile_img":"tile_city",
+			"tile_img":"tile_city1",
 			"min_civil_to_produce_gold":1000,
 			"max_civil_to_produce_gold":5000,
 			"extra_actions_to_give":0.15

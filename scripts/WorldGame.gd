@@ -138,6 +138,7 @@ func game_frame(player_in_menu: bool) -> void:
 	$Tiles.update_building_tiles()
 	if player_in_menu:
 		$UI.hide_wait_finish_for_player()
+		$Tiles.update_tiles_bit_masks()
 		return
 
 	$UI.update_lobby_info()
@@ -148,6 +149,7 @@ func game_frame(player_in_menu: bool) -> void:
 		$UI.hide_wait_for_player()
 	else:
 		$UI.show_wait_for_player()
+	$Tiles.update_tiles_bit_masks()
 
 func _input(event):
 
