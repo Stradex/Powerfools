@@ -364,6 +364,32 @@ func get_warriors_count(tile_pos: Vector2, playerNumber: int) -> int:
 			tropsCount+=troopDict.amount
 	return tropsCount
 
+func get_allies_warriors_count(tile_pos: Vector2, playerNumber: int) -> int:
+	var tropsCount: int = 0
+	for troopDict in tiles_data[tile_pos.x][tile_pos.y].troops:
+		if troopDict.owner == playerNumber:
+			continue
+		if troopDict.owner == -1:
+			continue
+		if !Game.are_player_allies(troopDict.owner, playerNumber):
+			continue
+		if troop_types_obj.getByID(troopDict.troop_id).is_warrior:
+			tropsCount+=troopDict.amount
+	return tropsCount
+
+func get_player_enemies_warriors_count(tile_pos: Vector2, playerNumber: int) -> int:
+	var tropsCount: int = 0
+	for troopDict in tiles_data[tile_pos.x][tile_pos.y].troops:
+		if troopDict.owner == playerNumber:
+			continue
+		if Game.are_player_allies(troopDict.owner, playerNumber):
+			continue
+		if troopDict.owner == -1:
+			continue
+		if troop_types_obj.getByID(troopDict.troop_id).is_warrior:
+			tropsCount+=troopDict.amount
+	return tropsCount
+
 func get_civilian_count(tile_pos: Vector2, playerNumber: int) -> int:
 	var civilianCount: int = 0
 	for troopDict in tiles_data[tile_pos.x][tile_pos.y].troops:

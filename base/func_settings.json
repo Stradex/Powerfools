@@ -1,0 +1,18 @@
+{
+	"allies_border":"_auto1_alliestiles",
+	"enemies_border":"_auto1_enemytiles",
+	"owned_border":"_auto1_ownedtiles",
+	"not_owned_border":"empty",
+	"noinfo_tile":"_auto1_noinfo",
+	"tile_hover":"tile_hover",
+	"tile_hover_not_allowed":"tile_hover_notallowed",
+	"tile_not_selected":"tile_not_selected",
+	"action_start_tile":"tile_action_start",
+	"action_end_tile":"tile_action_end",
+	"civilian_overpopulation":"overpopulation",
+	"civilian_underpopulation":"underpopulation",
+	"civilian":"empty",
+	"tile_upgrading":"tile_upgrading",
+	"tile_recruiting":"troop_wip",
+	"tile_battle":"battle_in_progress"
+}

@@ -144,7 +144,7 @@ func game_frame(player_in_menu: bool) -> void:
 	$UI.update_lobby_info()
 	$UI.gui_update_tile_info(Game.current_tile_selected)
 	$UI.gui_update_civilization_info()
-	$Tiles.update_visibility_tiles()
+	#$Tiles.update_visibility_tiles()
 	if is_local_player_turn():
 		$UI.hide_wait_for_player()
 	else:

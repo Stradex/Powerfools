@@ -16,7 +16,8 @@ var InvalidTile: Dictionary = {
 	tile_img = 'tile_empty', #image name of the tile (look at tileResources)
 	min_civil_to_produce_gold = 0, #minimum amount of civilians to produce gold
 	max_civil_to_produce_gold = 0, #maximum amount of civilians to produce gold
-	extra_actions_to_give = 0.0 #extra actions to give per territory
+	extra_actions_to_give = 0.0, #extra actions to give per territory
+	tile_imgs = [] #array with 'civ_name' and 'imgs' array of images to use
 }
 
 func _init():
@@ -64,18 +65,28 @@ func getByID(tileTypeID: int) -> Dictionary:
 		i+=1
 	return InvalidTile
 
-func getImg(tileTypeID: int) -> String:
-	return getByID(tileTypeID).tile_img
+func getImg(tileTypeID: int, civilization_id: int) -> String:
+	var tileDict: Dictionary = getByID(tileTypeID)
+	for imgDict in tileDict.tile_imgs:
+		if imgDict.civ_id == civilization_id:
+			return imgDict.imgs[0] #FIXME: allow variations later
+	return tileDict.tile_imgs[0].imgs[0] #_default... I guess?
 
 func getList() -> Array:
 	return TilesTypes.duplicate(true) #gives a copy so no one can fuck up the original list
 
-func load_from_file(folder: String, fileSystemObj: Object) -> bool:
+func load_from_file(folder: String, fileSystemObj: Object, civ_types_object) -> bool:
 	if !fileSystemObj.file_exists(folder + "/" + TILES_FILES_NAME):
 		return false
 	var tilesImportedData: Dictionary = fileSystemObj.get_data_from_json(folder + "/" + TILES_FILES_NAME)
 	assert(tilesImportedData.has('tiles'))
 	for troopDict in tilesImportedData['tiles']:
+		var tile_imgs_array: Array = []
+		for imgsDict in troopDict["tile_imgs"]:
+			tile_imgs_array.append({
+				civ_id = civ_types_object.getIDByName(imgsDict["civ_name"]),
+				imgs = imgsDict["imgs"]
+			})
 		add({
 			name = troopDict["name"],
 			next_stage = troopDict["next_stage"],
@@ -87,6 +98,7 @@ func load_from_file(folder: String, fileSystemObj: Object) -> bool:
 			tile_img = troopDict["tile_img"],
 			min_civil_to_produce_gold = troopDict["min_civil_to_produce_gold"],
 			max_civil_to_produce_gold = troopDict["max_civil_to_produce_gold"],
-			extra_actions_to_give = troopDict["extra_actions_to_give"]
+			extra_actions_to_give = troopDict["extra_actions_to_give"],
+			tile_imgs = tile_imgs_array.duplicate(true)
 		})
 	return true

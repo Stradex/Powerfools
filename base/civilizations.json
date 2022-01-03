@@ -1,0 +1,28 @@
+{
+	"civilizations": [
+		{
+			"default_name":"Asiria"
+		},
+		{
+			"default_name":"Egipto"
+		},
+		{
+			"default_name":"Persia"
+		},
+		{
+			"default_name":"Esparta"
+		},
+		{
+			"default_name":"Roma"
+		},
+		{
+			"default_name":"Cartago"
+		},
+		{
+			"default_name":"Tebas"
+		},
+		{
+			"default_name":"Argos"
+		}
+	]
+}

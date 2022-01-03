@@ -13,10 +13,11 @@ const SCREEN_WIDTH: int = 1280
 const SCREEN_HEIGHT: int = 720
 const TILE_SIZE: int = 80
 const GAME_FPS: int = 4 # we really don't need to much higher FPS, this is mostly for game logic, not graphic stuff
-const DEBUG_MODE: bool = true
+const DEBUG_MODE: bool = false
 const BOT_NET_ID: int = -1
 const BOT_STATS_FILE: String = "bots_difficulties.json"
 const GAMEPLAY_SETTINGS_FILE: String = "game_settings.json"
+const FUNCTILES_FILE: String = "func_settings.json"
 var current_mod: String = "base"
 
 var current_turn: int = 0
@@ -28,6 +29,7 @@ onready var FileSystem: FileSystemBase = FileSystemBase.new();
 onready var Util: UtilObject = UtilObject.new()
 onready var Config: ConfigObject = ConfigObject.new()
 onready var tribalTroops: TribalSocietyObject = TribalSocietyObject.new()
+onready var civilizationTypes: CivilizationTypesObject = CivilizationTypesObject.new()
 var TileSetImporter: TileSetExternalImporter
 var Boop_Object = preload("res://scripts/Netcode/Boop.gd");
 
@@ -54,22 +56,31 @@ var gameplay_settings: Dictionary = {
 	troops_to_give_per_point = []
 }
 
+var functiles_dict: Dictionary = {
+	allies_border = "",
+	enemies_border = "",
+	owned_border = "",
+	not_owned_border = "",
+	noinfo_tile = "",
+	tile_hover = "",
+	tile_hover_not_allowed = "",
+	tile_not_selected= "",
+	action_start_tile="",
+	action_end_tile = "",
+	civilian_overpopulation = "",
+	civilian_underpopulation = "",
+	civilian = "",
+	tile_upgrading = "",
+	tile_recruiting = "",
+	tile_battle = ""
+}
+
 enum STATUS {
 	LOBBY_WAIT, #Server just started and waiting for players to start
 	PRE_GAME, #Select capital and territories for each players
 	GAME_STARTED #game is going on
 }
 
-var defaultCivilizationNames: Array = [
-	"Asiria",
-	"Egipto",
-	"Persia",
-	"Sparta",
-	"Roma",
-	"Cartago",
-	"Tebas",
-	"Argos"
-]
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 signal error_joining_server(error_message)
@@ -88,14 +99,45 @@ func _ready():
 
 func init_game_data():
 	init_bots_stats()
+	init_civilization_types()
 	init_tiles_types()
 	init_troops_types()
 	init_buildings_types()
 	init_tribal_societies()
+	init_functiles()
 	init_gameplay_settings()
+
+func init_civilization_types() -> void:
+	civilizationTypes.clearList()
+	if !civilizationTypes.load_from_file(current_mod, FileSystem): #in case the file does not exists in the mod folder, use the "base" one
+		print("[DEBUG] use default civilization_types")
+		civilizationTypes.load_from_file(GAME_DEFAULT_MOD, FileSystem)
 
 func save_settings():
 	Config.save_to_file(CONFIG_FILE)
+
+func init_functiles():
+	var file_path_to_use: String = current_mod + "/" + FUNCTILES_FILE
+	if !FileSystem.file_exists(file_path_to_use):
+		print("[DEBUG] use default func_tiles")
+		file_path_to_use = GAME_DEFAULT_MOD + "/" + FUNCTILES_FILE
+	var functilesImportedData: Dictionary = FileSystem.get_data_from_json(file_path_to_use)
+	functiles_dict.allies_border = functilesImportedData["allies_border"]
+	functiles_dict.enemies_border = functilesImportedData["enemies_border"]
+	functiles_dict.owned_border = functilesImportedData["owned_border"]
+	functiles_dict.not_owned_border = functilesImportedData["not_owned_border"]
+	functiles_dict.noinfo_tile = functilesImportedData["noinfo_tile"]
+	functiles_dict.tile_hover = functilesImportedData["tile_hover"]
+	functiles_dict.tile_hover_not_allowed = functilesImportedData["tile_hover_not_allowed"]
+	functiles_dict.action_start_tile = functilesImportedData["action_start_tile"]
+	functiles_dict.action_end_tile = functilesImportedData["action_end_tile"]
+	functiles_dict.tile_not_selected = functilesImportedData["tile_not_selected"]
+	functiles_dict.civilian_overpopulation = functilesImportedData["civilian_overpopulation"]
+	functiles_dict.civilian_underpopulation = functilesImportedData["civilian_underpopulation"]
+	functiles_dict.civilian = functilesImportedData["civilian"]
+	functiles_dict.tile_upgrading = functilesImportedData["tile_upgrading"]
+	functiles_dict.tile_recruiting = functilesImportedData["tile_recruiting"]
+	functiles_dict.tile_battle = functilesImportedData["tile_battle"]
 
 func init_gameplay_settings():
 	gameplay_settings.troops_to_give_per_point.clear()
@@ -139,7 +181,8 @@ func init_players():
 		playersData.append({
 			name = 'Player ' + str(i+1),
 			pin_code = 000,
-			civilizationName = defaultCivilizationNames[i],
+			civilizationName = civilizationTypes.getByID(i).default_name,
+			civilization_id = i,
 			alive = false,
 			isBot = false,
 			selectLeft = 0,
@@ -157,9 +200,9 @@ func init_tribal_societies():
 		
 func init_tiles_types():
 	tileTypes.clearList()
-	if !tileTypes.load_from_file(current_mod, FileSystem): #in case the file does not exists in the mod folder, use the "base" one
+	if !tileTypes.load_from_file(current_mod, FileSystem, civilizationTypes): #in case the file does not exists in the mod folder, use the "base" one
 		print("[DEBUG] use default tile_types")
-		tileTypes.load_from_file(GAME_DEFAULT_MOD, FileSystem)
+		tileTypes.load_from_file(GAME_DEFAULT_MOD, FileSystem, civilizationTypes)
 
 func init_buildings_types():
 	buildingTypes.clearList()
@@ -295,7 +338,8 @@ func kick_player(player_number:int) -> void:
 func remove_player(player_number: int) -> void:
 	playersData[player_number].name = 'Player ' + str(player_number+1)
 	playersData[player_number].pin_code = 000
-	playersData[player_number].civilizationName = defaultCivilizationNames[player_number]
+	playersData[player_number].civilizationName = civilizationTypes.getByID(player_number).default_name
+	playersData[player_number].civilization_id = player_number
 	playersData[player_number].alive = false
 	playersData[player_number].isBot = false
 	playersData[player_number].selectLeft = false

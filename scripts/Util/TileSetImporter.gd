@@ -64,14 +64,21 @@ func copy_autotile_from_to(tile_from: TileSet, tile_id_from: int, tile_to: TileS
 func append_to_tileset_from_folder(folder_path: String, tile_set: TileSet) -> void:
 	var png_images_in_folder: Array = file_system.list_files_in_directory(folder_path, ".png")
 	var tiles_count: int = tile_set.get_tiles_ids().size()
+	var is_auto_tile: bool = false
 	for i in range(png_images_in_folder.size()):
 		var tile_name_str: String = png_images_in_folder[i].get_basename()
 		if tile_set.find_tile_by_name(tile_name_str) != -1: #already exists, do nothing avoid duplicates.
 			continue
 		var path_img: String = folder_path + "/" + png_images_in_folder[i]
 		tile_set.create_tile(tiles_count)
+		is_auto_tile = tile_name_str.to_lower().find("_auto1_") == 0
+		if is_auto_tile: #starts with _auto1_
+			copy_autotile_from_to(auto_tile_res, auto_tile_res.find_tile_by_name('autotile1'), tile_set, tiles_count)
 		tile_set.tile_set_texture(tiles_count, load_external_tex(path_img))
 		tile_set.tile_set_name(tiles_count, tile_name_str)
+		if is_auto_tile: #starts with _auto1_
+			create_overlay_tile(tile_set, tiles_count)
+			tiles_count+=1
 		tiles_count+=1
 		
 func make_tileset_from_folder(folder_path: String) -> TileSet:
