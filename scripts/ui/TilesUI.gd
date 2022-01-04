@@ -47,7 +47,13 @@ func _ready():
 		Game.TileSetImporter.append_to_tileset_from_folder(base_building_types_tiles_folder, new_buildings_types_tiles)
 		Game.TileSetImporter.append_to_tileset_from_folder(base_func_tiles_files_folder, new_func_tiles)
 		Game.TileSetImporter.append_to_tileset_from_folder(base_troop_tiles_files_folder, new_troops_tiles)
-		
+	
+	$BuildingsTiles.init_tile_data_array(Game.tile_map_size)
+	$BuildingsTilesOverlay.init_tile_data_array(Game.tile_map_size)
+	$BuildingTypesTiles.init_tile_data_array(Game.tile_map_size)
+	$BuildingTypesTilesOverlay.init_tile_data_array(Game.tile_map_size)
+	$OwnedTiles.init_tile_data_array(Game.tile_map_size)
+	
 	$BuildingsTiles.tile_set = new_buildings_tiles
 	$BuildingsTilesOverlay.tile_set = new_buildings_tiles
 	$BuildingTypesTiles.tile_set = new_buildings_types_tiles
@@ -123,29 +129,29 @@ func update_building_tiles() -> void:
 				$ConstructionTiles.set_cellv(Vector2(x, y), -1)
 			
 			if !tile_should_be_visible(Vector2(x, y), player_mask) and !Game.DEBUG_MODE:
-				$BuildingTypesTiles.set_cellv(Vector2(x, y), -1)
+				$BuildingTypesTiles.set_cellv_optimized(Vector2(x, y), -1)
 			elif (Game.are_player_allies(player_mask, tile_cell_data.owner) or Game.DEBUG_MODE) and Game.tilesObj.is_building(Vector2(x, y)):
-				$BuildingTypesTiles.set_cellv(Vector2(x, y), id_tile_building_in_progress)
+				$BuildingTypesTiles.set_cellv_optimized(Vector2(x, y), id_tile_building_in_progress)
 			elif (Game.are_player_allies(player_mask, tile_cell_data.owner) or Game.DEBUG_MODE) and tile_cell_data.building_id >= 0:
 				buildingImgToSet = $BuildingTypesTiles.tile_set.find_tile_by_name(Game.buildingTypes.getImg(tile_cell_data.building_id))
-				$BuildingTypesTiles.set_cellv(Vector2(x, y), buildingImgToSet)
+				$BuildingTypesTiles.set_cellv_optimized(Vector2(x, y), buildingImgToSet)
 			else:
 				$BuildingTypesTiles.set_cellv(Vector2(x, y), -1)
 			
 			if !tile_should_be_visible(Vector2(x, y), player_mask) and !Game.DEBUG_MODE:
-				$OwnedTiles.set_cellv(Vector2(x, y), -1)
+				$OwnedTiles.set_cellv_optimized(Vector2(x, y), -1)
 			elif Game.tilesObj.belongs_to_player(Vector2(x, y), player_mask):
-				$OwnedTiles.set_cellv(Vector2(x, y), id_owned_tile)
+				$OwnedTiles.set_cellv_optimized(Vector2(x, y), id_owned_tile)
 			elif tile_cell_data.owner >= 0 and !Game.are_player_allies(tile_cell_data.owner, player_mask):
-				$OwnedTiles.set_cellv(Vector2(x, y), id_enemy_player_tile)
+				$OwnedTiles.set_cellv_optimized(Vector2(x, y), id_enemy_player_tile)
 			elif tile_cell_data.owner >= 0 and Game.are_player_allies(tile_cell_data.owner, player_mask):
-				$OwnedTiles.set_cellv(Vector2(x, y), id_ally_player_tile)
+				$OwnedTiles.set_cellv_optimized(Vector2(x, y), id_ally_player_tile)
 			else:
-				$OwnedTiles.set_cellv(Vector2(x, y), id_not_owned_tile)
+				$OwnedTiles.set_cellv_optimized(Vector2(x, y), id_not_owned_tile)
 			
 			$CivilianTiles.set_cellv(Vector2(x, y), get_civilians_tile_id(Vector2(x, y), player_mask))
-			$BuildingsTiles.set_cellv(Vector2(x, y), tileImgToSet)
-			$BuildingsTilesOverlay.set_cellv(Vector2(x, y), tileImgOverlayToSet)
+			$BuildingsTiles.set_cellv_optimized(Vector2(x, y), tileImgToSet)
+			$BuildingsTilesOverlay.set_cellv_optimized(Vector2(x, y), tileImgOverlayToSet)
 			$TroopsTiles.set_cellv(Vector2(x, y), get_troops_tile_id(Vector2(x, y), player_mask))
 			
 			if (tile_cell_data.owner == player_mask or Game.DEBUG_MODE) and tile_cell_data.turns_to_sell > 0:
@@ -154,15 +160,30 @@ func update_building_tiles() -> void:
 				$FuncTiles.set_cellv(Vector2(x, y), -1)
 
 func update_tiles_bit_masks() -> void:
-	#$FuncTiles.update_bitmask_region()
-	#$TroopsTiles.update_bitmask_region()
-	$SelectionTiles.update_bitmask_region()
-	$BuildingsTiles.update_bitmask_region()
-	$OwnedTiles.update_bitmask_region()
-	$BuildingTypesTiles.update_bitmask_region()
-	$BuildingTypesTilesOverlay.update_bitmask_region()
-	#$ConstructionTiles.update_bitmask_region()
-	$BuildingsTilesOverlay.update_bitmask_region()
+	if $BuildingsTiles.check_if_tile_has_changed():
+		$BuildingsTiles.update_bitmask_region(Vector2(0, 0), Game.tile_map_size)
+		$BuildingsTiles.update_tile_data_array()
+		print("[BuildingsTiles] Tile changed...")
+	
+	if $OwnedTiles.check_if_tile_has_changed():
+		$OwnedTiles.update_bitmask_region(Vector2(0, 0), Game.tile_map_size)
+		$OwnedTiles.update_tile_data_array()
+		print("[OwnedTiles] Tile changed...")
+	
+	if $BuildingTypesTiles.check_if_tile_has_changed():
+		$BuildingTypesTiles.update_bitmask_region(Vector2(0, 0), Game.tile_map_size)
+		$BuildingTypesTiles.update_tile_data_array()
+		print("[BuildingTypesTiles] Tile changed...")
+	
+	if $BuildingTypesTilesOverlay.check_if_tile_has_changed():
+		$BuildingTypesTilesOverlay.update_bitmask_region(Vector2(0, 0), Game.tile_map_size)
+		$BuildingTypesTilesOverlay.update_tile_data_array()
+		print("[BuildingTypesTilesOverlay] Tile changed...")
+	
+	if $BuildingsTilesOverlay.check_if_tile_has_changed():
+		$BuildingsTilesOverlay.update_bitmask_region(Vector2(0, 0), Game.tile_map_size)
+		$BuildingsTilesOverlay.update_tile_data_array()
+		print("[BuildingsTilesOverlay] Tile changed...")
 
 func get_civilians_tile_id(tile_pos: Vector2, playerNumber: int) -> int:
 	var civilianCountInTile: int = Game.tilesObj.get_civilian_count(tile_pos, playerNumber)

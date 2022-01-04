@@ -1,0 +1,264 @@
+{
+	"tiles": [
+		{
+			"name":"vacio",
+			"next_stage":"rural",
+			"improve_prize":12,
+			"turns_to_improve":2,
+			"gold_to_produce":0,
+			"strength_boost":0,
+			"sell_prize":2,
+			"conquer_gain":2,
+			"tile_img":"_auto1_arboles",
+			"min_civil_to_produce_gold":0,
+			"max_civil_to_produce_gold":0,
+			"extra_actions_to_give":0.0,
+			"tile_imgs":[
+				{
+					"civ_name": "_default",
+					"imgs":["tile_empty"]
+				},
+				{
+					"civ_name": "asiria",
+					"imgs":["tile_empty"]
+				},
+				{
+					"civ_name": "egipto",
+					"imgs":["tile_empty"]
+				},
+				{
+					"civ_name": "persia",
+					"imgs":["tile_empty"]
+				},
+				{
+					"civ_name": "esparta",
+					"imgs":["tile_empty"]
+				},
+				{
+					"civ_name": "roma",
+					"imgs":["tile_empty"]
+				},
+				{
+					"civ_name": "cartago",
+					"imgs":["tile_empty"]
+				},
+				{
+					"civ_name": "tebas",
+					"imgs":["tile_empty"]
+				},
+				{
+					"civ_name": "argos",
+					"imgs":["tile_empty"]
+				}
+			]
+		},
+		{
+			"name":"rural",
+			"next_stage":"ciudad",
+			"improve_prize":25,
+			"turns_to_improve":3,
+			"gold_to_produce":1,
+			"strength_boost":0,
+			"sell_prize":5,
+			"conquer_gain":5,
+			"tile_img":"tile_rural1",
+			"min_civil_to_produce_gold":500,
+			"max_civil_to_produce_gold":2000,
+			"extra_actions_to_give":0.0,
+			"tile_imgs":[
+				{
+					"civ_name": "_default",
+					"imgs":["tile_rural"]
+				},
+				{
+					"civ_name": "asiria",
+					"imgs":["tile_rural"]
+				},
+				{
+					"civ_name": "egipto",
+					"imgs":["tile_rural"]
+				},
+				{
+					"civ_name": "persia",
+					"imgs":["tile_rural"]
+				},
+				{
+					"civ_name": "esparta",
+					"imgs":["tile_rural"]
+				},
+				{
+					"civ_name": "roma",
+					"imgs":["tile_rural"]
+				},
+				{
+					"civ_name": "cartago",
+					"imgs":["tile_rural"]
+				},
+				{
+					"civ_name": "tebas",
+					"imgs":["tile_rural"]
+				},
+				{
+					"civ_name": "argos",
+					"imgs":["tile_rural"]
+				}
+			]
+		},
+		{
+			"name":"ciudad",
+			"next_stage":"metropolis",
+			"improve_prize":50,
+			"turns_to_improve":6,
+			"gold_to_produce":2,
+			"strength_boost":0.1,
+			"sell_prize":10,
+			"conquer_gain":15,
+			"tile_img":"tile_city1",
+			"min_civil_to_produce_gold":1000,
+			"max_civil_to_produce_gold":5000,
+			"extra_actions_to_give":0.15,
+			"tile_imgs":[
+				{
+					"civ_name": "_default",
+					"imgs":["tile_city"]
+				},
+				{
+					"civ_name": "asiria",
+					"imgs":["tile_city"]
+				},
+				{
+					"civ_name": "egipto",
+					"imgs":["tile_city"]
+				},
+				{
+					"civ_name": "persia",
+					"imgs":["tile_city"]
+				},
+				{
+					"civ_name": "esparta",
+					"imgs":["tile_city"]
+				},
+				{
+					"civ_name": "roma",
+					"imgs":["tile_city"]
+				},
+				{
+					"civ_name": "cartago",
+					"imgs":["tile_city"]
+				},
+				{
+					"civ_name": "tebas",
+					"imgs":["tile_city"]
+				},
+				{
+					"civ_name": "argos",
+					"imgs":["tile_city"]
+				}
+			]
+		},
+		{
+			"name":"metropolis",
+			"next_stage":"",
+			"improve_prize":0,
+			"turns_to_improve":0,
+			"gold_to_produce":4,
+			"strength_boost":0.2,
+			"sell_prize":30,
+			"conquer_gain":30,
+			"tile_img":"tile_alpha_metropolis",
+			"min_civil_to_produce_gold":2500,
+			"max_civil_to_produce_gold":10000,
+			"extra_actions_to_give":0.35,
+			"tile_imgs":[
+				{
+					"civ_name": "_default",
+					"imgs":["tile_alpha_metropolis"]
+				},
+				{
+					"civ_name": "asiria",
+					"imgs":["tile_alpha_metropolis"]
+				},
+				{
+					"civ_name": "egipto",
+					"imgs":["tile_alpha_metropolis"]
+				},
+				{
+					"civ_name": "persia",
+					"imgs":["tile_alpha_metropolis"]
+				},
+				{
+					"civ_name": "esparta",
+					"imgs":["tile_alpha_metropolis"]
+				},
+				{
+					"civ_name": "roma",
+					"imgs":["tile_alpha_metropolis"]
+				},
+				{
+					"civ_name": "cartago",
+					"imgs":["tile_alpha_metropolis"]
+				},
+				{
+					"civ_name": "tebas",
+					"imgs":["tile_alpha_metropolis"]
+				},
+				{
+					"civ_name": "argos",
+					"imgs":["tile_alpha_metropolis"]
+				}
+			]
+		},
+		{
+			"name":"capital",
+			"next_stage":"",
+			"improve_prize":0,
+			"turns_to_improve":0,
+			"gold_to_produce":5,
+			"strength_boost":0.25,
+			"sell_prize":-1,
+			"conquer_gain":100,
+			"tile_img":"tile_alpha_capital",
+			"min_civil_to_produce_gold":5000,
+			"max_civil_to_produce_gold":20000,
+			"extra_actions_to_give":0.5,
+			"tile_imgs":[
+				{
+					"civ_name": "_default",
+					"imgs":["tile_alpha_capital"]
+				},
+				{
+					"civ_name": "asiria",
+					"imgs":["tile_alpha_capital"]
+				},
+				{
+					"civ_name": "egipto",
+					"imgs":["tile_alpha_capital"]
+				},
+				{
+					"civ_name": "persia",
+					"imgs":["tile_alpha_capital"]
+				},
+				{
+					"civ_name": "esparta",
+					"imgs":["tile_alpha_capital"]
+				},
+				{
+					"civ_name": "roma",
+					"imgs":["tile_alpha_capital"]
+				},
+				{
+					"civ_name": "cartago",
+					"imgs":["tile_alpha_capital"]
+				},
+				{
+					"civ_name": "tebas",
+					"imgs":["tile_alpha_capital"]
+				},
+				{
+					"civ_name": "argos",
+					"imgs":["tile_alpha_capital"]
+				}
+			]
+		}
+	]
+}

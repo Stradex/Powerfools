@@ -6,6 +6,7 @@ const MAX_PLAYERS:int = 4
 const SERVER_PORT:int = 27666
 const SERVER_NETID: int = 1
 const BOT_NETID: int = -666
+const MAX_EVENT_KB_USAGE: int = 64 #allow to send only 64kb per message
 var clients_connected: Array
 var player_count: int = 1
 const MAX_CLIENT_LATENCY: float = 0.4 #350ms
@@ -352,7 +353,7 @@ func server_process_event(entityId, eventId, eventTime, eventData) -> void:
 		return
 	if entityId < netentities.size() && netentities[entityId] && netentities[entityId].is_inside_tree():
 		if netentities[entityId].has_method("server_process_event"):
-			#No se una verga de programación Dejar esto así
+			#Stupid: forgot about the clientnum!
 			#netentities[entityId].NetBoop.update_event_data({event_id = eventId, event_time = eventTime, event_data = eventData})
 			#netentities[entityId].server_process_event(eventId, netentities[entityId].NetBoop.get_event_data(eventId))
 			netentities[entityId].server_process_event(eventId, eventData)
@@ -364,6 +365,7 @@ func client_process_event(entityId, eventId, eventTime, eventData) -> void:
 		if netentities[entityId].has_method("client_process_event"):
 			netentities[entityId].NetBoop.update_event_data({event_id = eventId, event_time = eventTime, event_data = eventData})
 			netentities[entityId].client_process_event(eventId, netentities[entityId].NetBoop.get_event_data(eventId))
+			#netentities[entityId].client_process_event(eventId, eventData) #maybe causing desync?
 
 #######################
 # NETWORK RPC METHODS #
