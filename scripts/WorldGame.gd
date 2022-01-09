@@ -22,7 +22,6 @@ extends Node2D
 # Dificultad experto.
 # Que las tropas no se generen una vez conquistado un territorio
 # Que los bots puedan tener formaciones
-# Que los bots cuando juegan en equipo se ayuden unos a otros
 # No poder robarle talentos a tus aliados del orto jaja
 # Fixear que la duración de la partida en los clientes dice cero.
 # Estadisticas: Todas las batallas (equipos en batalla, cantidad de tropas, tropas al finalizar la batalla) [TOP 10]
@@ -30,8 +29,6 @@ extends Node2D
 # Que los civiles aparezcan arriba de todo cuando pones tile info
 # Edificio, intel. (Podes moverlo solo una vez por turno, que ilumine solo los casilleros de alado)
 # Implementar sistema de lago
-# Fixear bug de que hay que seleccionar algo separado para deseleccionar una accion
-# Que se pueda mover talentos sin necesidad de reclutas
 
 const MIN_ACTIONS_PER_TURN: int = 3
 const MININUM_TROOPS_TO_FIGHT: int = 5

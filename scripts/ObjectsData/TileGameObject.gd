@@ -952,10 +952,8 @@ func restore_previous_tiles_data() ->void:
 # NETCODE STUFF #
 #################
 
-func set_sync_cell_data(cell: Vector2, cell_data: Dictionary) -> void:
-	tiles_data[cell.x][cell.y].troops.clear()
-	tiles_data[cell.x][cell.y].upcomingTroops.clear()
-	tiles_data[cell.x][cell.y] = cell_data.duplicate(true)
+func set_sync_cell_data(cell: Vector2, delta_dict: Dictionary) -> void:
+	tiles_data[cell.x][cell.y] = Game.Util.merge_delta_dict(tiles_data[cell.x][cell.y], delta_dict)
 
 func save_sync_data() -> void:
 	saved_tiles_data = tiles_data.duplicate( true )
@@ -977,8 +975,13 @@ func get_sync_data(playerNumber: int = -1, force: bool = false) -> Array: #if pl
 			if old_tiles_data.size() <= x or old_tiles_data[x].size() <= y:
 				continue
 			if force or !Game.Util.dicts_are_equal(tiles_data[x][y], old_tiles_data[x][y]):
-				cellsToSync.append({ cell_pos = Vector2(x, y), cell_data = tiles_data[x][y].duplicate( true ) })
-	#print( "get_sync_data: " + str(cellsToSync.size()) )
+				var delta_dict: Dictionary
+				if force:
+					delta_dict = tiles_data[x][y]
+				else:
+					delta_dict = Game.Util.get_delta_dict(old_tiles_data[x][y], tiles_data[x][y])
+
+				cellsToSync.append({ cell_pos = Vector2(x, y), cell_data = delta_dict.duplicate( true ) })
 	
 	if !force: #do not do this in case this was a forced sync!
 		old_tiles_data = tiles_data.duplicate( true )
@@ -1014,8 +1017,8 @@ func merge_sync_arrays(oldSyncArray: Array, newSyncArray: Array) -> Array:
 func set_sync_data( dictArray: Array ) -> void:
 	for cellData in dictArray:
 		var cell: Vector2 = cellData.cell_pos
-		var cell_info = cellData.cell_data
-		set_sync_cell_data(cell, cell_info)
+		var delta_dict = cellData.cell_data
+		set_sync_cell_data(cell, delta_dict)
 
 #################
 # AI HELP STUFF #

@@ -62,6 +62,67 @@ func dicts_are_equal(dictA: Dictionary, dictB: Dictionary) -> bool:
 
 	return true; #they are totally equal
 
+func merge_delta_dict(oldDict: Dictionary, deltaDict: Dictionary) -> Dictionary:
+	var new_dict: Dictionary = oldDict.duplicate(true)
+	for key in deltaDict:
+		if !new_dict.has(key):
+			new_dict[key] = deltaDict[key]
+			continue
+		if typeof(deltaDict[key]) != typeof(new_dict[key]):
+			new_dict[key] = deltaDict[key]
+			continue
+		if  typeof(deltaDict[key]) == TYPE_DICTIONARY:
+			if !dicts_are_equal(deltaDict[key], new_dict[key]):
+				new_dict[key] = deltaDict[key].duplicate(true)
+			continue
+		if  typeof(deltaDict[key]) == TYPE_ARRAY:
+			if !arrays_contents_are_equal(deltaDict[key], new_dict[key]):
+				new_dict[key] = deltaDict[key].duplicate(true)
+			continue
+		if deltaDict[key] != new_dict[key]:
+			new_dict[key] = deltaDict[key]
+	return new_dict
+
+func get_delta_dict(oldDict: Dictionary, newDict: Dictionary) -> Dictionary:
+	var delta_dict: Dictionary = {}
+	
+	for key in oldDict:
+		if !newDict.has(key):
+			continue
+		if typeof(oldDict[key]) != typeof(newDict[key]):
+			delta_dict[key] = newDict[key]
+			continue
+		if  typeof(oldDict[key]) == TYPE_DICTIONARY:
+			if !dicts_are_equal(oldDict[key], newDict[key]):
+				delta_dict[key] = newDict[key].duplicate(true)
+			continue
+		if  typeof(oldDict[key]) == TYPE_ARRAY:
+			if !arrays_contents_are_equal(oldDict[key], newDict[key]):
+				delta_dict[key] = newDict[key].duplicate(true)
+			continue
+		if oldDict[key] != newDict[key]:
+			delta_dict[key] = newDict[key]
+			
+	for key in newDict:
+		if !oldDict.has(key):
+			delta_dict[key] = newDict[key]
+			continue
+		if typeof(oldDict[key]) != typeof(newDict[key]):
+			delta_dict[key] = newDict[key]
+			continue
+		if  typeof(newDict[key]) == TYPE_DICTIONARY:
+			if !dicts_are_equal(oldDict[key], newDict[key]):
+				delta_dict[key] = newDict[key].duplicate(true)
+			continue
+		if  typeof(newDict[key]) == TYPE_ARRAY:
+			if !arrays_contents_are_equal(newDict[key], oldDict[key]):
+				delta_dict[key] = newDict[key].duplicate(true)
+			continue
+		if oldDict[key] != newDict[key]:
+			delta_dict[key] = newDict[key]
+
+	return delta_dict
+
 func array_search_and_remove(array_data: Array, element_to_remove) -> Array:
 	var return_array: Array = array_data.duplicate(true)
 	var remove_index: int = return_array.find(element_to_remove)
