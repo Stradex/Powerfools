@@ -314,7 +314,7 @@ func sync_players_from_load_game(load_player_data: Array) -> void:
 		player_data_ordered = true
 		for i in range(load_player_data.size()):
 			var player_number: int = Game.get_player_number_by_pin_code(load_player_data[i].pin_code)
-			if load_player_data[i].isBot or player_number == -1 or player_number == i or Game.playersData[player_number].pin_code == load_player_data[i].pin_code: #nothing to change here
+			if load_player_data[i].isBot or player_number == -1 or player_number == i or Game.playersData[i].pin_code == load_player_data[i].pin_code: #Fix me later!
 				continue
 			Game.playersData[player_number] = Game.playersData[i].duplicate(true)
 			var net_id: int = Game.playersData[i].netid
@@ -398,13 +398,6 @@ func start_online_game():
 			print("Player " + str(i) + " turn")
 			break
 	Game.tilesObj.save_sync_data()
-
-func player_can_select_tile_as_first_interaction(tile_pos: Vector2, player_number: int) -> bool:
-	if Game.tilesObj.belongs_to_player(tile_pos, player_number):
-		return true
-	if Game.tilesObj.belongs_to_allies(tile_pos, player_number) and Game.tilesObj.player_has_troops_in_cell(tile_pos, player_number):
-		return true
-	return false
 
 func game_interact():
 	if !is_local_player_turn():
@@ -571,21 +564,6 @@ func update_actions_available() -> void:
 		elif actions_available > Game.gameplay_settings.max_actions_in_game:
 			actions_available = Game.gameplay_settings.max_actions_in_game
 
-func check_if_game_finished() -> bool:
-	var all_player_capitals: Array = Game.tilesObj.get_all_capitals()
-	var players_alive: Array = []
-	for capital in all_player_capitals:
-		var player_owner: int = Game.tilesObj.get_cell_owner(capital)
-		if players_alive.find(player_owner) == -1:
-			players_alive.append(player_owner)
-			
-	for playerA in players_alive:
-		for playerB in players_alive:
-			if !Game.are_player_allies(playerA, playerB):
-				return false
-	
-	return true
-
 func process_turn_end(playerNumber: int) -> void:
 	Game.tilesObj.recover_sync_data()
 	
@@ -600,26 +578,9 @@ func process_turn_end(playerNumber: int) -> void:
 		$UI/GameFinished.visible = true
 		$UI.open_finish_game_screen((OS.get_ticks_msec() - game_start_time)/60000.0)
 		return
-	
 	if Game.Network.is_server():
-		var next_player_turn: int = Game.get_next_player_turn()
-		var sync_arrayA: Array = Game.tilesObj.get_sync_neighbors(next_player_turn)
-		for i in range(Game.playersData.size()): #sync allies neighbors too (avoid forest desync bug)
-			if i == next_player_turn:
-				continue
-			if !Game.playersData[i].alive:
-				continue
-			if !Game.are_player_allies(next_player_turn, i):
-				continue
-			sync_arrayA = Game.tilesObj.merge_sync_arrays(sync_arrayA.duplicate(true), Game.tilesObj.get_sync_neighbors(i))
-
-		var sync_arrayB: Array = Game.tilesObj.get_sync_data()
-		var merged_sync_arrays: Array = Game.tilesObj.merge_sync_arrays(sync_arrayA, sync_arrayB)
+		server_sync_turn_end()
 		
-		if next_player_turn != Game.current_player_turn and !Game.are_player_allies(Game.current_player_turn, next_player_turn): #sync next turn enemy player neighbors
-			merged_sync_arrays = Game.tilesObj.merge_sync_arrays(merged_sync_arrays.duplicate(true), Game.tilesObj.get_sync_neighbors(Game.current_player_turn))
-		
-		Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = merged_sync_arrays })
 	Game.tilesObj.save_sync_data()
 
 func process_tiles_turn_end(playerNumber: int) -> void:
@@ -632,8 +593,6 @@ func process_tiles_turn_end(playerNumber: int) -> void:
 			process_tile_battles(Vector2(x, y))
 			update_tile_owner(Vector2(x, y))
 			process_tile_underpopulation(Vector2(x, y), playerNumber)
-
-#func process_
 
 func process_tile_sell(cell: Vector2, playerNumber: int) -> void:
 	if !Game.tilesObj.belongs_to_player(cell, playerNumber):
@@ -906,6 +865,37 @@ func update_gold_stats(playerNumber: int) -> void:
 #	BOOLEANS FUNCTIONS
 ###################################
 
+func player_can_select_tile_as_first_interaction(tile_pos: Vector2, player_number: int) -> bool:
+	if Game.tilesObj.belongs_to_player(tile_pos, player_number):
+		return true
+	if Game.tilesObj.belongs_to_allies(tile_pos, player_number) and Game.tilesObj.player_has_troops_in_cell(tile_pos, player_number):
+		return true
+	return false
+
+func check_if_game_finished() -> bool:
+	var all_player_capitals: Array = Game.tilesObj.get_all_capitals()
+	var players_alive: Array = []
+	for capital in all_player_capitals:
+		var player_owner: int = Game.tilesObj.get_cell_owner(capital)
+		if players_alive.find(player_owner) == -1:
+			players_alive.append(player_owner)
+			
+	for playerA in players_alive:
+		for playerB in players_alive:
+			if !Game.are_player_allies(playerA, playerB):
+				return false
+	
+	return true
+
+func can_execute_action() -> bool:
+	return actions_available > 0
+
+func have_selection_points_left() -> bool:
+	return Game.playersData[Game.current_player_turn].selectLeft > 0
+
+func can_interact_with_menu() -> bool:
+	return player_in_menu and player_can_interact
+
 func is_local_player_turn() -> bool:
 	#if !Game.Network.is_multiplayer() or Game.Network.is_server() and Game.is_current_player_a_bot():
 	#	return true
@@ -965,9 +955,30 @@ func check_if_player_can_buy_buildings(tile_pos: Vector2, playerNumber: int) -> 
 			return true
 	return false
 
-###################################
-#	DRAWING & GRAPHICS TILES
-###################################
+func is_player_a_winner_in_battle_stats(battle_id: int, player_number: int) -> bool:
+	if !is_player_in_battle_stats(battle_id, player_number):
+		return false
+	for troopDict in battle_stats[battle_id].remaining:
+		if Game.are_player_allies(troopDict.owner, player_number):
+			return true
+	return false
+
+func is_player_in_battle_stats(battle_id: int, player_number: int) -> bool:
+	var all_dict: Array = Game.Util.array_addition(battle_stats[battle_id].killed, battle_stats[battle_id].remaining, true) #allow duplicates
+	for troopDict in all_dict:
+		if troopDict.owner == player_number:
+			return true
+	return false
+
+func check_if_battle_stats_already_exists(tile_pos: Vector2) -> bool:
+	for battle in battle_stats:
+		if typeof(battle) == TYPE_NIL:
+			continue
+		if !battle.in_progress:
+			continue
+		if battle.pos == tile_pos:
+			return true
+	return false
 
 ###################################
 #	GETTERS
@@ -1180,15 +1191,6 @@ func gui_add_bot():
 	if Game.Network.is_client():
 		return
 	Game.add_player(-1, "bot", Game.BOT_NET_ID, -1, true)
-
-func can_execute_action() -> bool:
-	return actions_available > 0
-
-func have_selection_points_left() -> bool:
-	return Game.playersData[Game.current_player_turn].selectLeft > 0
-
-func can_interact_with_menu() -> bool:
-	return player_in_menu and player_can_interact
 
 func execute_recruit_troops():
 	if !is_local_player_turn() or !can_execute_action():
@@ -1510,16 +1512,6 @@ func finish_battle_stats(tile_pos: Vector2) -> void:
 	battle_stats[battle_id].remaining = Game.tilesObj.get_troops_clean(tile_pos).duplicate(true)
 	battle_stats[battle_id].in_progress = false #battle finished
 
-func check_if_battle_stats_already_exists(tile_pos: Vector2) -> bool:
-	for battle in battle_stats:
-		if typeof(battle) == TYPE_NIL:
-			continue
-		if !battle.in_progress:
-			continue
-		if battle.pos == tile_pos:
-			return true
-	return false
-
 func get_battle_stats_id(tile_pos: Vector2) -> int:
 	for i in range(battle_stats.size()):
 		if typeof(battle_stats[i]) == TYPE_NIL:
@@ -1655,21 +1647,6 @@ func calculate_battle_balance_points(battle_id: int) -> float:
 	if min_strength <= 0.0:
 		return 0.0 #total unbalanced
 	return min_strength/max_strength
-
-func is_player_a_winner_in_battle_stats(battle_id: int, player_number: int) -> bool:
-	if !is_player_in_battle_stats(battle_id, player_number):
-		return false
-	for troopDict in battle_stats[battle_id].remaining:
-		if Game.are_player_allies(troopDict.owner, player_number):
-			return true
-	return false
-
-func is_player_in_battle_stats(battle_id: int, player_number: int) -> bool:
-	var all_dict: Array = Game.Util.array_addition(battle_stats[battle_id].killed, battle_stats[battle_id].remaining, true) #allow duplicates
-	for troopDict in all_dict:
-		if troopDict.owner == player_number:
-			return true
-	return false
 
 func get_battle_points(battle_id:int, max_balance_points:float, max_duration:float, max_players:float, max_force:float, max_comeback:float, player_number: int=-1, imprimir: bool = false) -> float:
 	var balance_ratio: float = (calculate_battle_balance_points(battle_id)/max_balance_points)*0.85
@@ -1872,6 +1849,26 @@ func _on_player_disconnect(id):
 		Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_INFO_MESSAGE, {msg = message_to_show })
 	if id == Game.get_tree().get_network_unique_id(): #we disconnected!
 		exit_game("Disconnected from server....")
+
+func server_sync_turn_end() -> void:
+	var next_player_turn: int = Game.get_next_player_turn()
+	var sync_arrayA: Array = Game.tilesObj.get_sync_neighbors(next_player_turn)
+	for i in range(Game.playersData.size()): #sync allies neighbors too (avoid forest desync bug)
+		if i == next_player_turn:
+			continue
+		if !Game.playersData[i].alive:
+			continue
+		if !Game.are_player_allies(next_player_turn, i):
+			continue
+		sync_arrayA = Game.tilesObj.merge_sync_arrays(sync_arrayA.duplicate(true), Game.tilesObj.get_sync_neighbors(i))
+
+	var sync_arrayB: Array = Game.tilesObj.get_sync_data()
+	var merged_sync_arrays: Array = Game.tilesObj.merge_sync_arrays(sync_arrayA, sync_arrayB)
+		
+	if next_player_turn != Game.current_player_turn and !Game.are_player_allies(Game.current_player_turn, next_player_turn): #sync next turn enemy player neighbors
+		merged_sync_arrays = Game.tilesObj.merge_sync_arrays(merged_sync_arrays.duplicate(true), Game.tilesObj.get_sync_neighbors(Game.current_player_turn))
+		
+	Game.Network.net_send_event(self.node_id, NET_EVENTS.SERVER_SEND_DELTA_TILES, {dictArray = merged_sync_arrays })
 
 func server_send_game_info(unreliable: bool = false) -> void:
 	if !Game.Network.is_server():

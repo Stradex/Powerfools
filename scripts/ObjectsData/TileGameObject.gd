@@ -3,7 +3,6 @@ extends Object
 
 const ROCK_OWNER_ID: int = -3 #if owner == -3, then it is a rock and no player/bot should be allowed to move troops or build or anything here
 
-
 const N: int = 1
 const NE: int = 2
 const E: int = 4

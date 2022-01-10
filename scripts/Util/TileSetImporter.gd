@@ -27,7 +27,6 @@ func create_overlay_tile(tile_from: TileSet, tile_id: int) -> void:
 	tile_from.tile_set_name(new_tile_id, tile_from.tile_get_name(tile_id) + "_overlay")
 	copy_autotile_from_to(tile_from, tile_id, tile_from, new_tile_id, Vector2(0, -1))
 
-
 func copy_autotile_from_to(tile_from: TileSet, tile_id_from: int, tile_to: TileSet, tile_id_to: int, bitmask_subtile_offset = Vector2(0, 0)) -> void:
 	var tile_region: Rect2 = tile_from.tile_get_region(tile_id_from)
 	var auto_tile_size: Vector2 = tile_from.autotile_get_size(tile_id_from)
