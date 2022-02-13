@@ -231,22 +231,22 @@ func get_player_number_by_pin_code(pin_code: int) -> int:
 func start_new_game(is_mp_game: bool = false):
 	current_player_turn = 0
 	if !is_mp_game:
-		init_player(0, Network.SERVER_NETID, "Stradex", 555, true, 1) #human
-		init_player(1, Network.SERVER_NETID, "bot", 1, true, 1) #bot - team 1
-		init_player(2, Network.SERVER_NETID, "bot", 1, true, 1) #bot - team 2
-		init_player(3, Network.SERVER_NETID, "bot", 3, true, 1) #bot - team 2
-		init_player(4, Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
-		init_player(5, Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
-		init_player(6, Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
-		init_player(7, Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
-		set_bot_difficulty(0, 0)
+		init_player(0, Network.SERVER_NETID, "Stradex", 555, false, 1) #human
+		init_player(1, Network.SERVER_NETID, "bot", 1, true, 2) #bot - team 1
+		init_player(2, Network.SERVER_NETID, "bot", 1, true, 2) #bot - team 2
+		#init_player(3, Network.SERVER_NETID, "bot", 3, true, 1) #bot - team 2
+		#init_player(4, Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
+		#init_player(5, Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
+		#init_player(6, Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
+		#init_player(7, Network.SERVER_NETID, "bot", 3, true, 2) #bot - team 2
+		#set_bot_difficulty(0, 0)
 		set_bot_difficulty(1, 0)
 		set_bot_difficulty(2, 0)
-		set_bot_difficulty(3, 0)
-		set_bot_difficulty(4, 0)
-		set_bot_difficulty(5, 0)
-		set_bot_difficulty(6, 0)
-		set_bot_difficulty(7, 0)
+		#set_bot_difficulty(3, 0)
+		#set_bot_difficulty(4, 0)
+		#set_bot_difficulty(5, 0)
+		#set_bot_difficulty(6, 0)
+		#set_bot_difficulty(7, 0)
 		
 	change_to_map(START_MAP)
 

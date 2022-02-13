@@ -4,22 +4,22 @@ extends Object
 # This object exits because you can't pass arrays as reference in godot
 # but objects yes, so this object it's going to be the CuteGrid
 
-const GRID_NULL: int = -1;
+const GRID_NULL: int = -1
 
 # Cardinal bitflags, really useful.
-const N: int = 0x1;
-const NE: int = 0x2;
-const E: int = 0x4;
-const SE: int = 0x8;
-const S: int = 0x16;
-const SW: int = 0x32;
-const W: int = 0x64;
-const NW: int = 0x128;
+const N: int = 0x1
+const NE: int = 0x2
+const E: int = 0x4
+const SE: int = 0x8
+const S: int = 0x16
+const SW: int = 0x32
+const W: int = 0x64
+const NW: int = 0x128
 
 # Shorthand for getting Neighbors
-const ALL_DIR: int = N | NE | E | SE | S | SW | W | NW; # All 8 directions
-const DIAG_DIR: int = NE | SE | SW | NW; # Diagonal directions only
-const HOR_AND_VER_DIR: int = ALL_DIR - DIAG_DIR; # Horizontal and vertical directions
+const ALL_DIR: int = N | NE | E | SE | S | SW | W | NW # All 8 directions
+const DIAG_DIR: int = NE | SE | SW | NW # Diagonal directions only
+const HOR_AND_VER_DIR: int = ALL_DIR - DIAG_DIR # Horizontal and vertical directions
 
 var cell_dirs: Dictionary = { # The keys are vectors 2D, which is awesome and handy
 	Vector2(0, -1): N,
@@ -32,20 +32,20 @@ var cell_dirs: Dictionary = { # The keys are vectors 2D, which is awesome and ha
 	Vector2(-1, -1): NW
 };
 
-var _grid: Array = [];
-var _cell_size: int = 0;
-var _dimensions_world: Vector2 = Vector2.ZERO; # Dimensions of the grid but in pixels
-var rng: RandomNumberGenerator = RandomNumberGenerator.new();
+var _grid: Array = []
+var _cell_size: int = 0
+var _dimensions_world: Vector2 = Vector2.ZERO # Dimensions of the grid but in pixels
+var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 #TODO for other project: Allow CuteGrid to be binded with a TileMap node
 
 # Square grids only by now (not infinite... :( )
 func _init(cell_size: int, dimensions_world: Vector2):
-	assert(cell_size > 0);
+	assert(cell_size > 0)
 	rng.randomize()
-	_cell_size = cell_size;
-	_dimensions_world = dimensions_world;
-	clear_grid();
+	_cell_size = cell_size
+	_dimensions_world = dimensions_world
+	clear_grid()
 
 func set_random_seed(var new_seed: int):
 	rng.set_seed(new_seed)
